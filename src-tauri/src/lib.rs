@@ -59,8 +59,11 @@ pub fn run() {
             let show_i = MenuItem::with_id(app, "show", "Abrir Bolsillo", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-            let _tray = TrayIconBuilder::new()
-                .menu(&menu)
+            let mut tray = TrayIconBuilder::new().menu(&menu);
+            if let Some(icon) = app.default_window_icon() {
+                tray = tray.icon(icon.clone());
+            }
+            let _tray = tray
                 .tooltip("Bolsillo - Control de gastos")
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {

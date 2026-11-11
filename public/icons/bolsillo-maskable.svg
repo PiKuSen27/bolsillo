@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Versión "maskable" para Android/PWA: fondo a sangre completa y dibujo en la zona segura (80%). -->
+  <rect width="512" height="512" fill="#000000"/>
+  <g transform="translate(51.2 51.2) scale(0.8)">
+    <circle cx="256" cy="196" r="76" fill="#FFFFFF"/>
+    <circle cx="256" cy="196" r="54" fill="none" stroke="#000000" stroke-width="10"/>
+    <text x="256" y="214" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="800" font-size="52" fill="#000000">$</text>
+    <path d="M118 236 H394 V356 Q394 372 382 380 L270 448 Q256 456 242 448 L130 380 Q118 372 118 356 Z"
+          fill="#000000" stroke="#FFFFFF" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M144 262 H368 V352 Q368 360 362 364 L266 422 Q256 428 246 422 L150 364 Q144 360 144 352 Z"
+          fill="none" stroke="#FFFFFF" stroke-width="7" stroke-dasharray="13 11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M144 284 H368" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-dasharray="13 11" stroke-linecap="round"/>
+  </g>
+</svg>

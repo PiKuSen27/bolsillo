@@ -107,6 +107,6 @@ export async function sendAppNotification(title: string, body: string): Promise<
       console.warn("Tauri notification error:", e);
     }
   } else if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(title, { body, icon: "/icons/icon.png" });
+    new Notification(title, { body, icon: "/icons/icon-192.png" });
   }
 }
