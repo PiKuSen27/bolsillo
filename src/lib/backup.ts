@@ -95,7 +95,6 @@ const uniqueIds = (items: { id?: string; date?: string; key?: string }[], field:
 // ---------- entidades ----------
 const MOVEMENT_KINDS = ["expense", "income"] as const;
 const MOVEMENT_SOURCES = ["manual", "recurring", "installment", "salary", "daily", "debt"] as const;
-const FREQUENCIES = ["monthly", "weekly", "yearly"] as const;
 const DEBT_KINDS = ["i_owe", "they_owe"] as const;
 
 function movement(o: Obj, i: number): Movement {
@@ -122,11 +121,11 @@ function recurring(o: Obj, i: number): Recurring {
     name: str(o.name, "name", where, { max: 100 })!,
     amount: amount(o.amount, "amount", where),
     categoryId: str(o.categoryId, "categoryId", where, { max: 100 })!,
-    frequency: oneOf(o.frequency ?? "monthly", FREQUENCIES, "frequency", where),
     dueDay: amount(o.dueDay, "dueDay", where, { min: 1, max: 31 }),
     autoAdd: bool(o.autoAdd, "autoAdd", where, true),
     active: bool(o.active, "active", where, true),
     lastAppliedDate: dateStr(o.lastAppliedDate, "lastAppliedDate", where, true),
+    createdAt: dateStr(o.createdAt, "createdAt", where, true),
   };
 }
 

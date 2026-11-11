@@ -92,8 +92,9 @@ export function shouldTriggerDailyReminder(params: {
   if (alreadySentToday) return false;
   if (isTodayLogged) return false;
 
-  // Trigger if current time matches reminderTime
-  return currentHHMM === reminderTime;
+  // Dispara a la hora configurada o en el primer chequeo posterior (si la app estaba cerrada/dormida).
+  // "alreadySentToday" evita repetirlo. Formato HH:MM, así que comparar texto equivale a comparar horas.
+  return currentHHMM >= reminderTime;
 }
 
 export interface DueNotification {

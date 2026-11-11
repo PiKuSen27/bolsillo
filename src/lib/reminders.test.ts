@@ -89,6 +89,13 @@ describe("reminders.ts - Recordatorios, días faltantes y alertas", () => {
     expect(shouldNotDuplicate).toBe(false);
   });
 
+  it("Bug #10: si la app estaba cerrada a la hora del aviso, avisa en cuanto vuelve (misma noche), y no antes", () => {
+    const base = { reminderTime: "21:00", reminderEnabled: true, isTodayLogged: false, alreadySentToday: false };
+    expect(shouldTriggerDailyReminder({ ...base, currentHHMM: "22:37" })).toBe(true);
+    expect(shouldTriggerDailyReminder({ ...base, currentHHMM: "20:59" })).toBe(false);
+    expect(shouldTriggerDailyReminder({ ...base, currentHHMM: "22:37", alreadySentToday: true })).toBe(false);
+  });
+
   it("Criterio: Alertas de vencimientos N días antes y el mismo día", () => {
     const upcoming: UpcomingItem[] = [
       {

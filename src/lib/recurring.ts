@@ -36,6 +36,14 @@ export function getNextMonthlyDueDate(dueDay: number, refDate: Date = new Date()
   return clampDateToMonth(nextMonthYear, normalizedMonth, dueDay);
 }
 
+/** Monto de la cuota n (1-based). La última absorbe el redondeo para que la suma dé el total exacto. */
+export function getInstallmentAmount(inst: Installment, n: number): number {
+  if (n >= inst.installmentsCount) {
+    return inst.totalAmount - inst.installmentAmount * (inst.installmentsCount - 1);
+  }
+  return inst.installmentAmount;
+}
+
 /**
  * Calculates next due date for an installment item
  */
@@ -97,7 +105,7 @@ export function getUpcomingItems(params: {
       id: inst.id,
       type: "installment",
       name: inst.name,
-      amount: inst.installmentAmount,
+      amount: getInstallmentAmount(inst, inst.paidCount + 1),
       dueDate: formatLocalDate(nextDue),
       daysUntil,
       categoryId: inst.categoryId,
@@ -162,7 +170,9 @@ export function processAutoAddRules(params: {
       const dueDate = clampDateToMonth(curYear, curMonth, rec.dueDay);
       const dueDateStr = formatLocalDate(dueDate);
 
-      if (dueDate.getTime() <= today.getTime()) {
+      // Un fijo creado después de su vencimiento arranca recién el mes siguiente (bug #8)
+      const beforeCreation = rec.createdAt ? dueDateStr < rec.createdAt : false;
+      if (dueDate.getTime() <= today.getTime() && !beforeCreation) {
         const key = `rec_${rec.id}_${dueDateStr}`;
         if (!existingSet.has(key)) {
           movementsToAdd.push({
@@ -214,7 +224,7 @@ export function processAutoAddRules(params: {
           movementsToAdd.push({
             id: `inst_${inst.id}_${dueDateStr}_${updatedInst.paidCount + 1}`,
             date: dueDateStr,
-            amount: inst.installmentAmount,
+            amount: getInstallmentAmount(inst, updatedInst.paidCount + 1),
             kind: "expense",
             categoryId: inst.categoryId,
             note: `${inst.name} (Cuota ${updatedInst.paidCount + 1}/${inst.installmentsCount})`,

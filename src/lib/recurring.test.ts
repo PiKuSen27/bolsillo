@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { processAutoAddRules, getUpcomingItems } from "./recurring";
+import { processAutoAddRules, getUpcomingItems, getInstallmentAmount } from "./recurring";
 import { Installment, Movement, Recurring } from "../types";
 
 describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
@@ -9,7 +9,6 @@ describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
       name: "Netflix",
       amount: 22000,
       categoryId: "suscripciones",
-      frequency: "monthly",
       dueDay: 10,
       autoAdd: true,
       active: true,
@@ -46,7 +45,6 @@ describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
       name: "Gimnasio",
       amount: 15000,
       categoryId: "salud",
-      frequency: "monthly",
       dueDay: 5,
       autoAdd: true,
       active: true,
@@ -103,8 +101,7 @@ describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
         name: "Spotify",
         amount: 4000,
         categoryId: "suscripciones",
-        frequency: "monthly",
-        dueDay: 13, // En 3 días desde el 10
+          dueDay: 13, // En 3 días desde el 10
         autoAdd: true,
         active: true,
       },
@@ -113,8 +110,7 @@ describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
         name: "Edenor",
         amount: 25000,
         categoryId: "servicios",
-        frequency: "monthly",
-        dueDay: 10, // Hoy
+          dueDay: 10, // Hoy
         autoAdd: true,
         active: true,
       },
@@ -134,5 +130,41 @@ describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
     // El segundo Spotify en 3 días (daysUntil = 3)
     expect(upcoming[1].name).toBe("Spotify");
     expect(upcoming[1].daysUntil).toBe(3);
+  });
+
+  it("Bug #8: un fijo creado DESPUÉS de su día de vencimiento no se cobra este mes (arranca el mes que viene)", () => {
+    const recurring: Recurring = {
+      id: "gym",
+      name: "Gimnasio",
+      amount: 15000,
+      categoryId: "salud",
+      dueDay: 5,
+      autoAdd: true,
+      active: true,
+      createdAt: "2026-11-10", // creado el 10, venció el 5
+    };
+    const sameMonth = processAutoAddRules({ recurrings: [recurring], installments: [], existingMovements: [], todayStr: "2026-11-20" });
+    expect(sameMonth.movementsToAdd.length).toBe(0);
+
+    const nextMonth = processAutoAddRules({ recurrings: [recurring], installments: [], existingMovements: [], todayStr: "2026-12-06" });
+    expect(nextMonth.movementsToAdd.map((m) => m.date)).toEqual(["2026-12-05"]);
+  });
+
+  it("Un fijo creado el mismo día que vence sí se cobra ese día", () => {
+    const recurring: Recurring = { id: "luz", name: "Luz", amount: 10000, categoryId: "servicios", dueDay: 10, autoAdd: true, active: true, createdAt: "2026-11-10" };
+    const r = processAutoAddRules({ recurrings: [recurring], installments: [], existingMovements: [], todayStr: "2026-11-10" });
+    expect(r.movementsToAdd.map((m) => m.date)).toEqual(["2026-11-10"]);
+  });
+
+  it("Cuotas: la última cuota absorbe el redondeo para que la suma dé el total exacto", () => {
+    const inst: Installment = {
+      id: "x", name: "Heladera", totalAmount: 100000, installmentsCount: 3, installmentAmount: 33333,
+      firstDueDate: "2026-01-10", paidCount: 0, categoryId: "otros", autoAdd: true, active: true,
+    };
+    expect(getInstallmentAmount(inst, 1)).toBe(33333);
+    expect(getInstallmentAmount(inst, 2)).toBe(33333);
+    expect(getInstallmentAmount(inst, 3)).toBe(33334);
+    const r = processAutoAddRules({ recurrings: [], installments: [inst], existingMovements: [], todayStr: "2026-03-15" });
+    expect(r.movementsToAdd.reduce((a, m) => a + m.amount, 0)).toBe(100000);
   });
 });

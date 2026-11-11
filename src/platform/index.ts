@@ -20,6 +20,17 @@ export async function setAppAutostart(enable: boolean): Promise<void> {
   }
 }
 
+/** Le avisa a Rust si al cerrar la ventana hay que esconderla al tray (true) o cerrar la app (false). */
+export async function setCloseToTray(enable: boolean): Promise<void> {
+  if (isTauri()) {
+    try {
+      await invoke("set_close_to_tray", { enable });
+    } catch (e) {
+      console.warn("Failed to set close_to_tray:", e);
+    }
+  }
+}
+
 // Window Controls
 export async function minimizeWindow(): Promise<void> {
   if (isTauri()) {

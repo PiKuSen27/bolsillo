@@ -1,4 +1,5 @@
 use std::fs;
+use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -13,6 +14,16 @@ fn minimize_window(app: AppHandle) -> Result<(), String> {
         let _ = w.hide();
     }
     Ok(())
+}
+
+/// true = al cerrar la ventana se esconde al tray (default). false = cerrar la app de verdad.
+struct CloseToTray(Mutex<bool>);
+
+#[tauri::command]
+fn set_close_to_tray(state: tauri::State<CloseToTray>, enable: bool) {
+    if let Ok(mut v) = state.0.lock() {
+        *v = enable;
+    }
 }
 
 #[tauri::command]
@@ -39,6 +50,7 @@ fn set_autostart(app: AppHandle, enable: bool) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(CloseToTray(Mutex::new(true)))
         .plugin(tauri_plugin_notification::init())
         .plugin(
             WindowStateBuilder::default()
@@ -51,7 +63,7 @@ pub fn run() {
                 let _ = w.set_focus();
             }
         }))
-        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window])
+        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray])
         .setup(|app| {
             // Build Tray Icon
             let quit_i = MenuItem::with_id(app, "quit", "Salir de Bolsillo", true, None::<&str>)?;
@@ -100,9 +112,19 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                // By default hide instead of quitting so reminders keep running in background
-                let _ = window.hide();
-                api.prevent_close();
+                // Según el ajuste "Cerrar al tray": esconder (siguen los recordatorios) o cerrar de verdad
+                let hide = window
+                    .state::<CloseToTray>()
+                    .0
+                    .lock()
+                    .map(|v| *v)
+                    .unwrap_or(true);
+                if hide {
+                    let _ = window.hide();
+                    api.prevent_close();
+                } else {
+                    window.app_handle().exit(0);
+                }
             }
         })
         .run(tauri::generate_context!())

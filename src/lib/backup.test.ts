@@ -10,7 +10,7 @@ const base = () => ({
     { id: "m1", date: "2026-11-10", amount: 20000, kind: "expense", categoryId: "comida", note: "Pizza", source: "manual", createdAt: "2026-11-10T10:00:00Z" },
   ],
   recurrings: [
-    { id: "r1", name: "Netflix", amount: 5000, categoryId: "suscripciones", frequency: "monthly", dueDay: 10, autoAdd: true, active: true },
+    { id: "r1", name: "Netflix", amount: 5000, categoryId: "suscripciones", dueDay: 10, autoAdd: true, active: true },
   ],
   installments: [
     { id: "i1", name: "Tele", totalAmount: 120000, installmentsCount: 12, installmentAmount: 10000, firstDueDate: "2026-10-05", paidCount: 2, categoryId: "otros", autoAdd: true, active: true },

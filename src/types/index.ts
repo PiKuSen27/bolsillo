@@ -60,18 +60,16 @@ export interface Movement {
   createdAt: string; // ISO string
 }
 
-export type RecurringFrequency = "monthly" | "weekly" | "yearly";
-
 export interface Recurring {
   id: string;
   name: string;
   amount: number;
   categoryId: string;
-  frequency: RecurringFrequency;
-  dueDay: number; // 1-31
+  dueDay: number; // 1-31, siempre mensual
   autoAdd: boolean;
   active: boolean;
   lastAppliedDate?: string; // YYYY-MM-DD
+  createdAt?: string; // YYYY-MM-DD: no se cobran vencimientos anteriores a este día
 }
 
 export interface Installment {

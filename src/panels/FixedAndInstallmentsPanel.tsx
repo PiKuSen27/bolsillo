@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Trash2, CheckCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Category, Installment, Recurring } from "../types";
-import { formatCurrency, formatAmountInput } from "../lib/format";
+import { formatCurrency, formatAmountInput, formatLocalDate } from "../lib/format";
 
 interface FixedAndInstallmentsPanelProps {
   recurrings: Recurring[];
@@ -45,9 +45,7 @@ export function FixedAndInstallmentsPanel({
   const [instName, setInstName] = useState("");
   const [instTotal, setInstTotal] = useState("");
   const [instCount, setInstCount] = useState("12");
-  const [instFirstDate, setInstFirstDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [instFirstDate, setInstFirstDate] = useState(() => formatLocalDate(new Date()));
   const [instCategory, setInstCategory] = useState(() => defaultCategory("otros"));
 
   const categorySelect = (value: string, onChange: (id: string) => void) => (
@@ -81,9 +79,9 @@ export function FixedAndInstallmentsPanel({
       amount,
       dueDay: Math.min(31, Math.max(1, day || 1)),
       categoryId: recCategory,
-      frequency: "monthly",
       autoAdd: recAutoAdd,
       active: true,
+      createdAt: formatLocalDate(new Date()),
     });
 
     setRecName("");
@@ -425,7 +423,7 @@ export function FixedAndInstallmentsPanel({
                     <span className="text-xs font-extrabold">{inst.name}</span>
                     <span className="text-[11px] font-semibold opacity-60">
                       Total: {formatCurrency(inst.totalAmount)} ({inst.installmentsCount}{" "}
-                      cuotas de {formatCurrency(inst.installmentAmount)})
+                      cuotas de {formatCurrency(inst.installmentAmount)}{inst.totalAmount !== inst.installmentAmount * inst.installmentsCount ? ", la última ajusta el redondeo" : ""})
                     </span>
                   </div>
 

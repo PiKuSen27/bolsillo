@@ -20,6 +20,7 @@ import {
   requestAppNotificationPermission,
   sendAppNotification,
   setAppAutostart,
+  setCloseToTray,
   toggleAlwaysOnTop,
 } from "./platform";
 import {
@@ -49,6 +50,7 @@ import { calculateBalance } from "./lib/balance";
 import { calculateVariableIncome } from "./lib/workdays";
 import { calculatePreviousPeriodBalance } from "./lib/carryover";
 import {
+  getInstallmentAmount,
   getUpcomingItems,
   processAutoAddRules,
 } from "./lib/recurring";
@@ -147,6 +149,11 @@ export default function App() {
     requestAppNotificationPermission();
   }, [loadData]);
 
+  // Rust necesita saber si "cerrar" esconde al tray o cierra de verdad (bug #10)
+  useEffect(() => {
+    if (settings) setCloseToTray(settings.closeToTray);
+  }, [settings?.closeToTray]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Periodic date & autoAdd & reminder check
   useEffect(() => {
     const checkRoutine = async () => {
@@ -154,6 +161,8 @@ export default function App() {
       const curToday = formatLocalDate(now);
       if (curToday !== todayStr) {
         setTodayStr(curToday);
+        // Pasada la medianoche, si estaba seleccionado "hoy", que siga siendo hoy (bug #11)
+        setSelectedDateStr((sel) => (sel === todayStr ? curToday : sel));
       }
 
       if (!settings) return;
@@ -351,10 +360,17 @@ export default function App() {
   };
 
   const handleUndoRecent = async () => {
-    if (undoToast) {
-      await handleDeleteMovement(undoToast.id);
-      setUndoToast(null);
+    if (!undoToast) return;
+    const undone = await db.movements.get(undoToast.id);
+    await db.movements.delete(undoToast.id);
+    // Si ese día queda sin movimientos y no estaba marcado "no gasté nada", vuelve a "sin anotar"
+    if (undone) {
+      const remaining = await db.movements.where("date").equals(undone.date).count();
+      const log = await db.dayLogs.get(undone.date);
+      if (remaining === 0 && log && !log.noExpenses) await db.dayLogs.delete(undone.date);
     }
+    setUndoToast(null);
+    await loadData();
   };
 
   const handleMarkNoExpenses = async (dateStr: string) => {
@@ -377,6 +393,9 @@ export default function App() {
     setSettings(updated);
     if (partial.autostart !== undefined) {
       setAppAutostart(partial.autostart);
+    }
+    if (partial.closeToTray !== undefined) {
+      setCloseToTray(partial.closeToTray);
     }
   };
 
@@ -416,7 +435,7 @@ export default function App() {
     const movement: Movement = {
       id: `mov_inst_${inst.id}_${nextPaid}_${Date.now()}`,
       date: todayStr,
-      amount: inst.installmentAmount,
+      amount: getInstallmentAmount(inst, nextPaid),
       kind: "expense",
       categoryId: inst.categoryId,
       note: `${inst.name} (Cuota ${nextPaid}/${inst.installmentsCount})`,
