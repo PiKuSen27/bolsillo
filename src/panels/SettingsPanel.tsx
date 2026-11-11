@@ -13,6 +13,7 @@ import {
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
+import { saveBackupFile } from "../platform";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
@@ -123,18 +124,15 @@ export function SettingsPanel({
     });
   };
 
+  const [exportMessage, setExportMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
   const handleExportJSON = async () => {
     try {
       const json = await exportAllData();
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `bolsillo-backup-${new Date().toISOString().split("T")[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      alert("Error al exportar datos");
+      const path = await saveBackupFile(`bolsillo-backup-${formatLocalDate(new Date())}.json`, json);
+      setExportMessage({ ok: true, text: path ? `Guardado en ${path}` : "Descarga iniciada" });
+    } catch (e) {
+      setExportMessage({ ok: false, text: `No se pudo exportar: ${e instanceof Error ? e.message : String(e)}` });
     }
   };
 
@@ -632,6 +630,23 @@ export function SettingsPanel({
             className="hidden"
           />
         </div>
+
+        {exportMessage && (
+          <div
+            role="status"
+            className={`p-2.5 rounded-xl border text-[11px] font-bold break-all ${
+              exportMessage.ok
+                ? isLight
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : "bg-[#052E16] border-emerald-900 text-emerald-300"
+                : isLight
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-[#2A0A0A] border-red-900 text-red-300"
+            }`}
+          >
+            {exportMessage.text}
+          </div>
+        )}
 
         {importError && (
           <div

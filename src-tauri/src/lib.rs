@@ -26,6 +26,28 @@ fn set_close_to_tray(state: tauri::State<CloseToTray>, enable: bool) {
     }
 }
 
+/// Guarda el backup en la carpeta de Descargas del usuario y devuelve la ruta.
+/// (En WebKitGTK el `<a download>` del navegador no hace nada.)
+#[tauri::command]
+fn save_backup(app: AppHandle, file_name: String, contents: String) -> Result<String, String> {
+    let valid = file_name.starts_with("bolsillo-backup-")
+        && file_name.ends_with(".json")
+        && file_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.');
+    if !valid {
+        return Err("Nombre de archivo inválido".into());
+    }
+    let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let mut path = dir.join(&file_name);
+    let mut n = 2;
+    while path.exists() {
+        path = dir.join(file_name.replace(".json", &format!("-{n}.json")));
+        n += 1;
+    }
+    fs::write(&path, contents).map_err(|e| e.to_string())?;
+    Ok(path.display().to_string())
+}
+
 #[tauri::command]
 fn set_autostart(app: AppHandle, enable: bool) -> Result<(), String> {
     if let Ok(config_dir) = app.path().config_dir() {
@@ -63,7 +85,7 @@ pub fn run() {
                 let _ = w.set_focus();
             }
         }))
-        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray])
+        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray, save_backup])
         .setup(|app| {
             // Build Tray Icon
             let quit_i = MenuItem::with_id(app, "quit", "Salir de Bolsillo", true, None::<&str>)?;

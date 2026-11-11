@@ -31,6 +31,21 @@ export async function setCloseToTray(enable: boolean): Promise<void> {
   }
 }
 
+/** Guarda el backup. En Tauri lo escribe en Descargas y devuelve la ruta; en el navegador lo descarga y devuelve null. */
+export async function saveBackupFile(fileName: string, contents: string): Promise<string | null> {
+  if (isTauri()) {
+    return await invoke<string>("save_backup", { fileName, contents });
+  }
+  const blob = new Blob([contents], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+  return null;
+}
+
 // Window Controls
 export async function minimizeWindow(): Promise<void> {
   if (isTauri()) {
