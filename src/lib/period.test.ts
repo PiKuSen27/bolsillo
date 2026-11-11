@@ -66,4 +66,12 @@ describe("period.ts - Cálculo de períodos y fechas", () => {
     expect(period.startDate).toBe("2026-12-15");
     expect(period.endDate).toBe("2027-01-14");
   });
+
+  it("isTodayInPeriod: dentro, antes y después del rango variable", () => {
+    expect(calculateVariablePeriod("2026-11-10", "2026-11-20", "2026-11-15").isTodayInPeriod).toBe(true);
+    expect(calculateVariablePeriod("2026-11-10", "2026-11-20", "2026-11-09").isTodayInPeriod).toBe(false);
+    expect(calculateVariablePeriod("2026-11-10", "2026-11-20", "2026-11-21").isTodayInPeriod).toBe(false);
+    // Rango vencido: daysRemaining nunca baja de 1 (evita dividir por cero en "podés gastar X/día")
+    expect(calculateVariablePeriod("2026-11-10", "2026-11-20", "2026-11-25").daysRemaining).toBe(1);
+  });
 });

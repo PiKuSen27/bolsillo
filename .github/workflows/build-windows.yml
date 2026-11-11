@@ -9,6 +9,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -60,6 +63,8 @@ jobs:
           releaseBody: 'Ver novedades en el repositorio.'
           releaseDraft: true
           prerelease: false
+          # tauri.conf.json solo lista deb/rpm (Linux); en Windows pedimos el instalador .exe
+          args: --bundles nsis
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4

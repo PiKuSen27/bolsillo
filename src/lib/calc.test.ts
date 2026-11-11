@@ -51,4 +51,9 @@ describe("calc.ts - Calculadora y evaluación de expresiones", () => {
     expect(() => evaluateCalcExpression("100 / 0")).toThrow("División por cero");
     expect(() => evaluateCalcExpression("abc + 123")).toThrow("Expresión inválida");
   });
+
+  it("La coma es el decimal y el resultado se redondea a pesos enteros", () => {
+    expect(evaluateCalcExpression("1,5")).toBe(2);
+    expect(evaluateCalcExpression("10,4 × 3")).toBe(31);
+  });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, formatRelativeDue, getDayInitial } from "./format";
+import { formatCurrency, formatRelativeDue, getDayInitial, formatAmountInput, formatNumberWithDots, formatLocalDate, parseLocalDate } from "./format";
+import { MAX_AMOUNT } from "./constants";
 
 describe("format.ts - Formato de moneda, fechas y días", () => {
   it("Formatea moneda en pesos argentinos (ARS)", () => {
@@ -31,5 +32,25 @@ describe("format.ts - Formato de moneda, fechas y días", () => {
     expect(getDayInitial("2026-11-14")).toBe("S");
     // 2026-11-15 es Domingo -> D
     expect(getDayInitial("2026-11-15")).toBe("D");
+  });
+
+  it("Formatea negativos con el signo antes del $ y montos grandes", () => {
+    expect(formatCurrency(-5000)).toBe("-$ 5.000");
+    expect(formatCurrency(1500000)).toBe("$ 1.500.000");
+    expect(formatCurrency(0)).toBe("$ 0");
+    expect(formatCurrency(NaN)).toBe("$ 0");
+  });
+
+  it("formatAmountInput: solo dígitos, puntos de miles y tope MAX_AMOUNT", () => {
+    expect(formatAmountInput("20000")).toBe("20.000");
+    expect(formatAmountInput("2a0.0b00")).toBe("20.000");
+    expect(formatAmountInput("")).toBe("");
+    expect(formatAmountInput("0007")).toBe("7");
+    expect(formatAmountInput("99999999999999999")).toBe(formatNumberWithDots(MAX_AMOUNT));
+  });
+
+  it("parseLocalDate/formatLocalDate no corren la fecha por zona horaria", () => {
+    expect(formatLocalDate(parseLocalDate("2026-11-10"))).toBe("2026-11-10");
+    expect(formatLocalDate(parseLocalDate("2026-11-10T23:59:00.000Z"))).toBe("2026-11-10");
   });
 });

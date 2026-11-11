@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { processAutoAddRules, getUpcomingItems, getInstallmentAmount } from "./recurring";
+import { processAutoAddRules, getUpcomingItems, getInstallmentAmount, getNextMonthlyDueDate } from "./recurring";
 import { Installment, Movement, Recurring } from "../types";
 
 describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
@@ -166,5 +166,29 @@ describe("recurring.ts - Gastos recurrentes, cuotas y no duplicación", () => {
     expect(getInstallmentAmount(inst, 3)).toBe(33334);
     const r = processAutoAddRules({ recurrings: [], installments: [inst], existingMovements: [], todayStr: "2026-03-15" });
     expect(r.movementsToAdd.reduce((a, m) => a + m.amount, 0)).toBe(100000);
+  });
+
+  it("getNextMonthlyDueDate: si ya pasó este mes va al siguiente, incluso de diciembre a enero y con día 31", () => {
+    const f = (ref: string, day: number) => {
+      const d = getNextMonthlyDueDate(day, new Date(ref + "T00:00:00"));
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    expect(f("2026-11-10", 10)).toBe("2026-11-10"); // hoy mismo
+    expect(f("2026-11-11", 10)).toBe("2026-12-10");
+    expect(f("2026-12-20", 15)).toBe("2027-01-15");
+    expect(f("2027-02-01", 31)).toBe("2027-02-28"); // febrero no tiene 31
+  });
+
+  it("Si la app estuvo cerrada 3 meses, un fijo se cobra una vez por cada mes atrasado", () => {
+    const rec: Recurring = { id: "net", name: "Netflix", amount: 5000, categoryId: "x", dueDay: 5, autoAdd: true, active: true, lastAppliedDate: "2026-08-05" };
+    const r = processAutoAddRules({ recurrings: [rec], installments: [], existingMovements: [], todayStr: "2026-11-10" });
+    expect(r.movementsToAdd.map((m) => m.date)).toEqual(["2026-09-05", "2026-10-05", "2026-11-05"]);
+    expect(r.updatedRecurrings[0].lastAppliedDate).toBe("2026-11-05");
+  });
+
+  it("Cuotas que vencen el 31: en los meses cortos caen el último día", () => {
+    const inst: Installment = { id: "c", name: "Cel", totalAmount: 30000, installmentsCount: 3, installmentAmount: 10000, firstDueDate: "2026-01-31", paidCount: 0, categoryId: "x", autoAdd: true, active: true };
+    const r = processAutoAddRules({ recurrings: [], installments: [inst], existingMovements: [], todayStr: "2026-04-01" });
+    expect(r.movementsToAdd.map((m) => m.date)).toEqual(["2026-01-31", "2026-02-28", "2026-03-31"]);
   });
 });
