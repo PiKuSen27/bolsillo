@@ -64,8 +64,10 @@ export function DayDetailModal({
   const logged = isDayLogged(dateStr, movements, dayLogs);
   const dayLog = dayLogs.find((d) => d.date === dateStr);
 
-  // FIX: If day has movements, it is ALWAYS "Registrado", NOT "Sin gastos"
+  // Mismo criterio que la tira de días (isDayLogged): cuenta lo anotado a mano o "no gasté nada";
+  // los cargos automáticos (fijos, cuotas) no marcan el día como registrado.
   const hasNoExpensesMark = !hasMovements && (dayLog?.noExpenses || false);
+  const onlyAutomatic = hasMovements && !logged;
 
   const getCategory = (catId: string) => {
     if (catId === "income") {
@@ -139,7 +141,7 @@ export function DayDetailModal({
           <div className="flex items-center justify-between pb-2 border-b border-white/10">
             <div className="flex items-center gap-2">
               <Calendar size={18} className={isLight ? "text-zinc-600" : "text-zinc-400"} />
-              <h3 className="text-sm font-extrabold capitalize">
+              <h3 className="text-sm font-extrabold">
                 {formatLongDate(dateStr)}
               </h3>
             </div>
@@ -160,7 +162,7 @@ export function DayDetailModal({
             <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>
               Estado del día:
             </span>
-            {hasMovements || logged ? (
+            {logged && !hasNoExpensesMark ? (
               <span className="text-[#16A34A] flex items-center gap-1 font-extrabold">
                 <CheckCircle2 size={14} /> Registrado
               </span>
@@ -169,7 +171,9 @@ export function DayDetailModal({
                 <CheckCircle2 size={14} /> Marcado "Sin gastos"
               </span>
             ) : (
-              <span className="text-[#EF4444] font-extrabold">Sin registrar (!)</span>
+              <span className="text-[#EF4444] font-extrabold">
+                Sin registrar (!){onlyAutomatic && " · solo cargos automáticos"}
+              </span>
             )}
           </div>
 

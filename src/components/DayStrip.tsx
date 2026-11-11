@@ -8,9 +8,10 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
-import { Category, DayLog, Movement } from "../types";
-import { formatDayShortWithNum, formatLocalDate, parseLocalDate } from "../lib/format";
+import { Category, DayLog, Movement, Settings, WorkDay } from "../types";
+import { formatCurrency, formatDayShortWithNum, formatLocalDate, parseLocalDate } from "../lib/format";
 import { isDayLogged } from "../lib/reminders";
+import { getDayValue, isDayModified } from "../lib/workdays";
 import { DayDetailModal } from "./DayDetailModal";
 
 interface DayStripProps {
@@ -23,6 +24,8 @@ interface DayStripProps {
   movements: Movement[];
   categories: Category[];
   dayLogs: DayLog[];
+  settings: Settings;
+  workDays: WorkDay[];
   isLight?: boolean;
   onDeleteMovement: (id: string) => void;
   onUpdateMovement: (m: Movement) => void;
@@ -38,6 +41,8 @@ export function DayStrip({
   movements,
   categories,
   dayLogs,
+  settings,
+  workDays,
   isLight,
   onDeleteMovement,
   onUpdateMovement,
@@ -53,7 +58,21 @@ export function DayStrip({
     status: "logged" | "unlogged" | "future";
     isToday: boolean;
     daysAgo: number;
+    work?: { free: boolean; modified: boolean; value: number }; // modo variable, días del rango
   }[] = [];
+
+  // Modo variable: el mismo valor que muestra "Días trabajados" (día libre / monto distinto a la tarifa)
+  const inRange = (d: string) =>
+    settings.incomeMode === "daily" &&
+    !!settings.dailyRangeStart &&
+    !!settings.dailyRangeEnd &&
+    d >= settings.dailyRangeStart &&
+    d <= settings.dailyRangeEnd;
+  const workInfo = (d: string) => {
+    if (!inRange(d)) return undefined;
+    const value = getDayValue(d, settings, workDays);
+    return { value, free: value === 0, modified: isDayModified(d, settings, workDays.find((w) => w.date === d)) };
+  };
 
   for (let i = 13; i >= 0; i--) {
     const d = addDays(today, -i);
@@ -66,7 +85,7 @@ export function DayStrip({
       status = isDayLogged(dateStr, movements, dayLogs) ? "logged" : "unlogged";
     }
 
-    allDays.push({ dateStr, label, status, isToday, daysAgo: i });
+    allDays.push({ dateStr, label, status, isToday, daysAgo: i, work: workInfo(dateStr) });
   }
 
   // Only top 4 days: Hoy + 3 previous days (i = 0, 1, 2, 3)
@@ -105,7 +124,7 @@ export function DayStrip({
         </div>
 
         {/* 4 Large Days: Hoy + 3 previous days */}
-        <div className="w-full flex-1 flex flex-col justify-center gap-1.5 my-1">
+        <div className="w-full flex-1 min-h-0 flex flex-col justify-center gap-1 my-1">
           {mainDays.map((item) => {
             const isSelected = item.dateStr === selectedDateStr;
 
@@ -115,7 +134,7 @@ export function DayStrip({
                 type="button"
                 onClick={() => setModalDate(item.dateStr)}
                 title={`Ver detalle de ${item.label}`}
-                className={`w-full py-2 px-2.5 rounded-[10px] flex items-center justify-between text-left transition-all cursor-pointer border ${
+                className={`w-full py-1.5 px-2.5 rounded-[10px] flex items-center justify-between text-left transition-all cursor-pointer border ${
                   isSelected
                     ? isLight
                       ? "bg-zinc-300/80 border-zinc-400 text-black shadow-xs font-black ring-1 ring-zinc-400"
@@ -146,6 +165,16 @@ export function DayStrip({
                       ? "Ayer"
                       : `Hace ${item.daysAgo}d`}
                   </span>
+                  {item.work && (item.work.free || item.work.modified) && (
+                    <span
+                      className={`text-[9px] font-extrabold ${
+                        item.work.free ? "line-through opacity-60" : "text-[#D97706]"
+                      }`}
+                      title={item.work.free ? "Día libre" : "Monto distinto a la tarifa"}
+                    >
+                      {item.work.free ? "Libre" : formatCurrency(item.work.value)}
+                    </span>
+                  )}
                 </div>
 
                 {item.status === "logged" ? (
@@ -178,7 +207,7 @@ export function DayStrip({
             type="button"
             onClick={() => setShowAllDaysModal(true)}
             title="Ver los 14 días anteriores completos"
-            className={`w-full py-1.5 px-2 rounded-[9px] text-[11px] font-extrabold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
+            className={`w-full py-1 px-2 rounded-[9px] text-[11px] font-extrabold border flex items-center justify-center gap-1 transition-all cursor-pointer shrink-0 ${
               isLight
                 ? "bg-zinc-200/70 border-zinc-300 text-zinc-700 hover:bg-zinc-300 hover:text-black"
                 : "bg-[#18181B] border-[#2A2A2E] text-zinc-300 hover:bg-[#222226] hover:text-white"
@@ -190,7 +219,7 @@ export function DayStrip({
         </div>
 
         {/* Bottom Actions: "Hoy no gasté nada" (if unlogged) & Calendar */}
-        <div className="w-full flex items-center justify-around pt-2 border-t border-white/5">
+        <div className="w-full flex items-center justify-around pt-1.5 border-t border-white/5 shrink-0">
           {!isTodayLogged && (
             <button
               type="button"
@@ -292,6 +321,10 @@ export function DayStrip({
                             : item.daysAgo === 1
                             ? "Ayer"
                             : `Hace ${item.daysAgo} días`}
+                          {item.work?.free && <span className="ml-1.5 line-through">Libre</span>}
+                          {item.work?.modified && (
+                            <span className="ml-1.5 text-[#D97706]">{formatCurrency(item.work.value)}</span>
+                          )}
                         </span>
                       </div>
                     </div>

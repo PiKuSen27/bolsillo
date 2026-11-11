@@ -103,7 +103,8 @@ export function getDayInitial(dateStr: string): string {
  */
 export function formatLongDate(dateStr: string): string {
   const date = parseLocalDate(dateStr);
-  return format(date, "EEEE d 'de' MMMM", { locale: es });
+  const s = format(date, "EEEE d 'de' MMMM", { locale: es });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**

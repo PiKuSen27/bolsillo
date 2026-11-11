@@ -793,6 +793,8 @@ export default function App() {
                 movements={movements}
                 categories={settings.categories}
                 dayLogs={dayLogs}
+                settings={settings}
+                workDays={workDays}
                 isLight={isLight}
                 onDeleteMovement={handleDeleteMovement}
                 onUpdateMovement={handleUpdateMovement}
