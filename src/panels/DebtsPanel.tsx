@@ -26,6 +26,8 @@ export function DebtsPanel({
   const [person, setPerson] = useState("");
   const [amount, setAmount] = useState("");
   const [kind, setKind] = useState<DebtKind>("i_owe");
+  // Parado en "Debo plata" o "Me deben", la deuda nueva toma ese tipo sin preguntar
+  const formKind: DebtKind = filter === "all" ? kind : filter;
   const [dueDate, setDueDate] = useState("");
   const [note, setNote] = useState("");
 
@@ -40,7 +42,7 @@ export function DebtsPanel({
     onAddDebt({
       person: person.trim(),
       amount: cleanAmount,
-      kind,
+      kind: formKind,
       dueDate: dueDate || undefined,
       note: note.trim() || undefined,
     });
@@ -103,7 +105,9 @@ export function DebtsPanel({
         <button
           type="button"
           onClick={() => setShowAddForm(!showAddForm)}
-          className="px-3 py-1.5 rounded-xl bg-white text-black font-extrabold text-xs flex items-center gap-1 hover:bg-zinc-200 transition-all cursor-pointer"
+          className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1 transition-all cursor-pointer ${
+            isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+          }`}
         >
           <Plus size={14} />
           <span>{showAddForm ? "Cerrar" : "Nueva"}</span>
@@ -118,8 +122,11 @@ export function DebtsPanel({
             isLight ? "bg-white border-zinc-300" : "bg-[#000000] border-[#262626]"
           }`}
         >
-          <span className="text-xs font-extrabold">Registrar Deuda</span>
+          <span className="text-xs font-extrabold">
+            {formKind === "i_owe" ? "Registrar deuda (debo plata)" : "Registrar deuda (me deben plata)"}
+          </span>
 
+          {filter === "all" && (
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -151,6 +158,7 @@ export function DebtsPanel({
               <span>Me deben plata</span>
             </button>
           </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -218,7 +226,9 @@ export function DebtsPanel({
           <div className="flex justify-end pt-1">
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-xl bg-white text-black font-extrabold text-xs hover:bg-zinc-200 transition-colors cursor-pointer"
+              className={`px-4 py-1.5 rounded-xl font-extrabold text-xs transition-colors cursor-pointer ${
+                isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+              }`}
             >
               Guardar deuda
             </button>
@@ -389,7 +399,9 @@ export function DebtsPanel({
               <button
                 type="button"
                 onClick={() => handleConfirmSettle(true)}
-                className="w-full py-2 rounded-xl bg-white text-black font-extrabold text-xs hover:bg-zinc-200 transition-colors cursor-pointer"
+                className={`w-full py-2 rounded-xl font-extrabold text-xs transition-colors cursor-pointer ${
+                  isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+                }`}
               >
                 Sí, {settlingDebt.kind === "i_owe" ? "descontar de mi saldo" : "sumar a mi saldo"}
               </button>
