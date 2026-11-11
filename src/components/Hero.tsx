@@ -20,11 +20,11 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
     <motion.div
       whileHover={{ scale: 1.005 }}
       whileTap={{ scale: 0.995 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
       onClick={onOpenMovements}
-      className={`w-full rounded-[14px] p-3.5 flex flex-col gap-2 cursor-pointer transition-colors relative select-none border ${
+      className={`w-full rounded-2xl p-3.5 flex flex-col gap-2 cursor-pointer transition-colors relative select-none border ${
         isLight
-          ? "bg-[#F4F4F5] hover:bg-[#ECECEE] border-[#E4E4E7] text-black"
+          ? "bg-[#F4F4F5] hover:bg-[#ECECEE] border-[#E4E4E7] text-black shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]"
           : "bg-[#0D0D0E] hover:bg-[#141416] border-[#262626] text-white"
       }`}
     >

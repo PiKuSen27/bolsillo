@@ -4,6 +4,7 @@ import { Delete, MessageSquare, Calendar as CalendarIcon } from "lucide-react";
 import { Category } from "../types";
 import { evaluateCalcExpression } from "../lib/calc";
 import { shouldCalculatorHandleKey } from "../lib/keyboard";
+import { MAX_AMOUNT } from "../lib/constants";
 import { formatCurrency, formatExpressionWithDots, formatShortDate } from "../lib/format";
 
 interface CalculatorProps {
@@ -39,12 +40,19 @@ export function Calculator({
 
   // Evaluate expression preview if valid
   let evaluatedValue: number | null = null;
+  let evalError: string | null = null;
   try {
     if (expression.trim()) {
       evaluatedValue = evaluateCalcExpression(expression);
     }
-  } catch {
+  } catch (err) {
     evaluatedValue = null;
+    const msg = err instanceof Error ? err.message : "";
+    if (msg === "Monto demasiado grande") {
+      evalError = `Monto demasiado grande (máximo ${formatCurrency(MAX_AMOUNT)})`;
+    } else if (msg === "División por cero") {
+      evalError = "No se puede dividir por cero";
+    }
   }
 
   const handleInputChar = useCallback((char: string) => {
@@ -173,7 +181,7 @@ export function Calculator({
 
   return (
     <div
-      className={`flex-1 h-full rounded-[14px] p-2 flex flex-col justify-between overflow-hidden select-none border ${
+      className={`flex-1 h-full rounded-2xl p-2 flex flex-col justify-between overflow-hidden select-none border ${
         isLight
           ? "bg-[#F4F4F5] border-[#E4E4E7] text-black"
           : "bg-[#0D0D0E] border-[#262626] text-white"
@@ -287,6 +295,17 @@ export function Calculator({
         >
           {displayExpression}
         </div>
+
+        {evalError && (
+          <div
+            role="alert"
+            className={`text-[10px] font-extrabold text-right pt-0.5 ${
+              isLight ? "text-[#DC2626]" : "text-[#EF4444]"
+            }`}
+          >
+            {evalError}
+          </div>
+        )}
       </div>
 
       {/* Categories Chips with sliding layoutId indicator */}
@@ -335,7 +354,8 @@ export function Calculator({
         {numpadKeys.map((key, idx) => (
           <motion.button
             key={idx}
-            whileTap={{ scale: 0.92 }}
+            whileTap={{ scale: 0.94 }}
+            transition={{ type: "spring", stiffness: 600, damping: 30 }}
             type="button"
             onClick={() => {
               if (key.action) key.action();

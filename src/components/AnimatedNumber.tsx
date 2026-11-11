@@ -16,6 +16,11 @@ export function AnimatedNumber({ value, duration = 400, className = "" }: Animat
     const difference = value - startValue;
 
     if (difference === 0) return;
+    // "Reducir movimiento" del sistema: mostrar el valor final sin contar
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setDisplayValue(value);
+      return;
+    }
 
     let animationFrameId: number;
 

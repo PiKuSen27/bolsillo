@@ -26,7 +26,7 @@ export function RightColumnWidget({
 
   return (
     <div
-      className={`w-36 h-full rounded-[14px] p-2 flex flex-col justify-between overflow-hidden select-none border shrink-0 ${
+      className={`w-36 h-full rounded-2xl p-2 flex flex-col justify-between overflow-hidden select-none border shrink-0 ${
         isLight
           ? "bg-[#F4F4F5] border-[#E4E4E7] text-black"
           : "bg-[#0D0D0E] border-[#262626] text-white"

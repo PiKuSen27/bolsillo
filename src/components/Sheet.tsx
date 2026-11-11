@@ -48,16 +48,21 @@ export function Sheet({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 350 }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
             className={`relative w-full h-[93%] rounded-t-[20px] border-t shadow-2xl flex flex-col overflow-hidden select-none ${
               isLight
                 ? "bg-[#FFFFFF] border-[#E4E4E7] text-black"
                 : "bg-[#050506] border-[#262626] text-white"
             }`}
           >
+            {/* Asa superior, estilo hoja de iOS */}
+            <div className="w-full flex justify-center pt-2 shrink-0" aria-hidden="true">
+              <div className={`w-9 h-1 rounded-full ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`} />
+            </div>
+
             {/* Header */}
             <div
-              className={`px-4 py-3 flex items-center justify-between border-b shrink-0 ${
+              className={`px-4 py-2.5 flex items-center justify-between border-b shrink-0 ${
                 isLight ? "border-zinc-200" : "border-[#1F1F22]"
               }`}
             >
