@@ -16,6 +16,7 @@ import {
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings } from "../types";
 import { exportAllData, importAllData, resetAllData } from "../db/repo";
+import { calculateVariableIncome } from "../lib/workdays";
 import {
   formatCurrency,
   formatLocalDate,
@@ -31,6 +32,7 @@ interface SettingsPanelProps {
   onUpdateSettings: (s: Partial<Settings>) => void;
   onRefreshData: () => void;
   onToggleMobilePreview?: () => void;
+  onOpenWorkDays?: () => void;
 }
 
 export function SettingsPanel({
@@ -40,6 +42,7 @@ export function SettingsPanel({
   onUpdateSettings,
   onRefreshData,
   onToggleMobilePreview,
+  onOpenWorkDays,
 }: SettingsPanelProps) {
   const [incomeMode, setIncomeMode] = useState<IncomeMode>(settings.incomeMode || "salary");
   const [fixedSalary, setFixedSalary] = useState(
@@ -74,7 +77,11 @@ export function SettingsPanel({
   const sDate = parseLocalDate(dailyRangeStart);
   const eDate = parseLocalDate(dailyRangeEnd);
   const variableDaysCount = Math.max(1, differenceInCalendarDays(eDate, sDate) + 1);
-  const variableTotalProjected = variableDaysCount * parsedDailyRate;
+  // Proyección con lunes a sábado a la tarifa y domingos libres (sin contar días editados a mano)
+  const variableTotalProjected = calculateVariableIncome(
+    { ...settings, dailyRate: parsedDailyRate, dailyRangeStart, dailyRangeEnd },
+    []
+  );
 
   const handleSaveGeneral = (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,7 +318,7 @@ export function SettingsPanel({
                     ? "bg-zinc-100 border-zinc-300 text-black"
                     : "bg-zinc-900 border-zinc-700 text-white"
                 }`}
-                placeholder="25.000"
+                placeholder="40.000"
               />
             </div>
 
@@ -360,9 +367,25 @@ export function SettingsPanel({
                 {variableDaysCount} días) ={" "}
               </span>
               <span className={isLight ? "text-[#16A34A]" : "text-[#22C55E]"}>
-                {formatCurrency(variableTotalProjected)} Total
+                {formatCurrency(variableTotalProjected)} aprox.
+              </span>
+              <span className="block text-[10px] font-bold opacity-60 mt-0.5">
+                Lunes a sábado a la tarifa, domingos libres. Guardá y después editá cada día.
               </span>
             </div>
+            {onOpenWorkDays && settings.incomeMode === "daily" && (
+              <button
+                type="button"
+                onClick={onOpenWorkDays}
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold border cursor-pointer transition-colors ${
+                  isLight
+                    ? "bg-zinc-100 border-zinc-300 text-black hover:bg-zinc-200"
+                    : "bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
+                }`}
+              >
+                Ver y editar los días del rango →
+              </button>
+            )}
           </div>
         )}
 

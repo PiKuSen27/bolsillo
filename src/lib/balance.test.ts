@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { calculateBalance } from "./balance";
-import { Movement, WorkDay } from "../types";
+import { Movement } from "../types";
 
 describe("balance.ts - Cálculo de saldos e ingresos", () => {
   it("Criterio: con sueldo $700.000 y un gasto de $22.000 el disponible muestra $678.000", () => {
@@ -22,7 +22,6 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
       periodStart: "2026-11-01",
       periodEnd: "2026-11-30",
       movements,
-      workDays: [],
       daysRemaining: 25,
       todayDateStr: "2026-11-05",
     });
@@ -64,16 +63,14 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
       },
     ];
 
-    // Rango del 10 al 25 = 16 días x $10.000 = $160.000
+    // Rango del 10 al 25: la suma de los días (calculada en workdays.ts) es $160.000
     const result = calculateBalance({
       incomeMode: "daily",
       fixedSalary: 500000, // No debe sumarse al estar en modo daily
-      dailyRate: 10000,
-      daysInPeriod: 16,
+      variableIncome: 160000,
       periodStart: "2026-11-10",
       periodEnd: "2026-11-25",
       movements,
-      workDays: [],
       daysRemaining: 16,
       todayDateStr: "2026-11-10",
     });
@@ -85,28 +82,20 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
     expect(result.available).toBe(660000 - 177722); // 482.278
   });
 
-  it("Modo Variable sin tarifa fija suma días marcados individualmente", () => {
-    const workDays: WorkDay[] = [
-      { date: "2026-11-02", worked: true, amount: 25000 },
-      { date: "2026-11-03", worked: true, amount: 30000 },
-      { date: "2026-11-04", worked: false, amount: 0 },
-    ];
-
+  it("Modo Variable sin rango (variableIncome ausente): ingreso 0 y nunca usa el sueldo fijo", () => {
     const result = calculateBalance({
       incomeMode: "daily",
       fixedSalary: 500000,
       periodStart: "2026-11-01",
       periodEnd: "2026-11-30",
       movements: [],
-      workDays,
       daysRemaining: 20,
+      todayDateStr: "2026-11-10",
     });
 
-    expect(result.workDaysTotal).toBe(55000);
-    expect(result.workedDaysCount).toBe(2);
-    expect(result.avgDailyRate).toBe(27500);
-    expect(result.totalIncome).toBe(55000);
-    expect(result.available).toBe(55000);
+    expect(result.baseIncome).toBe(0);
+    expect(result.totalIncome).toBe(0);
+    expect(result.available).toBe(0);
   });
 
   it("Bug #1: un gasto del período anterior NO se resta del sueldo nuevo", () => {
@@ -123,7 +112,6 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
       periodStart: "2026-11-10",
       periodEnd: "2026-12-09",
       movements,
-      workDays: [],
       daysRemaining: 29,
       todayDateStr: "2026-11-11",
     });
@@ -134,7 +122,7 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
   });
 
   it("Bug #2: con el rango variable vencido, los gastos nuevos siguen bajando el Disponible", () => {
-    // Rango 01/11 al 07/11 (7 días × $10.000 = $70.000). Hoy 10/11, ya vencido.
+    // Rango 01/11 al 07/11 (suma de días = $70.000). Hoy 10/11, ya vencido.
     const movements: Movement[] = [
       { id: "in-range", date: "2026-11-03", amount: 20000, kind: "expense", categoryId: "comida", source: "manual", createdAt: "2026-11-03T10:00:00Z" },
       { id: "after", date: "2026-11-10", amount: 30000, kind: "expense", categoryId: "comida", source: "manual", createdAt: "2026-11-10T10:00:00Z" },
@@ -143,12 +131,10 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
     const result = calculateBalance({
       incomeMode: "daily",
       fixedSalary: 0,
-      dailyRate: 10000,
-      daysInPeriod: 7,
+      variableIncome: 70000,
       periodStart: "2026-11-01",
       periodEnd: "2026-11-07",
       movements,
-      workDays: [],
       daysRemaining: 1,
       todayDateStr: "2026-11-10",
     });
@@ -177,7 +163,6 @@ describe("balance.ts - Cálculo de saldos e ingresos", () => {
       periodStart: "2026-11-01",
       periodEnd: "2026-11-30",
       movements,
-      workDays: [],
       daysRemaining: 10,
     });
 

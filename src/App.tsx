@@ -40,11 +40,13 @@ import {
   markDayAsLogged,
   markDayAsNoExpenses,
   settleDebt,
-  toggleWorkDay,
+  setWorkDay,
+  resetWorkDay,
   updateSettings,
 } from "./db/repo";
 import { calculatePeriod, calculateVariablePeriod } from "./lib/period";
 import { calculateBalance } from "./lib/balance";
+import { calculateVariableIncome } from "./lib/workdays";
 import {
   getUpcomingItems,
   processAutoAddRules,
@@ -66,7 +68,7 @@ import { Sheet } from "./components/Sheet";
 import { MovementsPanel } from "./panels/MovementsPanel";
 import { FixedAndInstallmentsPanel } from "./panels/FixedAndInstallmentsPanel";
 import { DebtsPanel } from "./panels/DebtsPanel";
-import { IncomePanel } from "./panels/IncomePanel";
+import { WorkDaysPanel } from "./panels/WorkDaysPanel";
 import { CalendarPanel } from "./panels/CalendarPanel";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
@@ -258,28 +260,24 @@ export default function App() {
     return calculatePeriod(todayStr, settings?.payday || 1);
   }, [todayStr, settings?.incomeMode, settings?.dailyRangeStart, settings?.dailyRangeEnd, settings?.payday]);
 
+  // Modo variable: suma de los días del rango (tarifa L-S, domingo libre, días editados a mano)
+  const variableIncome = useMemo(
+    () => (settings?.incomeMode === "daily" ? calculateVariableIncome(settings, workDays) : 0),
+    [settings, workDays]
+  );
+
   const balanceSummary = useMemo(() => {
     return calculateBalance({
       incomeMode: settings?.incomeMode || "salary",
       fixedSalary: settings?.fixedSalary || 0,
-      dailyRate: settings?.dailyRate || 0,
-      daysInPeriod: periodInfo.daysInPeriod,
+      variableIncome,
       periodStart: periodInfo.startDate,
       periodEnd: periodInfo.endDate,
       movements,
-      workDays,
       daysRemaining: periodInfo.daysRemaining,
       todayDateStr: todayStr,
     });
-  }, [
-    settings?.incomeMode,
-    settings?.fixedSalary,
-    settings?.dailyRate,
-    periodInfo,
-    movements,
-    workDays,
-    todayStr,
-  ]);
+  }, [settings?.incomeMode, settings?.fixedSalary, variableIncome, periodInfo, movements, todayStr]);
 
   const upcomingItems = useMemo(() => {
     return getUpcomingItems({
@@ -354,12 +352,13 @@ export default function App() {
     await loadData();
   };
 
-  const handleToggleWorkDayItem = async (
-    dateStr: string,
-    worked: boolean,
-    amount?: number
-  ) => {
-    await toggleWorkDay(dateStr, worked, amount);
+  const handleSetWorkDay = async (dateStr: string, worked: boolean, amount: number) => {
+    await setWorkDay(dateStr, worked, amount);
+    await loadData();
+  };
+
+  const handleResetWorkDay = async (dateStr: string) => {
+    await resetWorkDay(dateStr);
     await loadData();
   };
 
@@ -611,6 +610,7 @@ export default function App() {
                 daysRemaining={periodInfo.daysRemaining}
                 isLight={isLight}
                 onOpenMovements={() => setActiveSheet("movements")}
+                onOpenWorkDays={() => setActiveSheet("income")}
               />
 
               {/* Horizontal Days Strip (Hoy + 3 días + '+ Días') */}
@@ -744,6 +744,7 @@ export default function App() {
               daysRemaining={periodInfo.daysRemaining}
               isLight={isLight}
               onOpenMovements={() => setActiveSheet("movements")}
+              onOpenWorkDays={() => setActiveSheet("income")}
             />
 
             {/* Bottom Layout: 3 Columns (Days Strip, Calculator, Right Widget) */}
@@ -877,20 +878,18 @@ export default function App() {
         <Sheet
           isOpen={activeSheet === "income"}
           onClose={() => setActiveSheet(null)}
-          title="Ingresos y Trabajo"
-          subtitle={
-            settings.incomeMode === "salary"
-              ? "Sueldo mensual fijo y día de cobro"
-              : "Rango de fechas y días trabajados"
-          }
+          title="Días trabajados"
+          subtitle="Tocá un día para cambiarle el monto o marcarlo como libre"
           isLight={isLight}
         >
-          <IncomePanel
+          <WorkDaysPanel
             settings={settings}
             workDays={workDays}
+            todayStr={todayStr}
             isLight={isLight}
+            onSetWorkDay={handleSetWorkDay}
+            onResetWorkDay={handleResetWorkDay}
             onUpdateSettings={handleUpdateSettings}
-            onToggleWorkDay={handleToggleWorkDayItem}
           />
         </Sheet>
 
@@ -930,6 +929,7 @@ export default function App() {
             }}
             onUpdateSettings={handleUpdateSettings}
             onRefreshData={loadData}
+            onOpenWorkDays={() => setActiveSheet("income")}
           />
         </Sheet>
       </div>

@@ -44,6 +44,18 @@ export class BolsilloDatabase extends Dexie {
       remindersSent: "key, sentAt",
       debts: "id, kind, person, settled, dueDate, createdAt",
     });
+
+    // v3: settings.dailyRateChanges ("cambiar tarifa desde X en adelante"). Sin cambio de índices.
+    this.version(3)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table("settings")
+          .toCollection()
+          .modify((s: Settings) => {
+            if (!Array.isArray(s.dailyRateChanges)) s.dailyRateChanges = [];
+          });
+      });
   }
 
   async initDefaults(): Promise<Settings> {

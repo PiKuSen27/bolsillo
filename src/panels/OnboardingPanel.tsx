@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, ArrowRight, Check, Calendar, Target } from "lucide-react";
 import confetti from "canvas-confetti";
+import { calculateVariableIncome } from "../lib/workdays";
+import { DEFAULT_SETTINGS } from "../lib/constants";
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { IncomeMode, Settings } from "../types";
 import {
@@ -21,7 +23,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
   const [incomeMode, setIncomeMode] = useState<IncomeMode>("salary");
   const [fixedSalary, setFixedSalary] = useState("700.000");
   const [payday, setPayday] = useState("1");
-  const [dailyRate, setDailyRate] = useState("25.000");
+  const [dailyRate, setDailyRate] = useState("40.000");
   const [dailyRangeStart, setDailyRangeStart] = useState(() => formatLocalDate(new Date()));
   const [dailyRangeEnd, setDailyRangeEnd] = useState(() =>
     formatLocalDate(addDays(new Date(), 20))
@@ -35,7 +37,11 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
   const sDate = parseLocalDate(dailyRangeStart);
   const eDate = parseLocalDate(dailyRangeEnd);
   const totalDays = Math.max(1, differenceInCalendarDays(eDate, sDate) + 1);
-  const projectedTotal = totalDays * parsedRate;
+  // Lunes a sábado a la tarifa, domingos libres
+  const projectedTotal = calculateVariableIncome(
+    { ...DEFAULT_SETTINGS, dailyRate: parsedRate, dailyRangeStart, dailyRangeEnd },
+    []
+  );
   const parsedGoal = parseInt(dailyGoalAmount.replace(/\./g, ""), 10) || 0;
   const goalDiff = projectedTotal - parsedGoal;
 
@@ -57,7 +63,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
         incomeMode,
         fixedSalary: parseInt(fixedSalary.replace(/\./g, ""), 10) || 700000,
         payday: Math.min(31, Math.max(1, parseInt(payday, 10) || 1)),
-        dailyRate: parsedRate || 25000,
+        dailyRate: parsedRate || 40000,
         dailyRangeStart,
         dailyRangeEnd,
         dailyGoalName: dailyGoalName.trim() || undefined,
@@ -182,7 +188,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                         const raw = e.target.value.replace(/\D/g, "");
                         setDailyRate(raw ? formatNumberWithDots(raw) : "");
                       }}
-                      placeholder="25.000"
+                      placeholder="40.000"
                       className="w-full bg-[#111113] text-white font-black text-sm px-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
                     />
                   </div>
@@ -252,7 +258,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                     </span>
                     <p className="text-xs font-black text-white">
                       Del {formatShortDate(dailyRangeStart)} al {formatShortDate(dailyRangeEnd)} (
-                      {totalDays} días) × ${formatNumberWithDots(parsedRate)} ={" "}
+                      {totalDays} días, domingos libres) a ${formatNumberWithDots(parsedRate)} ={" "}
                       <span className="text-[#22C55E]">Vas a juntar {formatCurrency(projectedTotal)}</span>
                     </p>
                     {parsedGoal > 0 && (
@@ -296,7 +302,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
               <div className="p-4 rounded-2xl bg-[#111113] border border-zinc-800 text-xs font-bold text-zinc-300">
                 {incomeMode === "salary"
                   ? `Cobrás el día ${payday} de cada mes. Tu disponible se renovará en esa fecha.`
-                  : `Tu proyección es de ${formatCurrency(projectedTotal)} (${totalDays} días a ${formatCurrency(parsedRate)}). Podrás ajustar fechas en Ingresos.`}
+                  : `Tu proyección es de ${formatCurrency(projectedTotal)} (${totalDays} días a ${formatCurrency(parsedRate)}, domingos libres). Después podés editar cada día en "Días trabajados".`}
               </div>
             </motion.div>
           )}

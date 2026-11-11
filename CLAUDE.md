@@ -135,27 +135,32 @@ Cualquier cambio futuro debe respetar religiosamente estas decisiones:
    * **Tipografía**: Gruesa, moderna y legible (`font-bold`, `font-extrabold`).
 
 ### C. Modos de Ingreso (Excluyentes)
-1. **Sueldo Fijo**:
-   * El usuario define un monto mensual fijo y un día de cobro (1 al 31).
-   * El período abarca desde el último día de cobro hasta el día anterior al próximo cobro.
-2. **Sueldo Variable por Rango de Fechas**:
-   * El usuario define una tarifa diaria (`dailyRate`), una fecha de inicio (`variableStartDate`) y una fecha de fin (`variableEndDate`).
-   * El ingreso base proyectado es estrictamente: **`(días del rango) × dailyRate`**.
-   * Hay una meta opcional (`variableIncomeGoal`).
-   * **Validación de fechas invertidas**: Si por error `variableEndDate < variableStartDate`, el sistema las intercambia automáticamente para garantizar que los días nunca den números negativos.
+1. **Sueldo Fijo** (lo usan los padres del dueño, no tocar su comportamiento):
+   * El usuario define un monto mensual fijo (`fixedSalary`) y un día de cobro (`payday`, 1 al 31).
+   * El período abarca desde el último día de cobro hasta el día anterior al próximo cobro (`calculatePeriod`).
+2. **Sueldo Variable por día** (`incomeMode: "daily"`, lógica en `src/lib/workdays.ts`, UI en `WorkDaysPanel.tsx`):
+   * Campos en `Settings`: `dailyRate` (tarifa base), `dailyRangeStart` / `dailyRangeEnd` (rango, `YYYY-MM-DD`), `dailyRateChanges[]` (`{ fromDate, rate }`), meta opcional `dailyGoalName` / `dailyGoalAmount`.
+   * **Todos los días del rango de lunes a sábado valen la tarifa automáticamente**, sin que el usuario anote nada. **Los domingos arrancan como "Día libre" ($ 0)**.
+   * El usuario puede tocar cualquier día: ponerle un monto propio, marcarlo "Día libre" (feriado, no trabajé) o volver un día libre (domingo incluido) a trabajado. Eso se guarda en la tabla `workDays` (`{ date, worked, amount }`); **solo existen registros para los días tocados a mano**.
+   * **Naranja (`#D97706`) SOLO si el monto quedó distinto de la tarifa que le corresponde a ese día.** Si se edita y queda igual a la tarifa, se borra el registro y no cuenta como modificado. El día libre se muestra tachado/punteado, nunca naranja.
+   * **"Cambiar tarifa desde una fecha en adelante"**: agrega `{ fromDate, rate }` a `dailyRateChanges`. Los días anteriores conservan la tarifa vieja, los días desde `fromDate` usan la nueva (`getRateForDate`). Los días editados a mano conservan su monto.
+   * **Ingreso base del período = suma del valor de cada día del rango** (`calculateVariableIncome`; los libres suman 0). A eso se le suman los ingresos manuales y se le restan los gastos del período (regla D).
+   * **Validación de fechas invertidas**: si `dailyRangeEnd < dailyRangeStart` se intercambian automáticamente.
+   * `calculateBalance` recibe `variableIncome` ya calculado; **no** vuelve a multiplicar días × tarifa.
 3. **Hero del Saldo**:
    * Muestra en grande el **Disponible actual**.
    * Muestra explícitamente el desglose: **`Plata total: $ X · Gastos: $ Y`**.
-   * Si el Disponible es negativo, se muestra en rojo con alerta.
+   * Si el Disponible es negativo, se muestra en rojo.
+   * En modo variable muestra la pastilla **"Días trabajados"** que abre `WorkDaysPanel` (también accesible desde Ajustes).
 
-### D. Reglas de los "+ Ingreso" Manuales
+### D. Reglas de los "+ Ingreso" Manuales y del Disponible
 1. Al tocar `+ Ingreso` (o presionar `Shift + Enter` en la calculadora), **se ignoran por completo los chips de categorías de gasto seleccionados**.
 2. Todo ingreso se guarda obligatoriamente con `categoryId: 'income'`, nombre **"Ingreso de plata"** y color verde esmeralda (`#16A34A`).
 3. **Impacto Inmediato en el Saldo**: Tanto en modo fijo como variable, cualquier movimiento con `kind === 'income'` **dentro del período actual** suma al Ingreso Total y al Disponible.
 4. **Solo cuenta el período actual (decisión del dueño, 2026-11-10)**: El Disponible incluye **únicamente** gastos e ingresos con fecha entre `periodStart` y `periodEnd`. Un movimiento del período anterior (aunque esté visible en la tira de días) se guarda en el historial pero **NO** toca el Disponible.
    * **PROHIBIDO** volver a agregar una "ventana de 14 días", "desde inicio de mes" o cualquier lookback antes de `periodStart`: eso restaba los gastos del período anterior del sueldo nuevo (bug corregido, ver tests `Bug #1` en `src/lib/balance.test.ts`).
    * **Rango variable vencido**: si hoy es posterior a `periodEnd`, la ventana se estira hasta hoy (`max(periodEnd, hoy)`) para que los gastos nuevos sigan bajando el Disponible hasta que se cargue un rango nuevo. El ingreso base no cambia (test `Bug #2`).
-   * En modo variable el ingreso base sigue siendo el rango completo (`días × dailyRate`) desde el primer día, proyectado (decisión del dueño).
+   * **Fórmula**: `Disponible = ingreso base (sueldo fijo, o suma de días en variable) + ingresos manuales del período − gastos del período`.
 
 ### E. Despliegue en Acordeón por Categoría
 * Tanto en `MovementsPanel.tsx` como en `DayDetailModal.tsx`, los movimientos se agrupan por categoría con un resumen colapsable que muestra:

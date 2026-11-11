@@ -54,21 +54,14 @@ export async function markDayAsLogged(dateStr: string): Promise<void> {
   });
 }
 
-export async function toggleWorkDay(
-  dateStr: string,
-  worked: boolean,
-  dailyRate?: number
-): Promise<void> {
-  let amount = dailyRate;
-  if (amount === undefined) {
-    const s = await getSettings();
-    amount = s.dailyRate;
-  }
-  await db.workDays.put({
-    date: dateStr,
-    worked,
-    amount: worked ? amount : 0,
-  });
+/** Guarda el valor propio de un día (modo variable). worked=false → "Día libre". */
+export async function setWorkDay(dateStr: string, worked: boolean, amount: number): Promise<void> {
+  await db.workDays.put({ date: dateStr, worked, amount: worked ? Math.max(0, Math.round(amount)) : 0 });
+}
+
+/** Vuelve un día a su valor por defecto (tarifa, o libre si es domingo). */
+export async function resetWorkDay(dateStr: string): Promise<void> {
+  await db.workDays.delete(dateStr);
 }
 
 export async function addDebt(debt: Omit<Debt, "id" | "settled" | "createdAt">): Promise<Debt> {

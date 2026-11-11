@@ -17,13 +17,19 @@ export interface Category {
 
 export type IncomeMode = "salary" | "daily";
 
+export interface DailyRateChange {
+  fromDate: string; // YYYY-MM-DD (inclusive)
+  rate: number;
+}
+
 export interface Settings {
   id: string; // 'main'
   currency: "ARS";
   incomeMode: IncomeMode; // 'salary' | 'daily' (excluyente)
   fixedSalary: number; // e.g. 700000
   payday: number; // 1 - 31
-  dailyRate: number; // e.g. 25000
+  dailyRate: number; // tarifa base por día, e.g. 40000
+  dailyRateChanges?: DailyRateChange[]; // "cambiar tarifa desde X en adelante"
   dailyRangeStart?: string; // YYYY-MM-DD
   dailyRangeEnd?: string; // YYYY-MM-DD
   dailyGoalName?: string; // e.g. "Pagar tele"
@@ -81,10 +87,11 @@ export interface Installment {
   lastAppliedDate?: string; // YYYY-MM-DD
 }
 
+/** Día tocado a mano en modo variable. Si no hay registro, el día vale la tarifa (o $0 si es domingo). */
 export interface WorkDay {
   date: string; // YYYY-MM-DD
-  worked: boolean;
-  amount: number;
+  worked: boolean; // false = "Día libre"
+  amount: number; // monto propio de ese día (0 si libre)
 }
 
 export interface DayLog {

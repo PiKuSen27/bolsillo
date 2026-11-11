@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronRight, CalendarDays } from "lucide-react";
 import { BalanceSummary } from "../lib/balance";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { formatCurrency } from "../lib/format";
@@ -9,9 +9,10 @@ interface HeroProps {
   daysRemaining: number;
   isLight?: boolean;
   onOpenMovements: () => void;
+  onOpenWorkDays?: () => void; // solo en modo variable
 }
 
-export function Hero({ summary, daysRemaining, isLight, onOpenMovements }: HeroProps) {
+export function Hero({ summary, daysRemaining, isLight, onOpenMovements, onOpenWorkDays }: HeroProps) {
   const isPositive = summary.available >= 0;
 
   return (
@@ -118,6 +119,25 @@ export function Hero({ summary, daysRemaining, isLight, onOpenMovements }: HeroP
           <span className="tabular-numbers">{summary.spentPercentage}% gastado</span>
         </div>
       </div>
+
+      {summary.incomeMode === "daily" && onOpenWorkDays && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenWorkDays();
+          }}
+          className={`self-start flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold border cursor-pointer transition-colors ${
+            isLight
+              ? "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+              : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          }`}
+        >
+          <CalendarDays size={11} />
+          <span>Días trabajados</span>
+          <ChevronRight size={11} />
+        </button>
+      )}
 
       {/* Suggested Daily Budget Highlight */}
       <div
