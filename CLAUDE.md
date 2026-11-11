@@ -1,5 +1,7 @@
 # CLAUDE.md — Guía Técnica y Arquitectura de Bolsillo
 
+> **El usuario es principiante. Explicá todo en palabras simples, sin dar por sabido ningún término técnico, y decí qué hace cada comando antes de correrlo.**
+
 > **Bolsillo v1.2.0 PRO • Edición Especial**  
 > **Autor y Dueño**: PiKuSen27  
 > **Moneda y Formato**: Pesos Argentinos (`ARS`), números enteros sin centavos, con separador de miles por punto (`$ 20.000`). Español rioplatense en toda la interfaz.
