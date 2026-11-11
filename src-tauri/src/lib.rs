@@ -19,6 +19,27 @@ fn minimize_window(app: AppHandle) -> Result<(), String> {
 /// true = al cerrar la ventana se esconde al tray (default). false = cerrar la app de verdad.
 struct CloseToTray(Mutex<bool>);
 
+/// ¿Hay una barra con bandeja (StatusNotifierHost) registrada en el bus de sesión?
+/// Si no la hay, esconder la ventana dejaría la app viva pero inalcanzable.
+fn tray_host_registered() -> bool {
+    (|| -> zbus::Result<bool> {
+        let conn = zbus::blocking::Connection::session()?;
+        let proxy = zbus::blocking::Proxy::new(
+            &conn,
+            "org.kde.StatusNotifierWatcher",
+            "/StatusNotifierWatcher",
+            "org.kde.StatusNotifierWatcher",
+        )?;
+        proxy.get_property::<bool>("IsStatusNotifierHostRegistered")
+    })()
+    .unwrap_or(false)
+}
+
+#[tauri::command]
+fn tray_host_available() -> bool {
+    tray_host_registered()
+}
+
 #[tauri::command]
 fn set_close_to_tray(state: tauri::State<CloseToTray>, enable: bool) {
     if let Ok(mut v) = state.0.lock() {
@@ -85,7 +106,7 @@ pub fn run() {
                 let _ = w.set_focus();
             }
         }))
-        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray, save_backup])
+        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray, save_backup, tray_host_available])
         .setup(|app| {
             // Build Tray Icon
             let quit_i = MenuItem::with_id(app, "quit", "Salir de Bolsillo", true, None::<&str>)?;
@@ -141,7 +162,8 @@ pub fn run() {
                     .lock()
                     .map(|v| *v)
                     .unwrap_or(true);
-                if hide {
+                // Sin bandeja en la barra, esconder = app fantasma: mejor cerrar de verdad
+                if hide && tray_host_registered() {
                     let _ = window.hide();
                     api.prevent_close();
                 } else {

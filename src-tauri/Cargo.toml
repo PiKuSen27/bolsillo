@@ -19,6 +19,8 @@ tauri-plugin-window-state = "2"
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Para saber si la barra tiene bandeja (StatusNotifierHost) antes de esconder la ventana
+zbus = "5"
 
 [profile.release]
 codegen-units = 1

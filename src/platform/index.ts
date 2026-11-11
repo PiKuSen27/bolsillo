@@ -20,6 +20,16 @@ export async function setAppAutostart(enable: boolean): Promise<void> {
   }
 }
 
+/** true si la barra del sistema tiene bandeja donde mostrar el ícono (solo Tauri). */
+export async function isTrayAvailable(): Promise<boolean> {
+  if (!isTauri()) return false;
+  try {
+    return await invoke<boolean>("tray_host_available");
+  } catch {
+    return false;
+  }
+}
+
 /** Le avisa a Rust si al cerrar la ventana hay que esconderla al tray (true) o cerrar la app (false). */
 export async function setCloseToTray(enable: boolean): Promise<void> {
   if (isTauri()) {

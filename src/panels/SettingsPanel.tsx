@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   Download,
@@ -14,7 +14,7 @@ import {
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
-import { saveBackupFile } from "../platform";
+import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
@@ -58,6 +58,11 @@ export function SettingsPanel({
   const [reminderEnabled, setReminderEnabled] = useState(settings.reminderEnabled);
   const [dueAlertDays, setDueAlertDays] = useState(String(settings.dueAlertDays));
   const [closeToTray, setCloseToTray] = useState(settings.closeToTray);
+  // null = todavía no se consultó; false = la barra no tiene bandeja
+  const [trayAvailable, setTrayAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (isTauri()) isTrayAvailable().then(setTrayAvailable);
+  }, []);
   const [autostart, setAutostart] = useState(settings.autostart);
 
   // Categories management
@@ -474,6 +479,21 @@ export function SettingsPanel({
               {closeToTray && <Check size={14} strokeWidth={3.5} />}
             </button>
           </div>
+          {closeToTray && trayAvailable === false && (
+            <p
+              role="alert"
+              className={`text-[11px] font-bold px-2.5 py-2 rounded-xl border ${
+                isLight ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-[#2A1A00] border-amber-900 text-amber-300"
+              }`}
+            >
+              Tu barra no tiene bandeja del sistema, así que no hay dónde mostrar el ícono. Mientras tanto, la × cierra la app de verdad.
+            </p>
+          )}
+          {closeToTray && trayAvailable && (
+            <p className="text-[10px] font-bold opacity-60 pl-0.5">
+              Si no ves el ícono en la barra, abrí Bolsillo de nuevo desde el menú y la ventana reaparece.
+            </p>
+          )}
 
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs font-black">Iniciar automáticamente con la PC</span>
