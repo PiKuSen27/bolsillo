@@ -1,0 +1,17 @@
+[Desktop Entry]
+Name=Bolsillo
+Comment=Control de gastos e ingresos personal
+GenericName=Control de Gastos
+Exec=/home/pikusen27/Proyectos/Bolsillo/src-tauri/target/release/bolsillo
+Icon=/home/pikusen27/Proyectos/Bolsillo/public/icons/icon-512.png
+Terminal=false
+Type=Application
+Categories=Office;Finance;Utility;
+StartupNotify=true
+StartupWMClass=bolsillo
+Keywords=gastos;ingresos;finanzas;plata;sueldo;cuotas;
+Actions=NewExpense;
+
+[Desktop Action NewExpense]
+Name=Abrir Bolsillo
+Exec=/home/pikusen27/Proyectos/Bolsillo/src-tauri/target/release/bolsillo
