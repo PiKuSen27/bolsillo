@@ -36,7 +36,9 @@ export function FixedAndInstallmentsPanel({
   const [recName, setRecName] = useState("");
   const [recAmount, setRecAmount] = useState("");
   const [recDay, setRecDay] = useState("10");
-  const [recCategory] = useState(categories[0]?.id || "suscripciones");
+  const defaultCategory = (preferred: string) =>
+    categories.find((c) => c.id === preferred)?.id || categories[0]?.id || preferred;
+  const [recCategory, setRecCategory] = useState(() => defaultCategory("suscripciones"));
   const [recAutoAdd, setRecAutoAdd] = useState(true);
 
   // New Installment state
@@ -46,7 +48,26 @@ export function FixedAndInstallmentsPanel({
   const [instFirstDate, setInstFirstDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [instCategory] = useState(categories[0]?.id || "otros");
+  const [instCategory, setInstCategory] = useState(() => defaultCategory("otros"));
+
+  const categorySelect = (value: string, onChange: (id: string) => void) => (
+    <select
+      aria-label="Categoría"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer ${
+        isLight
+          ? "bg-zinc-100 border-zinc-300 text-black"
+          : "bg-zinc-900 border-zinc-700 text-white"
+      }`}
+    >
+      {categories.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.name}
+        </option>
+      ))}
+    </select>
+  );
   const [instAutoAdd, setInstAutoAdd] = useState(true);
 
   const handleCreateRecurring = (e: React.FormEvent) => {
@@ -228,6 +249,7 @@ export function FixedAndInstallmentsPanel({
                   required
                 />
               </div>
+              {categorySelect(recCategory, setRecCategory)}
 
               <div className="flex items-center justify-between text-xs font-bold pt-1">
                 <label className="flex items-center gap-1.5 cursor-pointer opacity-80">
@@ -295,6 +317,7 @@ export function FixedAndInstallmentsPanel({
                   required
                 />
               </div>
+              {categorySelect(instCategory, setInstCategory)}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold opacity-70">Primer vencimiento:</span>
                 <input

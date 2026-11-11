@@ -150,7 +150,7 @@ export function MobileDayStrip({
 
       {/* 14 Days History Modal */}
       {showAllDaysModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
           <div
             className={`w-full max-w-[340px] max-h-[80vh] rounded-[22px] border p-4 flex flex-col shadow-2xl ${
               isLight

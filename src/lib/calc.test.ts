@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { evaluateCalcExpression } from "./calc";
+import { MAX_AMOUNT } from "./constants";
 
 describe("calc.ts - Calculadora y evaluación de expresiones", () => {
   it("Criterio: resuelve 3500 × 4 = 14000", () => {
@@ -37,6 +38,13 @@ describe("calc.ts - Calculadora y evaluación de expresiones", () => {
   it("Maneja números negativos y espacios", () => {
     expect(evaluateCalcExpression("-50 + 150")).toBe(100);
     expect(evaluateCalcExpression("   500   +   250  ")).toBe(750);
+  });
+
+  it("Tope de monto: rechaza resultados mayores a $ 1.000.000.000.000 (MAX_AMOUNT)", () => {
+    expect(evaluateCalcExpression("1000000000000")).toBe(MAX_AMOUNT);
+    expect(() => evaluateCalcExpression("1000000000001")).toThrow("Monto demasiado grande");
+    expect(() => evaluateCalcExpression("999999999999 × 999999999999")).toThrow("Monto demasiado grande");
+    expect(() => evaluateCalcExpression("-999999999999 × 999999999999")).toThrow("Monto demasiado grande");
   });
 
   it("Lanza error ante división por cero o sintaxis inválida", () => {

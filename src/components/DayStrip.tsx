@@ -219,7 +219,7 @@ export function DayStrip({
 
       {/* Modal with Full 14 Days History */}
       {showAllDaysModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div
             className={`w-full max-w-[380px] max-h-[85vh] rounded-[18px] border p-4 flex flex-col shadow-2xl ${
               isLight

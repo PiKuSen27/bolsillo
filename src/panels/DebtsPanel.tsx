@@ -361,7 +361,7 @@ export function DebtsPanel({
 
       {/* Settle Debt Confirmation Modal */}
       {settlingDebt && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 flex items-center justify-center p-4">
           <div
             onClick={() => setSettlingDebt(null)}
             className="absolute inset-0 bg-black/70 backdrop-blur-xs"

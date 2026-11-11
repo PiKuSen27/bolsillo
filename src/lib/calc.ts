@@ -1,3 +1,5 @@
+import { MAX_AMOUNT } from "./constants";
+
 /**
  * Pure calculator evaluator for expressions like "3500 * 4", "20.000 + 5.000", "3.500 × 4", "20000 +"
  */
@@ -97,6 +99,10 @@ export function evaluateCalcExpression(rawExpr: string): number {
 
   if (isNaN(result) || !isFinite(result)) {
     throw new Error("Resultado no numérico");
+  }
+
+  if (Math.abs(result) > MAX_AMOUNT) {
+    throw new Error("Monto demasiado grande");
   }
 
   // Return integer as per business requirements (amounts are whole pesos)

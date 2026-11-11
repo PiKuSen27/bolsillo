@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Delete, MessageSquare, Calendar as CalendarIcon } from "lucide-react";
 import { Category } from "../types";
 import { evaluateCalcExpression } from "../lib/calc";
+import { shouldCalculatorHandleKey } from "../lib/keyboard";
 import { formatCurrency, formatExpressionWithDots, formatShortDate } from "../lib/format";
 
 interface CalculatorProps {
@@ -104,11 +105,10 @@ export function Calculator({
   // Physical keyboard support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        document.activeElement?.tagName === "INPUT" ||
-        document.activeElement?.tagName === "TEXTAREA"
-      ) {
-        if (e.key === "Escape") {
+      const dialogOpen = !!document.querySelector('[role="dialog"]');
+      const activeTag = document.activeElement?.tagName;
+      if (!shouldCalculatorHandleKey({ activeTag, dialogOpen })) {
+        if (!dialogOpen && e.key === "Escape") {
           (document.activeElement as HTMLElement).blur();
         }
         return;

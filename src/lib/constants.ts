@@ -1,5 +1,8 @@
 import { Category, Settings } from "../types";
 
+// Largest amount accepted anywhere (calculator, backup import): $ 1.000.000.000.000
+export const MAX_AMOUNT = 1e12;
+
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "comida", name: "Comida", icon: "Utensils", color: "#F97316" }, // Naranja
   { id: "transporte", name: "Transporte", icon: "Car", color: "#3B82F6" }, // Azul

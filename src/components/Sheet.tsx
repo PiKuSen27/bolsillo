@@ -32,7 +32,7 @@ export function Sheet({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="absolute inset-0 z-50 flex flex-col justify-end">
+        <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 flex flex-col justify-end">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
