@@ -1,147 +1,96 @@
-# HISTORIAL TÉCNICO Y AUDITORÍA DE BOLSILLO
+# Historial técnico y auditoría de Bolsillo
 
-> **Documento de Auditoría y Registro Histórico de Decisiones Técnicas**  
-> **Proyecto**: Bolsillo (v1.2.0 PRO • Edición Especial)  
-> **Autor**: PiKuSen27  
-> **Fecha de Consolidación**: Noviembre 2026  
+> **Proyecto**: Bolsillo v1.3.0 · **Autor**: PiKuSen27 · **Última revisión**: 11 de noviembre de 2026.
+> Este documento cuenta cómo se construyó la app, qué bugs se encontraron y qué prueba cada test. Solo contiene cosas verificadas en el código.
 
 ---
 
-## 1. Registro Cronológico de Construcción
+## 1. Cronología
 
-### Fase 1: Arquitectura Base y Stack Tecnológico
-* **Objetivo**: Crear una aplicación de finanzas personales ultrarrápida, offline, local-first y sin servidores externos para el entorno de escritorio Linux CachyOS.
-* **Decisiones Clave**:
-  * Selección de **Tauri v2** frente a Electron: reducción del consumo de memoria RAM de ~300 MB a < 40 MB y tamaño de binario reducido (< 15 MB).
-  * **Dexie.js (IndexedDB)**: persistencia local inmediata y síncrona en el frontend, garantizando cero latencia en cada pulsación de la calculadora.
-  * **Vitest**: adopción de tests unitarios rápidos para desacoplar completamente la lógica matemática y de fechas de la interfaz gráfica.
+### Fase 1 — Base (noviembre 2026)
+Tauri 2 + React 19 + TypeScript + Tailwind 4 + Dexie (IndexedDB) + Vitest. Objetivo: app de finanzas personales offline, sin servidor, para CachyOS/Niri.
 
-### Fase 2: Rediseño Visual y Experiencia 540 × 600 px
-* **Problema Inicial**: La ventana de widget inicial (440x440 px con transparencia) causaba problemas de renderizado en Wayland y dejaba poco espacio para el registro simultáneo de gastos.
-* **Evolución**:
-  * Adopción de una ventana fija de **540 px de ancho por 600 px de alto**, con esquinas redondeadas de 24 px y fondo **100% sólido** (`transparent: false`).
-  * Creación del diseño de **3 Columnas de Alta Productividad**:
-    1. **Columna Izquierda**: Tira de días (`Hoy` + 3 días previos + botón `+ Días` para ver los últimos 14 días con indicadores visuales de registro).
-    2. **Columna Central**: Pantalla principal con tarjeta Hero del Disponible y Teclado Numérico / Calculadora integrada.
-    3. **Columna Derecha**: Widget de Próximos Vencimientos, accesos directos a Gastos Fijos, Deudas y Resumen Mensual.
+### Fase 2 — Ventana 540 × 600
+Se descartó un widget inicial de 440×440 translúcido (artefactos en Wayland) por una ventana fija de 540×600, sólida, con tres columnas: tira de días, calculadora y próximos vencimientos/deudas, y el Hero del Disponible arriba.
 
-### Fase 3: Motor Financiero — Sueldo Fijo vs Sueldo Variable
-* **Problema**: Las apps tradicionales asumen que todo el mundo cobra un sueldo mensual fijo el día 1 o 5 del mes. En la práctica argentina, muchos ingresos son por honorarios, jornadas o changas variables entre dos fechas específicas.
-* **Evolución**:
-  * Se implementó un esquema de ingresos **mutuamente excluyente**:
-    * **Modo Fijo**: Ingreso mensual fijo con corte el día elegido de cobro.
-    * **Modo Variable**: Cálculo automático por rango de fechas (`variableStartDate` hasta `variableEndDate`) multiplicado por la tarifa diaria acordada (`dailyRate`), con cálculo del monto total esperado, días trabajados y días restantes del período.
+### Fase 3 — Sueldo fijo vs variable
+Modos excluyentes: sueldo mensual con día de cobro, o tarifa diaria por rango de fechas.
 
-### Fase 4: Gastos Fijos, Suscripciones y Compras en Cuotas
-* **Evolución**:
-  * Se modelaron dos tablas en IndexedDB: `fixed` y `installments`.
-  * **Suscripciones con `autoAdd`**: Se incorporó un evaluador en el arranque (`recurring.ts`) que analiza si el servicio vence en el período actual y lo incorpora a los gastos sin duplicar registros.
-  * **Control de Cuotas**: Seguimiento visual ("Cuota 4/12") con indicación automática de cuotas saldadas.
+### Fase 4 — Fijos y cuotas
+Tablas `recurrings` e `installments`, aplicación automática sin duplicados (`recurring.ts`), próximos vencimientos.
 
-### Fase 5: Módulo de Deudas ("Debo plata" / "Me deben plata")
-* **Evolución**:
-  * Creación de la tabla `debts` en Dexie.
-  * Panel dedicado (`DebtsPanel.tsx`) con segmentación nítida:
-    * Deudas que tengo que pagar (en rojo carmesí con botón "Marcar como pagada").
-    * Deudas que me tienen que pagar a mí (en verde esmeralda con botón "Cobrada").
-  * Historial preservado sin eliminar registros para consultas futuras.
+### Fase 5 — Deudas
+Tabla `debts`, panel "Debo plata" / "Me deben plata".
 
-### Fase 6: Estabilización en Wayland / Niri / iNiR
-* **Problemas Encontrados en CachyOS**:
-  1. *Desbordamiento a pantalla completa*: Al reabrir la app, el compositor Niri maximizaba la ventana ocupando todo el ancho.
-  2. *Crash del plugin window-state*: Tauri v2 fallaba con error de deserialización si se configuraba `"window-state": {}` en `tauri.conf.json`.
-  3. *Clicks bloqueados en la cabecera*: La directiva `data-tauri-drag-region` bloqueaba el registro de clicks en los botones de minimizar y cerrar.
-* **Soluciones Implementadas**:
-  1. Creación de una regla nativa en `~/.config/niri/config.kdl` fijando el tamaño flotante en `540 600`.
-  2. En Rust (`lib.rs`), configuración estricta de `.with_state_flags(StateFlags::POSITION)` para que solo recuerde la posición y **NUNCA** altere el tamaño.
-  3. Adición de `onMouseDown={(e) => e.stopPropagation()}` en todos los botones del encabezado.
-  4. Comando personalizado en Rust `minimize_window` para ocultar la ventana al tray en Wayland de forma limpia.
+### Fase 6 — Wayland / Niri
+Problemas y soluciones: `window-state: {}` en `tauri.conf.json` rompía el arranque (se configura en Rust); `StateFlags::SIZE` abría a pantalla completa (solo `POSITION`); el arrastre del header tapaba los botones (`stopPropagation`); regla de ventana en `config.kdl`.
 
-### Fase 7: Corrección de los 6 Puntos Críticos de Usuario
-1. **Ingresos manuales sumando al Disponible**: En `balance.ts` se habilitó que todo movimiento con `kind === 'income'` sume siempre a la plata total y al disponible, considerando los movimientos de los últimos 14 días.
-2. **Categoría exclusiva "Ingreso de plata"**: Se desacoplaron los ingresos de las categorías de gastos. Al pulsar `+ Ingreso`, se asigna de forma forzada `categoryId: 'income'` ("Ingreso de plata", `#16A34A`), y se ejecutó una migración retroactiva en Dexie.
-3. **Hero transparente**: Se añadió el desglose explícito: `Plata total: $ X · Gastos: $ Y`.
-4. **Edición libre de fechas variables**: Se incorporaron selectores de fecha nativos en `IncomePanel.tsx` para cambiar el rango sin reiniciar la configuración.
-5. **Agrupación en acordeón colapsable**: En `MovementsPanel.tsx` y `DayDetailModal.tsx` los gastos e ingresos se agruparon por categoría con subtotales y conteo.
-6. **Ampliación de la tira de días**: Se incluyó el modal "+ Días" para revisar y cargar registros en cualquiera de los últimos 14 días.
+### Fase 7 — Auditoría externa (10–11 de noviembre de 2026)
+Revisión completa con Claude: seguridad del sistema, código, tests y documentación. Resultado en la sección 2.
 
-### Fase 8: Auditoría Extrema (QA) y Adaptación Móvil / PWA
-* **Blindaje de la Calculadora**: Sanitización de operadores colgantes (ej. `20000 +` -> `20000`) y tope de 12 dígitos.
-* **Validación de Fechas**: Intercambio automático si `fin < inicio` para erradicar números negativos espurios.
-* **Scrolls y Estilos**: Limpieza total de barras de scroll (`scrollbar-none`) y verificación de contrastes en temas Blanco y Negro.
-* **UX Pro**: Toast flotante con botón "Deshacer" (4 segundos) tras anotar cualquier gasto o ingreso, y barra multicolor horizontal de gastos.
-* **Modo Celular y PWA**: Soporte responsive para `< 480px`, simulador interactivo de iPhone en escritorio (`📱`) y configuración de `vite-plugin-pwa` para uso offline sin servidor.
+### Fase 8 — v1.3.0 (11 de noviembre de 2026)
+- Sueldo por día rehecho: lunes a sábado a la tarifa, domingos libres, edición por día, cambio de tarifa desde una fecha (`workdays.ts`, `WorkDaysPanel`).
+- Cartel del período anterior en el Hero (`carryover.ts`).
+- Buscador de movimientos y panel acotado al período (`search.ts`).
+- Logo nuevo (bolsillo de jean con moneda), íconos de escritorio, tray, PWA y favicon regenerados.
+- Ajustes: créditos nuevos, versión real inyectada desde `package.json`, sin guía de celular/Windows.
+- Pulido visual: resortes unificados, asa en los sheets, foco visible, "reducir movimiento".
+- Backup con validación completa y confirmación.
+- CSP estricta, permisos y paquetes sin uso eliminados.
+- Fijos creados tarde, cerrar-al-tray real, recordatorio que no se pierde, fechas locales, redondeo de cuotas.
 
 ---
 
-## 2. Matriz Exhaustiva de Bugs y Soluciones Técnicas
+## 2. Bugs encontrados en la auditoría y cómo se arreglaron
 
-| ID | Síntoma / Bug | Causa Raíz | Archivo Modificado | Solución Aplicada |
-| :--- | :--- | :--- | :--- | :--- |
-| **BUG-01** | `+ Ingreso` manual no sumaba al Disponible en la pantalla principal. | En modo variable, el cálculo ignoraba los movimientos de ingreso o filtraba únicamente el rango estricto sin mirar los días de la tira. | `src/lib/balance.ts` | Se sumaron todos los movimientos con `kind === 'income'` al ingreso total y se amplió la ventana a los últimos 14 días. |
-| **BUG-02** | Un ingreso de `$ 500.000` se guardó bajo la categoría "Comida". | La calculadora aplicaba la categoría de gasto activa al momento de guardar un ingreso. | `src/components/Calculator.tsx`, `src/App.tsx` | Al guardar ingreso (`kind === 'income'`), se asigna automáticamente `categoryId: 'income'` ("Ingreso de plata" en verde esmeralda). Migración en DB en el arranque. |
-| **BUG-03** | Error en el arranque: `PluginInitialization("window-state", "invalid type: map, expected unit")`. | `tauri.conf.json` incluía `"window-state": {}`, incompatible con la deserialización de unit struct en Tauri v2. | `src-tauri/tauri.conf.json` | Se eliminó el objeto vacío del JSON y se configuró directamente en Rust vía builder. |
-| **BUG-04** | Ventana se abría a pantalla completa al desminimizar en Niri (Wayland). | `tauri-plugin-window-state` intentaba restaurar `StateFlags::all()`, incluyendo el tamaño gestionado por el compositor. | `src-tauri/src/lib.rs` | Se limitó la persistencia a `.with_state_flags(StateFlags::POSITION)` y se añadió regla en `config.kdl`. |
-| **BUG-05** | No se podía hacer click en `–` ni `×` en la cabecera. | La directiva `data-tauri-drag-region` capturaba los eventos del puntero antes que el botón. | `src/App.tsx` | Se agregó `onMouseDown={(e) => e.stopPropagation()}` a todos los botones del header. |
-| **BUG-06** | Expresión incompleta `20000 +` generaba `NaN` o fallaba al guardar. | El parser de la calculadora intentaba evaluar la expresión con un operador binario al final sin segundo operando. | `src/lib/calc.ts` | Regex `/[\+\-\*\/]+$/` para recortar cualquier operador final suelto antes de evaluar. |
-| **BUG-07** | Fechas invertidas en Sueldo Variable generaban `-5 días` y saldo erróneo. | No existía validación que asegurase que la fecha de fin sea posterior a la de inicio. | `src/lib/period.ts`, `src/panels/IncomePanel.tsx` | Se implementó ordenamiento automático `min(d1, d2)` y `max(d1, d2)` en el motor de cálculo y validación en la UI. |
-| **BUG-08** | Error de compilación en Vite: `Failed to resolve import "workbox-window"`. | El plugin de PWA requería `workbox-window` en modo inyección manual sin estar instalada la dependencia. | `vite.config.ts`, `src/main.tsx` | Se configuró `injectRegister: "auto"` en el plugin de VitePWA, delegando el registro del Service Worker a Vite. |
-
----
-
-## 3. Detalle de la Suite de Tests Unitarios (32 Tests en Vitest)
-
-Todos los tests corren en Node sin interfaz gráfica mediante `pnpm test`:
-
-### A. `src/lib/calc.test.ts` (8 tests)
-1. Resuelve operaciones básicas de suma (`1000 + 500 = 1500`).
-2. Resuelve multiplicaciones (`3500 * 4 = 14000`).
-3. Respeta la precedencia de operadores matemáticos (`1000 + 500 * 2 = 2000`).
-4. Ignora operadores finales sueltos al evaluar (`20000 +` -> `20000`).
-5. Maneja números decimales correctamente si se ingresan.
-6. Limita la longitud máxima de dígitos para evitar desbordes en el display.
-7. Retorna `0` en expresiones vacías o no válidas sin lanzar excepciones.
-8. Soporta secuencias complejas con múltiples sumas y restas sucesivas.
-
-### B. `src/lib/balance.test.ts` (4 tests)
-1. Calcula correctamente el disponible en modo Sueldo Fijo (`sueldo - gastos`).
-2. Calcula correctamente el disponible en modo Sueldo Variable (`días × dailyRate + ingresos - gastos`).
-3. Asegura que los `+ Ingreso` manuales sumen siempre al disponible independientemente del modo.
-4. Calcula el ritmo de gasto diario sugerido (`disponible / días restantes`).
-
-### C. `src/lib/period.test.ts` (7 tests)
-1. Determina el rango de fechas para cobro a principio de mes (día 1 al último día).
-2. Determina el rango de fechas para cobro a mitad de mes (ej. día 10 de un mes al 9 del siguiente).
-3. Maneja correctamente meses con distinta cantidad de días (28, 30 y 31 días) y años bisiestos.
-4. Calcula con precisión los días del rango en modo Variable.
-5. Invierte y corrige automáticamente fechas desordenadas (`fin < inicio`).
-6. Identifica si la fecha actual está dentro o fuera del período activo.
-7. Calcula con exactitud los días restantes hasta la finalización del ciclo.
-
-### D. `src/lib/recurring.test.ts` (4 tests)
-1. Identifica servicios recurrentes fijos que vencen dentro del período actual.
-2. Aplica gastos fijos con `autoAdd` sin duplicar transacciones existentes.
-3. Progresa las cuotas de compras activas ("Cuota 4/12" -> "Cuota 5/12").
-4. Marca como finalizadas las compras en cuotas cuando se alcanza la cuota total.
-
-### E. `src/lib/reminders.test.ts` (6 tests)
-1. Detecta días pasados en la tira sin transacciones anotadas.
-2. Identifica vencimientos de gastos fijos para el día de hoy.
-3. Identifica vencimientos próximos en los siguientes 3 días (alerta ámbar).
-4. No genera falsas alarmas para días marcados explícitamente con "Hoy no gasté nada".
-5. Valida el formato de hora de recordatorios diarios (ej. `21:00`).
-6. Maneja correctamente el cambio de mes en el cálculo de alertas de vencimiento.
-
-### F. `src/lib/format.test.ts` (3 tests)
-1. Formatea montos en pesos argentinos con puntos de miles (`$ 20.000` y `$ 1.500.000`).
-2. Formatea saldos negativos con el signo menos antes del símbolo (`-$ 5.000`).
-3. Formatea fechas en español rioplatense (ej. `"Hoy"`, `"Ayer"`, `"Vie 08 Nov"`).
+| ID | Problema | Causa | Arreglo |
+| :--- | :--- | :--- | :--- |
+| **A-01** | `.git`, `target/`, `dist/` y `node_modules/` con permisos 777 (cualquier usuario de la máquina podía modificarlos). | La herramienta anterior creó los archivos sin respetar el `umask`. | `chmod -R go-w` en el proyecto, en VECTARIS y en `~/.cargo/.crates*`. |
+| **B-01** | Los gastos del período anterior se restaban del sueldo nuevo. | "Ventana de 14 días" en `balance.ts` que miraba antes de `periodStart`. | Solo cuentan movimientos del período (tests `Bug #1`). Regla D del CLAUDE.md. |
+| **B-02** | Con el rango variable vencido, los gastos nuevos no bajaban el Disponible. | Filtro cortaba en `periodEnd`. | La ventana se estira hasta hoy (test `Bug #2`). |
+| **B-03** | Fijos y cuotas quedaban siempre en la primera categoría. | `useState` sin setter y sin selector. | Selector de categoría en ambos formularios. |
+| **B-04** | Con un panel abierto, `Enter` guardaba un gasto. | Listener global de teclado sin condición. | `keyboard.ts` + `role="dialog"` en todos los overlays. |
+| **B-05** | Montos sin tope (`999999999999 × 999999999999`). | Sin límite en `calc.ts` ni en los formularios. | `MAX_AMOUNT = 1e12` en calculadora, formularios y backup, con aviso en pantalla. |
+| **B-06** | Un fijo creado después de su vencimiento se cobraba en el acto. | No se guardaba cuándo se creó. | `Recurring.createdAt`; arranca el mes siguiente. |
+| **B-07** | "Cerrar al tray" no hacía nada. | Rust siempre escondía la ventana. | Comando `set_close_to_tray` y estado compartido en Rust. |
+| **B-08** | El recordatorio diario solo saltaba si el chequeo caía en el minuto exacto. | `currentHHMM === reminderTime`. | `>=` + "ya enviado hoy". |
+| **B-09** | La primera cuota usaba fecha UTC (después de las 21 h era "mañana"). | `toISOString()`. | `formatLocalDate(new Date())`. |
+| **B-10** | Pasada la medianoche el día seleccionado seguía en ayer. | No se actualizaba al cambiar `todayStr`. | Se mueve junto con "hoy". |
+| **B-11** | El panel "Movimientos del Período" mostraba todo el historial. | Sin filtro. | Solo el período; con búsqueda, todo el historial. |
+| **B-12** | `IncomePanel` y `UpcomingWidget` eran código muerto. | Nada los abría. | Borrados (`WorkDaysPanel` los reemplaza). |
+| **B-13** | Deshacer dejaba el día como "anotado"; cuotas que no sumaban el total; ícono de notificación inexistente. | Detalles. | Arreglados (`getInstallmentAmount`, `/icons/icon-192.png`). |
+| **B-14** | `frequency: weekly/yearly` existía en el tipo pero se ignoraba. | Nunca se implementó. | Campo eliminado; los fijos son mensuales. |
+| **S-01** | Sin CSP; permisos `opener`, `window-state` y `allow-show` sin uso; paquetes npm sin uso. | Configuración por defecto. | CSP estricta probada; permisos y paquetes podados. |
+| **S-02** | El import de backup metía cualquier JSON en la base. | Solo chequeaba dos campos. | `validateBackup` + confirmación + todo-o-nada. |
+| **C-01** | El workflow de Windows no generaba `.exe`. | Bundles `deb/rpm` y sin permiso de release. | `--bundles nsis` y `permissions: contents: write` (no probado: requiere GitHub). |
+| **D-01** | Documentación con datos falsos (versiones, tablas, "Dexie síncrona", 440×440, KDE, tests mal descritos). | Desactualizada. | Reescrita en v1.3.0. |
 
 ---
 
-## 4. Estado de Salud del Proyecto
+## 3. Tests (82, en `src/lib/*.test.ts`, `pnpm test`)
 
-* **Tests**: 32 pasados de 32 (100% de éxito).
-* **Compilación Rust**: `tauri-build` limpio, sin warnings críticos.
-* **Empaquetado**: Binario nativo de Linux operativo en `~/.local/bin/bolsillo`.
-* **Rendimiento**: Arranque en frío < 200 ms, uso de RAM < 40 MB.
+| Archivo | Qué prueba |
+| :--- | :--- |
+| `calc.test.ts` (10) | Suma, resta, multiplicación, división, precedencia, puntos de miles, operadores colgantes, coma decimal, negativos, división por cero, expresión inválida, tope `MAX_AMOUNT`. |
+| `balance.test.ts` (6) | Sueldo fijo − gastos; modo variable con `variableIncome` e ingresos del rango (los de fuera no cuentan); variable sin rango = 0; **Bug #1** (período anterior no resta); **Bug #2** (rango vencido); saldo negativo y `dailySuggested = 0`. |
+| `period.test.ts` (8) | Período 1→fin de mes, cobro el 15, rango variable, fechas invertidas, día 31 en febrero (bisiesto y no), diciembre→enero, `isTodayInPeriod` y `daysRemaining ≥ 1`. |
+| `workdays.test.ts` (10) | Tarifa L–S, domingo libre, suma del rango, monto propio, día libre, domingo trabajado, naranja solo si difiere, cambio de tarifa desde fecha, varios cambios, lista de días, sin rango. |
+| `carryover.test.ts` (6) | Período anterior en modo fijo (a favor y abajo), sin movimientos → null, app nueva → null, modo variable con rango anterior, sin rango anterior → null. |
+| `recurring.test.ts` (10) | Fijo se cobra una vez; meses atrasados con fecha real (1 y 3 meses); cuotas avanzan y terminan; próximos ordenados; **fijo creado tarde**; fijo creado el día que vence; redondeo de la última cuota; `getNextMonthlyDueDate` (dic→ene, día 31); cuotas del 31 en meses cortos. |
+| `reminders.test.ts` (7) | "Hoy no gasté nada", movimientos manuales, días faltantes, banner, recordatorio a la hora (no si anotó, no repite), **recordatorio tardío**, alertas N días antes y el mismo día. |
+| `search.test.ts` (6) | Solo período sin búsqueda; por nota, categoría (acentos), monto con/sin puntos; orden; `normalizeText`. |
+| `backup.test.ts` (10) | Backup válido; JSON roto/versión desconocida; movimientos inválidos (fecha, negativo, tope, decimal, kind, source); ids repetidos; campos desconocidos y defaults; settings (tema, modo, día, hora, tarifa, cambios); fijos/cuotas/días/deudas; versión 1 sin deudas; archivo > 10 MB; resumen. |
+| `keyboard.test.ts` (3) | Bloqueo con diálogo abierto, con foco en campos, y caso normal. |
+| `format.test.ts` (6) | Moneda, negativos, texto relativo de vencimiento, inicial del día, `formatAmountInput`, zona horaria. |
+
+**Lo que no tiene test automático** (es interfaz o depende de Dexie/Tauri): paneles de React, `repo.ts`, migraciones de Dexie, comandos de Rust, service worker.
+
+---
+
+## 4. Estado verificado al 11/11/2026
+
+- `pnpm test`: 82 de 82. `tsc --noEmit`: sin errores. `cargo check --release`: sin warnings del proyecto.
+- Binario de producción: 7,6 MB, instalado en `~/.local/bin/bolsillo`, abierto y verificado con captura de pantalla sobre los datos reales (migración Dexie v3 aplicada sin pérdida).
+- PWA: 42 archivos de `dist/` precacheados por el service worker, manifest y registro servidos correctamente, fallback a `index.html`. Probado en localhost; no se probó sin conexión en un celular real.
+- CSP probada sobre el build web con Firefox sin interfaz: renderiza igual que sin CSP.
+- No medido: consumo de RAM y tiempo de arranque.

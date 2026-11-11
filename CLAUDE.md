@@ -1,223 +1,207 @@
-# CLAUDE.md — Guía Técnica y Arquitectura de Bolsillo
+# CLAUDE.md — Guía técnica de Bolsillo
 
 > **El usuario es principiante. Explicá todo en palabras simples, sin dar por sabido ningún término técnico, y decí qué hace cada comando antes de correrlo.**
 
-> **Bolsillo v1.2.0 PRO • Edición Especial**  
-> **Autor y Dueño**: PiKuSen27  
-> **Moneda y Formato**: Pesos Argentinos (`ARS`), números enteros sin centavos, con separador de miles por punto (`$ 20.000`). Español rioplatense en toda la interfaz.
+> **Bolsillo v1.3.0** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
+> **Autor y dueño**: PiKuSen27.
+> **Moneda**: pesos argentinos, números enteros sin centavos, con punto de miles (`$ 20.000`). Toda la interfaz en español rioplatense.
 
 ---
 
-## 1. Entorno del Usuario y Sistema Operativo
+## 1. Entorno del usuario
 
-* **Sistema Operativo**: **CachyOS** (distribución Arch Linux optimizada para rendimiento y CPU scheduler de baja latencia).
-* **Entorno Gráfico**: Compositor Wayland **Niri** (tiling con scroll horizontal infinito), acompañado de la barra/shell **iNiR**.
-  * **IMPORTANTE**: El usuario **NO utiliza KDE Plasma ni GNOME**. Todas las reglas de ventanas y comportamiento de atajos dependen de Wayland y la configuración de Niri.
-* **Shell**: **Fish shell** (`/usr/bin/fish`). Recordar que la sintaxis de variables y exportación difiere de Bash (`set -gx VAR val`).
-* **Ubicación del binario en producción**: `~/.local/bin/bolsillo` (agregado al `PATH`).
-* **Acceso directo de escritorio**: `~/.local/share/applications/bolsillo.desktop`.
-* **Regla de ventana en Niri** (`~/.config/niri/config.kdl`):
+* **Sistema operativo**: CachyOS (Arch Linux).
+* **Escritorio**: compositor Wayland **Niri** con la barra **iNiR**. **No usa KDE ni GNOME.**
+* **Shell**: Fish (`/usr/bin/fish`). Para variables de entorno se usa `set -gx VAR valor`, no `export`.
+* **Binario instalado**: `~/.local/bin/bolsillo` (está en el `PATH`).
+* **Lanzador**: `~/.local/share/applications/bolsillo.desktop` (apunta al binario y al ícono `public/icons/icon-512.png` del proyecto).
+* **Datos de la app** (IndexedDB de WebKit): `~/.local/share/com.bolsillo.desktop/`. Antes de instalar un binario nuevo, copiar esa carpeta.
+* **Regla de ventana en Niri** (`~/.config/niri/config.kdl`, tal cual está instalada):
   ```kdl
   window-rule {
-      match app-id="^bolsillo$"
+      match app-id=r#"(?i)bolsillo"#
+      match title=r#"(?i)bolsillo"#
       open-floating true
-      default-floating-size 540 600
+      default-column-width { fixed 540; }
+      default-window-height { fixed 600; }
+      focus-ring { off }
+      border { off }
+      shadow { off }
   }
   ```
 
 ---
 
-## 2. Stack Tecnológico
+## 2. Stack (versiones de `package.json` / `Cargo.toml`)
 
-| Capa | Tecnología | Rol |
+| Capa | Tecnología | Para qué |
 | :--- | :--- | :--- |
-| **Desktop Framework** | **Tauri v2** (`@tauri-apps/api`, Rust 2021) | Wrapper de escritorio ligero sobre WebKitGTK / Wayland. |
-| **Frontend Framework** | **React 19** (`react`, `react-dom`) | UI reactiva declarativa. |
-| **Lenguaje** | **TypeScript 5.6** (Strict mode) | Tipado estático total de datos financieros. |
-| **Estilos** | **Tailwind CSS v4** (`@tailwindcss/vite`) | Diseño utilitario sin clases CSS externas innecesarias. |
-| **Animaciones** | **Motion** (`motion/react` v12) | Animaciones fluidas a 60fps en modales, sheets y toasts. |
-| **Base de Datos Local** | **Dexie.js v4** (IndexedDB wrapper) | Almacenamiento 100% offline, local y sin servidor en el navegador/WebKit. |
-| **Manejo de Fechas** | **date-fns v4** | Aritmética de fechas, rangos, formato en español y zonas horarias. |
-| **PWA / Móvil** | **vite-plugin-pwa** (Workbox) | Manifiesto e instalación como PWA offline en iPhone y Android. |
-| **Testing** | **Vitest 5.1** | Suite de 32 tests unitarios de lógica pura financiera. |
+| Escritorio | **Tauri 2** (Rust 2021) con plugins `notification`, `window-state`, `single-instance` | Ventana nativa sobre WebKitGTK/Wayland, tray, notificaciones |
+| UI | **React 19** + **TypeScript 6** (strict) | Interfaz |
+| Estilos | **Tailwind CSS 4** (`@tailwindcss/vite`) | Clases utilitarias |
+| Animaciones | **Motion 14** (`motion/react`) | Sheets, toasts, números animados |
+| Datos | **Dexie 4** (IndexedDB) | Todo se guarda local, sin servidor. Es **asíncrona** (todo con `await`) |
+| Fechas | **date-fns 4** | Períodos, meses cortos, formato en español |
+| PWA | **vite-plugin-pwa 2** (Workbox) | Instalable y offline en celular |
+| Íconos | **lucide-react** | Iconos de la UI |
+| Tests | **Vitest 5** | 82 tests de lógica pura (sin DOM) |
+| Build | **Vite 8**, pnpm | |
 
 ---
 
-## 3. Mapa Completo de Archivos
+## 3. Mapa de archivos
 
 ```
 Bolsillo/
 ├── src/
-│   ├── components/            # Componentes visuales principales de la UI
-│   │   ├── AnimatedNumber.tsx      # Contador animado de montos numéricos con easing suave
-│   │   ├── BannerMissingDays.tsx   # Aviso amarillo cuando hay días sin registrar en la tira
-│   │   ├── Calculator.tsx          # Teclado numérico, display, categoría y notas (blindado)
-│   │   ├── DayDetailModal.tsx      # Modal de detalle de un día específico con acordeón de categorías
-│   │   ├── DayStrip.tsx            # Tira horizontal de días (Hoy + 3 días previos + botón "+ Días")
-│   │   ├── Hero.tsx                # Tarjeta principal: Disponible grande, Plata Total y Gastos
-│   │   ├── MobileDayStrip.tsx      # Tira de días optimizada para layout móvil y responsive (< 480px)
-│   │   ├── RightColumnWidget.tsx   # Columna derecha: accesos rápidos a fijos, deudas y resumen
-│   │   ├── Sheet.tsx               # Modal lateral/bottom-sheet animado reutilizable
-│   │   └── UpcomingWidget.tsx      # Widget de próximos vencimientos de fijos y cuotas
-│   ├── db/                    # Acceso y persistencia con Dexie.js
-│   │   ├── db.ts                   # Definición del esquema Dexie (tablas: movements, fixed, installments, debts, settings)
-│   │   └── repo.ts                 # Repositorio de consultas CRUD tipadas para movimientos, deudas y fijos
-│   ├── lib/                   # Lógica de negocio pura (100% testeable sin DOM)
-│   │   ├── balance.ts              # Cálculo del saldo disponible, plata total, gastos y proyección diaria
-│   │   ├── balance.test.ts         # Tests de balance en modo Fijo y Variable
-│   │   ├── calc.ts                 # Evaluador de expresiones aritméticas con strip de operadores sueltos
-│   │   ├── calc.test.ts            # Tests de la calculadora (prioridad de operadores, errores, límites)
-│   │   ├── constants.ts            # Lista de categorías predeterminadas de gastos y categoría fija de ingreso
-│   │   ├── format.ts               # Formateadores de moneda ARS ($ 20.000) y fechas en español
-│   │   ├── format.test.ts          # Tests de formateo
-│   │   ├── period.ts               # Lógica de cálculo de períodos (mensual fijo vs rango variable de fechas)
-│   │   ├── period.test.ts          # Tests de cálculo de períodos y prevención de fechas invertidas
-│   │   ├── recurring.ts            # Lógica para auto-aplicar servicios recurrentes (`autoAdd`) y cuotas
-│   │   ├── recurring.test.ts       # Tests de recurrencias sin duplicación
-│   │   ├── reminders.ts            # Gestión de alertas de días sin registrar y vencimientos cercanos
-│   │   └── reminders.test.ts       # Tests de recordatorios
-│   ├── panels/                # Modales / Vistas de pantalla completa en overlay
-│   │   ├── CalendarPanel.tsx       # Calendario mensual completo para navegar y ver totales históricos
-│   │   ├── DebtsPanel.tsx          # Panel de gestión de Deudas ("Debo plata" y "Me deben plata")
-│   │   ├── FixedAndInstallmentsPanel.tsx # Panel de gestión de Gastos Fijos, Suscripciones y Cuotas
-│   │   ├── IncomePanel.tsx         # Configuración de Ingresos (Sueldo Fijo vs Sueldo Variable)
-│   │   ├── MovementsPanel.tsx      # Historial de movimientos del período con barra multicolor y acordeón
-│   │   ├── OnboardingPanel.tsx     # Asistente de bienvenida y configuración inicial de primer uso
-│   │   └── SettingsPanel.tsx       # Ajustes: Tema Blanco/Negro, Notificaciones, Backup JSON, PWA Móvil
-│   ├── platform/              # Abstracción de entorno (Tauri Desktop vs Web / Mobile PWA)
-│   │   └── index.ts                # Detección de `isTauri()`, métodos de ventana, notificaciones nativas y tray
-│   ├── types/                 # Definiciones TypeScript de entidades
-│   │   └── index.ts                # Tipos de Movimiento, Categoría, Deuda, Fijo, Cuota, Ajustes y Período
-│   ├── App.css                # Ajustes globales de CSS
-│   ├── App.tsx                # Componente raíz: orquestador de estado, layout responsivo y simulación móvil
-│   ├── index.css              # Importación de Tailwind CSS v4 y scrollbar-none utilities
-│   ├── main.tsx               # Punto de entrada de React con registro condicional de Service Worker
-│   └── vite-env.d.ts          # Tipos globales de Vite
-├── src-tauri/                 # Backend nativo de Rust y Tauri v2
-│   ├── src/
-│   │   ├── lib.rs                  # Configuración de plugins, System Tray, comandos IPC y tamaño fijo
-│   │   └── main.rs                 # Punto de entrada de Rust
-│   ├── capabilities/          # Permisos de Tauri v2 (core, notification, window-state)
-│   ├── tauri.conf.json        # Configuración de ventana (540x600, no resizable, no transparente, título)
-│   └── Cargo.toml             # Dependencias de crates Rust (tauri, tauri-plugin-window-state, etc.)
-├── bolsillo.desktop           # Archivo desktop launcher para el menú de aplicaciones de Linux
-├── package.json               # Scripts de desarrollo y dependencias npm
-├── tsconfig.json              # Configuración de TypeScript
-├── vite.config.ts             # Configuración de Vite con Tailwind v4 y VitePWA
-└── vitest.config.ts           # Configuración de Vitest para correr tests en Node
+│   ├── App.tsx                 # Raíz: carga datos, calcula período/balance, layout PC y celular, sheets
+│   ├── main.tsx                # Arranque de React + MotionConfig (respeta "reducir movimiento")
+│   ├── index.css               # Tailwind, fuente Plus Jakarta Sans, foco visible, zona segura, scrollbars
+│   ├── components/
+│   │   ├── AnimatedNumber.tsx      # Monto que "cuenta" hasta el valor (sin animar si el sistema lo pide)
+│   │   ├── BannerMissingDays.tsx   # Aviso "Te falta anotar…"
+│   │   ├── Calculator.tsx          # Teclado, display, categorías, nota, fecha; tope de monto con aviso
+│   │   ├── DayDetailModal.tsx      # Detalle de un día, agrupado por categoría
+│   │   ├── DayStrip.tsx            # Columna izquierda PC: Hoy + 3 días + "+ Días" (14 días)
+│   │   ├── Hero.tsx                # Disponible, Plata total · Gastos, cartel del período anterior, "Días trabajados"
+│   │   ├── MobileDayStrip.tsx      # Tira de días para celular
+│   │   ├── RightColumnWidget.tsx   # Próximos vencimientos y deudas (columna derecha PC)
+│   │   └── Sheet.tsx               # Panel deslizante con asa (role="dialog")
+│   ├── panels/
+│   │   ├── CalendarPanel.tsx       # Calendario mensual
+│   │   ├── DebtsPanel.tsx          # "Debo plata" / "Me deben plata"
+│   │   ├── FixedAndInstallmentsPanel.tsx # Fijos (mensuales) y cuotas, con categoría
+│   │   ├── MovementsPanel.tsx      # Movimientos del período + buscador en todo el historial
+│   │   ├── OnboardingPanel.tsx     # Primer uso
+│   │   ├── SettingsPanel.tsx       # Tema, ingresos, recordatorios, categorías, backup, créditos
+│   │   └── WorkDaysPanel.tsx       # Modo variable: días del rango, montos, días libres, cambio de tarifa
+│   ├── lib/                    # Lógica pura, cada archivo tiene su .test.ts
+│   │   ├── balance.ts              # Disponible = ingreso base + ingresos del período − gastos del período
+│   │   ├── backup.ts               # Validación completa del JSON de respaldo
+│   │   ├── calc.ts                 # Evaluador de la calculadora (sin eval), tope MAX_AMOUNT
+│   │   ├── carryover.ts            # Saldo con el que cerró el período anterior (informativo)
+│   │   ├── constants.ts            # Categorías, DEFAULT_SETTINGS, MAX_AMOUNT (1e12), APP_VERSION
+│   │   ├── format.ts               # $ 20.000, fechas locales sin corrimiento de zona horaria
+│   │   ├── keyboard.ts             # Cuándo la calculadora debe ignorar el teclado
+│   │   ├── period.ts               # Período por día de cobro / rango variable
+│   │   ├── recurring.ts            # Fijos y cuotas automáticos, próximos vencimientos
+│   │   ├── reminders.ts            # Días sin anotar, recordatorio diario, alertas de vencimiento
+│   │   ├── search.ts               # Buscador de movimientos
+│   │   └── workdays.ts             # Modo variable: tarifa por fecha, valor de cada día, suma del rango
+│   ├── db/
+│   │   ├── db.ts                   # Esquema Dexie (versiones 1→3) y tablas
+│   │   └── repo.ts                 # Ajustes, días, deudas, exportar/importar
+│   ├── platform/index.ts       # isTauri(), ventana, tray, notificaciones, cerrar-al-tray
+│   └── types/index.ts          # Tipos de datos
+├── src-tauri/
+│   ├── src/lib.rs              # Plugins, tray, comandos: minimize_window, set_autostart, set_close_to_tray
+│   ├── capabilities/default.json # Permisos (solo los que el frontend usa)
+│   ├── tauri.conf.json         # Ventana 540×600 fija, CSP, íconos
+│   └── icons/                  # Generados con `pnpm tauri icon` desde public/icons/bolsillo.svg
+├── public/icons/               # bolsillo.svg (logo fuente), PWA, favicon, apple-touch-icon
+├── public/_headers             # Cabeceras (CSP) para Cloudflare Pages; Tauri lo ignora
+├── .github/workflows/build-windows.yml # Compila el .exe en GitHub (no corre acá)
+├── CLAUDE.md · README.md · HISTORIAL_AUDITORIA.md
+└── package.json · vite.config.ts · vitest.config.ts · tsconfig*.json
 ```
+
+**Tablas de Dexie** (`BolsilloDB`, versión 3): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
 
 ---
 
-## 4. Reglas de Negocio y Decisiones de Diseño Críticas (PROHIBIDO ROMPER)
+## 4. Reglas de negocio (PROHIBIDO ROMPER)
 
-Cualquier cambio futuro debe respetar religiosamente estas decisiones:
+### A. Ventana de escritorio (540 × 600 px)
+1. Tamaño fijo 540 × 600: `resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`.
+2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en Niri abría a pantalla completa).
+3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (📱, pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
+4. `–` llama al comando `minimize_window` (minimiza y esconde). El tray (click izquierdo o "Abrir Bolsillo") y volver a ejecutar el binario (`single-instance`) hacen `show()` + `set_focus()`.
+5. `×` respeta el ajuste **"Cerrar al tray"** (`set_close_to_tray` → estado en Rust): encendido esconde la ventana y siguen los recordatorios; apagado cierra la app.
 
-### A. Ventana y Comportamiento de Escritorio (540 × 600 px)
-1. **Dimensiones Fijas**: La ventana de escritorio mide exactamente **540 px de ancho por 600 px de alto**.
-2. **Propiedades de Ventana**: `resizable: false`, `maximizable: false`, `fullscreen: false`, `transparent: false` (fondo 100% sólido, sin artefactos translúcidos en Wayland).
-3. **Restauración de Posición Segura**:
-   * En `tauri.conf.json`, `plugins` **NO debe contener `window-state: {}`** (eso provoca pánico por incompatibilidad de tipos en Tauri v2).
-   * En Rust (`src-tauri/src/lib.rs`), se utiliza `StateFlags::POSITION` exclusivamente (`.with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)`). **NUNCA agregar `StateFlags::SIZE`** porque causaría que Wayland/Niri maximice la ventana a pantalla completa al reabrirla.
-4. **Header y Región Arrastrable**:
-   * La barra superior tiene `data-tauri-drag-region`.
-   * **TODOS los botones del header** (pin `📌`, minimizar `–`, cerrar `×`, simulador `📱`) DEBEN tener `onMouseDown={(e) => e.stopPropagation()}` y `onClick` explícito para que el click no sea interceptado por el drag de Wayland.
-5. **Minimizar y Tray**:
-   * El botón `–` invoca el comando Tauri `minimize_window`, el cual minimiza la ventana y la oculta (`app.hide()` / `win.hide()`). Al hacer click en el icono del Tray o ejecutar el binario nuevamente, la ventana se restaura (`win.show()`, `win.unminimize()`, `win.set_focus()`).
+### B. Temas y colores
+1. Solo dos temas: **Blanco** (`#FFFFFF`, tarjetas `#F4F4F5`) y **Negro** (`#000000`, tarjetas `#0A0A0C`/`#0D0D0E`). El manifest de la PWA usa `#000000`.
+2. Sin colores neón. Verde `#16A34A`/`#22C55E` para ingresos, rojo `#DC2626`/`#EF4444` para gastos, ámbar `#D97706` solo para "monto distinto a la tarifa" y barras de avance.
+3. Bordes de 1 px, tipografía gruesa (`font-bold`/`font-extrabold`), radios 16 px en tarjetas.
+4. Se respeta "reducir movimiento" del sistema (`MotionConfig reducedMotion="user"` + media query en `index.css`).
 
-### B. Paleta y Temas Estrictos
-1. Solo existen dos temas: **"Blanco"** (`#FFFFFF` con fondo `#F4F4F5`) y **"Negro"** (`#000000` con tarjetas `#0A0A0A` / `#121212`).
-2. Prohibidos los colores fosforescentes o neón.
-3. Contrastes obligatorios:
-   * **Verde Esmeralda**: `#16A34A` / `#22C55E` para ingresos y balances positivos.
-   * **Carmesí Suave**: `#DC2626` / `#EF4444` para gastos y deudas por pagar.
-   * **Bordes**: Finos de 1px (`border-zinc-200` en Blanco, `border-zinc-800` en Negro).
-   * **Tipografía**: Gruesa, moderna y legible (`font-bold`, `font-extrabold`).
-
-### C. Modos de Ingreso (Excluyentes)
+### C. Modos de ingreso (excluyentes)
 1. **Sueldo Fijo** (lo usan los padres del dueño, no tocar su comportamiento):
-   * El usuario define un monto mensual fijo (`fixedSalary`) y un día de cobro (`payday`, 1 al 31).
-   * El período abarca desde el último día de cobro hasta el día anterior al próximo cobro (`calculatePeriod`).
+   * `fixedSalary` y día de cobro `payday` (1 a 31).
+   * El período va desde el último día de cobro hasta el día anterior al próximo (`calculatePeriod`). Si el mes no tiene ese día, se usa el último día del mes.
 2. **Sueldo Variable por día** (`incomeMode: "daily"`, lógica en `src/lib/workdays.ts`, UI en `WorkDaysPanel.tsx`):
-   * Campos en `Settings`: `dailyRate` (tarifa base), `dailyRangeStart` / `dailyRangeEnd` (rango, `YYYY-MM-DD`), `dailyRateChanges[]` (`{ fromDate, rate }`), meta opcional `dailyGoalName` / `dailyGoalAmount`.
-   * **Todos los días del rango de lunes a sábado valen la tarifa automáticamente**, sin que el usuario anote nada. **Los domingos arrancan como "Día libre" ($ 0)**.
-   * El usuario puede tocar cualquier día: ponerle un monto propio, marcarlo "Día libre" (feriado, no trabajé) o volver un día libre (domingo incluido) a trabajado. Eso se guarda en la tabla `workDays` (`{ date, worked, amount }`); **solo existen registros para los días tocados a mano**.
-   * **Naranja (`#D97706`) SOLO si el monto quedó distinto de la tarifa que le corresponde a ese día.** Si se edita y queda igual a la tarifa, se borra el registro y no cuenta como modificado. El día libre se muestra tachado/punteado, nunca naranja.
-   * **"Cambiar tarifa desde una fecha en adelante"**: agrega `{ fromDate, rate }` a `dailyRateChanges`. Los días anteriores conservan la tarifa vieja, los días desde `fromDate` usan la nueva (`getRateForDate`). Los días editados a mano conservan su monto.
-   * **Ingreso base del período = suma del valor de cada día del rango** (`calculateVariableIncome`; los libres suman 0). A eso se le suman los ingresos manuales y se le restan los gastos del período (regla D).
-   * **Validación de fechas invertidas**: si `dailyRangeEnd < dailyRangeStart` se intercambian automáticamente.
-   * `calculateBalance` recibe `variableIncome` ya calculado; **no** vuelve a multiplicar días × tarifa.
-3. **Hero del Saldo**:
-   * Muestra en grande el **Disponible actual**.
-   * Muestra explícitamente el desglose: **`Plata total: $ X · Gastos: $ Y`**.
-   * Si el Disponible es negativo, se muestra en rojo.
-   * En modo variable muestra la pastilla **"Días trabajados"** que abre `WorkDaysPanel` (también accesible desde Ajustes).
+   * Campos en `Settings`: `dailyRate` (tarifa base), `dailyRangeStart`/`dailyRangeEnd`, `dailyRateChanges[]` (`{ fromDate, rate }`), `dailyPreviousRange` (rango anterior, para el cartel del Hero), meta opcional `dailyGoalName`/`dailyGoalAmount`.
+   * **Todos los días del rango de lunes a sábado valen la tarifa automáticamente.** **Los domingos arrancan como "Día libre" ($ 0).**
+   * El usuario puede tocar cualquier día: ponerle un monto propio, marcarlo "Día libre" o volver un día libre (domingo incluido) a trabajado. Eso se guarda en `workDays` (`{ date, worked, amount }`); **solo hay registros para los días tocados a mano**.
+   * **Naranja SOLO si el monto quedó distinto de la tarifa de ese día.** Si se edita y queda igual, se borra el registro y no cuenta como modificado. El día libre se ve tachado/punteado, nunca naranja.
+   * **"Cambiar tarifa desde una fecha"**: agrega `{ fromDate, rate }`. Los días anteriores conservan la tarifa vieja; los editados a mano conservan su monto (`getRateForDate`).
+   * **Ingreso base = suma del valor de cada día del rango** (`calculateVariableIncome`; los libres suman 0). Se cuenta el rango completo desde el primer día (decisión del dueño).
+   * Si `dailyRangeEnd < dailyRangeStart` se intercambian solos.
+   * `calculateBalance` recibe `variableIncome` ya calculado; **no** multiplica días × tarifa.
+3. **Hero**: Disponible grande; `Plata total: $ X · Gastos: $ Y`; rojo si es negativo; en modo variable, pastilla **"Días trabajados"** que abre `WorkDaysPanel` (también desde Ajustes).
+4. **Cartel del período anterior** (`carryover.ts`): "Empezaste con $ X a favor" (verde) o "Cerraste el período anterior $ X abajo" (rojo). **Solo informativo, no toca el Disponible.** No se muestra si es 0, si no hubo movimientos en ese período o si la app se empezó a usar después. En modo variable usa `dailyPreviousRange`, que se guarda al cambiar el rango en Ajustes.
 
-### D. Reglas de los "+ Ingreso" Manuales y del Disponible
-1. Al tocar `+ Ingreso` (o presionar `Shift + Enter` en la calculadora), **se ignoran por completo los chips de categorías de gasto seleccionados**.
-2. Todo ingreso se guarda obligatoriamente con `categoryId: 'income'`, nombre **"Ingreso de plata"** y color verde esmeralda (`#16A34A`).
-3. **Impacto Inmediato en el Saldo**: Tanto en modo fijo como variable, cualquier movimiento con `kind === 'income'` **dentro del período actual** suma al Ingreso Total y al Disponible.
-4. **Solo cuenta el período actual (decisión del dueño, 2026-11-10)**: El Disponible incluye **únicamente** gastos e ingresos con fecha entre `periodStart` y `periodEnd`. Un movimiento del período anterior (aunque esté visible en la tira de días) se guarda en el historial pero **NO** toca el Disponible.
-   * **PROHIBIDO** volver a agregar una "ventana de 14 días", "desde inicio de mes" o cualquier lookback antes de `periodStart`: eso restaba los gastos del período anterior del sueldo nuevo (bug corregido, ver tests `Bug #1` en `src/lib/balance.test.ts`).
-   * **Rango variable vencido**: si hoy es posterior a `periodEnd`, la ventana se estira hasta hoy (`max(periodEnd, hoy)`) para que los gastos nuevos sigan bajando el Disponible hasta que se cargue un rango nuevo. El ingreso base no cambia (test `Bug #2`).
-   * **Fórmula**: `Disponible = ingreso base (sueldo fijo, o suma de días en variable) + ingresos manuales del período − gastos del período`.
+### D. "+ Ingreso" y el Disponible
+1. `+ Ingreso` (o `Shift + Enter`) ignora los chips de categoría: siempre `categoryId: 'income'`, "Ingreso de plata", verde.
+2. **Solo cuenta el período actual (decisión del dueño, 2026-11-10)**: `Disponible = ingreso base + ingresos manuales del período − gastos del período`, con fecha entre `periodStart` y `periodEnd`. Un movimiento del período anterior se guarda en el historial pero **no** toca el Disponible.
+   * **PROHIBIDO** volver a agregar una "ventana de 14 días", "desde inicio de mes" o cualquier mirada hacia atrás de `periodStart`: restaba los gastos del período anterior del sueldo nuevo (tests `Bug #1` en `balance.test.ts`).
+   * **Rango variable vencido**: si hoy es posterior a `periodEnd`, la ventana se estira hasta hoy (`max(periodEnd, hoy)`) para que los gastos nuevos sigan bajando el Disponible (test `Bug #2`).
 
-### E. Despliegue en Acordeón por Categoría
-* Tanto en `MovementsPanel.tsx` como en `DayDetailModal.tsx`, los movimientos se agrupan por categoría con un resumen colapsable que muestra:
-  * Icono y nombre de categoría.
-  * Cantidad de operaciones (ej. `(3)`).
-  * Subtotal gastado/ingresado.
-  * Flecha de despliegue `ChevronDown` interactiva para ver el desglose individual con hora y notas.
+### E. Movimientos
+* `MovementsPanel` muestra **solo el período actual**; con texto en el buscador recorre **todo el historial** por nota, nombre de categoría o monto (con o sin puntos), sin distinguir mayúsculas ni acentos (`search.ts`).
+* En `MovementsPanel` y `DayDetailModal` se agrupa por categoría con acordeón: ícono, nombre, cantidad, subtotal y flecha.
 
-### F. Calculadora Blindada
-* Longitud máxima de 12 dígitos para evitar roturas de layout.
-* Limpieza automática de operadores colgantes: si se escribe `20000 +` y se presiona directamente `- Gasto`, se descarta el `+` final y se procesa `20.000` limpiamente sin `NaN`.
-* Atajos de teclado: `Backspace` borra 1 dígito, `Escape` limpia todo, soporte completo de `Numpad`.
+### F. Calculadora
+* Máximo 12 dígitos por número y resultado ≤ `MAX_AMOUNT` (1e12); si se pasa o divide por cero, muestra el aviso en rojo y no guarda.
+* Operadores colgantes se descartan (`20000 +` → 20.000). La coma es el decimal y se redondea a pesos enteros.
+* Teclado: números, `+ - * /`, `Backspace`, `Escape`, `Enter` = gasto, `Shift+Enter` = ingreso.
+* **Con un panel o modal abierto (`role="dialog"`) o el foco en un campo, la calculadora ignora el teclado** (`keyboard.ts`).
+* Todos los campos de monto de la app pasan por `formatAmountInput` (solo dígitos, puntos de miles, tope `MAX_AMOUNT`).
 
-### G. Módulo de Deudas
-* Dos listas separadas: **"Debo plata"** (a quién le debo) y **"Me deben plata"** (quién me debe).
-* Tabla dedicada `debts` en Dexie.
-* Permite marcar una deuda como saldada (sin eliminar el historial) o borrarla con confirmación.
+### G. Fijos, cuotas y deudas
+* Fijos son **siempre mensuales** (`dueDay` 1–31, en meses cortos cae el último día). Tienen `createdAt`: **un fijo creado después de su vencimiento arranca el mes siguiente**. Si la app estuvo cerrada, se cobra una vez por cada mes atrasado con su fecha real. Ids deterministas (`rec_<id>_<fecha>`) evitan duplicados.
+* Cuotas: `installmentAmount = round(total / cuotas)`; **la última cuota absorbe el redondeo** (`getInstallmentAmount`) para que la suma dé el total exacto.
+* Formularios de fijos y cuotas tienen selector de categoría.
+* Deudas: "Debo plata" / "Me deben plata", tabla `debts`; saldar (opcionalmente creando el movimiento) o borrar.
 
-### H. Modo Celular y Simulación
-* Si el ancho de pantalla es `< 480px` (o cuando se activa el botón `📱` en escritorio), la app pasa al layout vertical responsivo.
-* En móvil, la barra de títulos de escritorio se oculta automáticamente.
-* La tira de días cambia a `MobileDayStrip` con botones de fácil toque con el pulgar.
-* La app cuenta con Service Worker (`registerSW.js`) para funcionar como PWA offline en iPhone y Android.
+### H. Recordatorios
+* Recordatorio diario: dispara a `reminderTime` **o en el primer chequeo posterior** del mismo día (si la app estaba cerrada), una sola vez (`remindersSent`). No avisa si ya se anotó algo ese día.
+* Alertas de vencimiento: `dueAlertDays` días antes y el mismo día.
+
+### I. Backup
+* Exportar genera JSON `version: 2` con todas las tablas menos `remindersSent`.
+* Importar pasa por `validateBackup` (versión 1 o 2, máximo 10 MB, fechas `AAAA-MM-DD` reales, montos enteros 0..`MAX_AMOUNT`, enums, ids únicos, campos desconocidos descartados, ajustes completados con los valores por defecto). Antes de reemplazar muestra un resumen y pide confirmación; es todo o nada.
+
+### J. Celular y PWA
+* Ancho `< 480 px` (o botón 📱 del header) → layout vertical con `MobileDayStrip` y barra inferior.
+* `vite-plugin-pwa` precachea todo `dist/` (manifest, service worker `sw.js`, fallback a `index.html`). Ícono maskable para Android.
+
+### K. Seguridad
+* CSP en `tauri.conf.json` (`default-src 'self'`, `worker-src blob:` para el confetti, `connect-src ipc:` para Tauri) y la misma en `public/_headers` para Cloudflare Pages.
+* Permisos de Tauri: solo `core:default`, ventana (minimize, close, hide, always-on-top, start-dragging) y `notification:default`.
+* Nada sale de la máquina: no hay red, analytics ni cuentas.
 
 ---
 
-## 5. Comandos de Desarrollo y Compilación
+## 5. Comandos (correr con `pnpm` desde `/home/pikusen27/Proyectos/Bolsillo`)
 
-Ejecutar siempre con `pnpm` desde el directorio `/home/pikusen27/Proyectos/Bolsillo`:
+| Comando | Qué hace |
+| :--- | :--- |
+| `pnpm test` | Corre los 82 tests de lógica (sin abrir ventanas). |
+| `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
+| `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
+| `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
+| `pnpm build` | Solo la parte web, a `dist/` (lo que se sube como PWA). |
+| `pnpm preview` | Sirve `dist/` en `http://localhost:4173` para probar la PWA en esta PC. |
+| `pnpm mobile` | Sirve `dist/` en el puerto 5173 **abierto a toda la red local** (hay que correr `pnpm build` antes). Apagarlo al terminar. |
+| `pnpm tauri icon public/icons/bolsillo.svg` | Regenera los íconos de escritorio desde el logo. |
 
-### Tests Unitarios
-```bash
-pnpm test
-```
-*Corre la suite completa de 32 tests en Vitest sin interfaz gráfica.*
-
-### Desarrollo de Escritorio (Hot-Reload)
-```bash
-pnpm tauri dev
-```
-
-### Compilación de Producción Desktop
-```bash
-pnpm tauri build
-```
-*Genera el ejecutable optimizado en `src-tauri/target/release/bolsillo`.*
-
-### Actualización del Binario en CachyOS (Fish Shell)
-Para compilar y dejar el binario listo en el lanzador del usuario:
+### Instalar el binario nuevo (Fish)
 ```fish
+# 1. Cerrar la app si está abierta (tray → "Salir de Bolsillo" o: pkill -x bolsillo)
+# 2. Copia de seguridad de los datos
+cp -a ~/.local/share/com.bolsillo.desktop ~/.local/share/com.bolsillo.desktop.backup-(date +%Y%m%d)
+# 3. Compilar e instalar
 pnpm tauri build
 cp src-tauri/target/release/bolsillo ~/.local/bin/bolsillo
-chmod +x ~/.local/bin/bolsillo
+chmod 755 ~/.local/bin/bolsillo
 ```
-
-### Servidor Local para Pruebas en Móvil / iPhone
-```bash
-pnpm mobile
-```
-*Levanta el servidor Vite en el puerto `5173` escuchando en todas las interfaces de red (`--host 0.0.0.0`). Cuando el usuario termine las pruebas, detener el proceso para liberar el puerto.*

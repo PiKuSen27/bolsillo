@@ -1,122 +1,78 @@
-# Bolsillo 🪙 — Control de Gastos Personal
+# Bolsillo
 
-App de escritorio moderna, minimalista y ultra rápida para registrar gastos e ingresos, pensada para el día a día sin la complejidad de una planilla de Excel. Desarrollada con **Tauri v2**, **React 19**, **TypeScript**, **Tailwind CSS** y **Dexie.js (IndexedDB local)**.
+App chiquita para saber, cada día, cuánta plata te queda. Anotás gastos e ingresos con una calculadora, y Bolsillo te dice cuánto podés gastar por día hasta el próximo cobro. Todo se guarda en tu dispositivo: no hay cuentas, nube ni internet de por medio.
 
----
+Hecha con **Tauri 2** (escritorio Linux), **React 19**, **TypeScript**, **Tailwind CSS 4** y **Dexie** (base de datos local). También funciona como **PWA** en el celular.
 
-## Características Principales
+## Qué hace
 
-- **Ventana estilo widget (Dark Glass)**: Tamaño compacto cuadrado (440 × 440 px), esquinas muy redondeadas (32 px), fondo translúcido, sin bordes del sistema y arrastrable desde cualquier zona vacía.
-- **Hero de Saldo en tiempo real**: Contador animado del disponible, barra de progreso del % del mes gastado y métrica clave: *"Podés gastar $X/día · Y días restantes"*.
-- **Tira de 7 días y Calendario mensual**: Indicadores visuales de días registrados (● verde), días olvidados sin anotar (○ con ! en coral) y botón directo *"Hoy no gasté nada"*.
-- **Calculadora integrada con teclado físico**:
-  - Resuelve expresiones como `3500 × 4` al instante.
-  - Atajos: `Enter` para guardar gasto, `Shift + Enter` para guardar ingreso, `Esc` para limpiar.
-  - Chips de categorías deslizables y campo opcional para notas.
-- **Gestión de Fijos y Cuotas**:
-  - Suscripciones y servicios con `autoAdd` (se cargan automáticamente en gastos el día del vencimiento sin duplicar).
-  - Control de compras en cuotas con barra de progreso ("Cuota 4/12") y aviso de cuota terminada.
-  - Columna de próximos vencimientos con alertas de color (ámbar ≤ 3 días, coral hoy o vencido).
-- **Ingresos flexibles**: Sueldo mensual fijo + tarifa por día trabajado (ideal para ingresos variables).
-- **Recordatorios automáticos**: Aviso diario a la hora configurada (ej. 21:00) si aún no anotaste tus gastos de hoy, y alertas de vencimientos próximos.
-- **Bandeja del sistema (Tray) y Autostart**: Se puede ocultar al tray al cerrar para seguir recibiendo notificaciones en segundo plano, con opción de iniciar con el sistema.
-- **Copia de seguridad en JSON**: Exportar e importar todos tus datos para backup o para migrar al iPhone.
-- **Modo Claro y Oscuro**.
+- **Disponible en grande**: ingreso del período − gastos del período, con "podés gastar $ X por día".
+- **Dos modos de ingreso** (se elige uno):
+  - **Sueldo fijo**: monto mensual y día de cobro.
+  - **Sueldo por día**: tarifa diaria y un rango de fechas. De lunes a sábado cada día ya vale la tarifa; los domingos son libres. Podés tocar cualquier día para cambiarle el monto, marcarlo libre, o cambiar la tarifa "de tal fecha en adelante".
+- **Cartel del período anterior**: "Empezaste con $ X a favor" o "Cerraste $ X abajo" (solo informativo).
+- **Calculadora** con teclado físico: `3500 × 4`, `Enter` guarda gasto, `Shift + Enter` ingreso, `Esc` limpia.
+- **Tira de días** con indicador de días sin anotar y botón "Hoy no gasté nada".
+- **Fijos y cuotas** que se anotan solos el día que vencen (sin duplicar), con próximos vencimientos.
+- **Deudas**: lo que debés y lo que te deben.
+- **Movimientos** del período con buscador por nota, categoría o monto en todo el historial.
+- **Recordatorio diario** si no anotaste nada, y alertas de vencimientos.
+- **Backup** en JSON (exportar / importar con validación y confirmación).
+- Temas **Blanco** y **Negro**. Respeta "reducir movimiento" del sistema.
 
----
-
-## Requisitos y Dependencias del Sistema (CachyOS / Arch Linux)
-
-Si usás CachyOS o Arch Linux, las dependencias del sistema requeridas son:
+## Requisitos (CachyOS / Arch)
 
 ```bash
-sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-module librsvg xdotool nodejs pnpm rustup
+sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl librsvg nodejs pnpm rustup
 rustup default stable
 ```
 
----
-
-## Cómo Ejecutar en Desarrollo
-
-Instalar dependencias de Node:
-```bash
-pnpm install
-```
-
-Ejecutar la app de escritorio en modo desarrollo con recarga en vivo:
-```bash
-pnpm tauri dev
-```
-
-### Solución de problemas en Wayland / NVIDIA
-En entornos Wayland con controladores NVIDIA, si la ventana llegara a verse en blanco o la transparencia presentara artefactos visuales, ejecutá la app desactivando el renderizador DMABuf de WebKit:
+## Desarrollo
 
 ```bash
-WEBKIT_DISABLE_DMABUF_RENDERER=1 pnpm tauri dev
+pnpm install      # instala las dependencias de Node
+pnpm tauri dev    # abre la app de escritorio con recarga automática
+pnpm test         # corre los 82 tests de lógica
 ```
 
----
-
-## Tests Unitarios
-
-Toda la lógica de cálculo (período según día de cobro, años bisiestos, saldos negativos, aplicación no duplicada de recurrentes, cuotas y calculadora) está respaldada por una suite exhaustiva de tests en **Vitest**:
-
-```bash
-pnpm test
-```
-
----
-
-## Compilación para Producción (Linux Desktop)
-
-Para generar el ejecutable binario de producción:
+## Compilar e instalar en Linux
 
 ```bash
 pnpm tauri build
+# Binario: src-tauri/target/release/bolsillo  (también .deb y .rpm en src-tauri/target/release/bundle/)
+cp src-tauri/target/release/bolsillo ~/.local/bin/bolsillo
+chmod 755 ~/.local/bin/bolsillo
+cp bolsillo.desktop ~/.local/share/applications/   # entrada en el menú de aplicaciones
 ```
 
-El binario compilado optimizado se generará en:
-`src-tauri/target/release/bolsillo`
+Antes de instalar una versión nueva, copiá la carpeta de datos: `~/.local/share/com.bolsillo.desktop/`.
 
-### Integración en el menú de KDE Plasma / CachyOS
-Podés habilitar el lanzador en el menú de tu escritorio copiando el archivo de acceso directo:
+Este proyecto se usa en **Niri (Wayland)**. La regla de ventana que deja la app flotante de 540×600 está en `CLAUDE.md`.
 
-```bash
-cp bolsillo.desktop ~/.local/share/applications/
-```
+## Usarla en el celular (PWA)
 
----
+1. `pnpm build` genera la carpeta `dist/`.
+2. Subí `dist/` a un hosting estático (por ejemplo Cloudflare Pages; `public/_headers` ya trae las cabeceras de seguridad).
+3. Abrí la dirección en Safari (iPhone) o Chrome (Android) y elegí **Agregar a inicio**. Funciona sin conexión.
+4. Para pasar tus datos de la PC al celular: Ajustes → Exportar JSON en la PC, Importar JSON en el celular.
 
-## Instalación en iPhone (iOS)
+> En iPhone, Safari no permite notificaciones programadas sin un servidor; la app se apoya en el aviso "Te falta anotar" al abrirla.
 
-### Opción 1: Como PWA (Recomendada, sin Mac)
-La app está configurada como **Progressive Web App (PWA)** offline gracias a `vite-plugin-pwa` con service worker local:
-1. Subí la carpeta `dist/` a cualquier hosting estático (como Vercel, Netlify o Cloudflare Pages).
-2. Abrí el enlace en **Safari** desde tu iPhone.
-3. Tocá el botón de **Compartir** (icono con la flecha hacia arriba).
-4. Seleccioná **"Agregar a inicio"** (Add to Home Screen).
-5. La app se abrirá a pantalla completa como una app nativa, con soporte offline gracias a IndexedDB (Dexie). Podés usar la función de **Exportar/Importar JSON** en Ajustes para transferir tus datos.
+Para probarla en el celular sin subirla a ningún lado: `pnpm build && pnpm mobile` y abrí `http://IP-de-tu-PC:5173` desde el celular (misma red Wi-Fi). Apagá el comando al terminar.
 
-> [!NOTE]
-> **Limitación conocida en iOS PWA**: Safari limita el envío de notificaciones programadas en segundo plano cuando la app está cerrada sin un servidor push web. Por eso, en iPhone la app se apoya principalmente en los banners visuales de *"Te falta anotar"* que aparecen inmediatamente al abrirla.
-
-### Opción 2: Compilación nativa con Tauri iOS
-Para compilar la versión nativa de iOS empaquetada:
-```bash
-pnpm tauri ios init
-pnpm tauri ios build
-```
-*(Nota: este proceso requiere obligatoriamente una computadora con **macOS**, **Xcode** y el toolchain de iOS configurado).*
-
----
-
-## Atajos de Teclado (Escritorio)
+## Atajos de teclado (escritorio)
 
 | Tecla | Acción |
 | :--- | :--- |
-| `0` - `9` | Ingresar números en la calculadora |
-| `+`, `-`, `*`, `/` | Operaciones aritméticas |
-| `Backspace` | Borrar último dígito |
-| `Escape` | Limpiar display / nota |
-| `Enter` | Guardar como **Gasto** |
-| `Shift + Enter` | Guardar como **Ingreso** |
+| `0`–`9`, `,` | Escribir el monto |
+| `+` `-` `*` `/` | Operaciones |
+| `Backspace` | Borrar el último dígito |
+| `Escape` | Limpiar (o cerrar el panel abierto) |
+| `Enter` | Guardar como **gasto** |
+| `Shift + Enter` | Guardar como **ingreso** |
+
+Con un panel abierto la calculadora no reacciona al teclado.
+
+## Créditos
+
+Creado por **PiKuSen27**, a cuatro manos con Claude.
