@@ -149,8 +149,11 @@ Cualquier cambio futuro debe respetar religiosamente estas decisiones:
 ### D. Reglas de los "+ Ingreso" Manuales
 1. Al tocar `+ Ingreso` (o presionar `Shift + Enter` en la calculadora), **se ignoran por completo los chips de categorías de gasto seleccionados**.
 2. Todo ingreso se guarda obligatoriamente con `categoryId: 'income'`, nombre **"Ingreso de plata"** y color verde esmeralda (`#16A34A`).
-3. **Impacto Inmediato en el Saldo**: Tanto en modo fijo como variable, cualquier movimiento con `kind === 'income'` suma siempre al Ingreso Total y al Disponible.
-4. **Ventana de 14 días**: El cálculo de balance incluye el período activo más cualquier movimiento de los últimos 14 días (o desde el inicio del mes) para garantizar que si se anota un movimiento en cualquier día visible de la tira, el Disponible se actualice en el acto.
+3. **Impacto Inmediato en el Saldo**: Tanto en modo fijo como variable, cualquier movimiento con `kind === 'income'` **dentro del período actual** suma al Ingreso Total y al Disponible.
+4. **Solo cuenta el período actual (decisión del dueño, 2026-11-10)**: El Disponible incluye **únicamente** gastos e ingresos con fecha entre `periodStart` y `periodEnd`. Un movimiento del período anterior (aunque esté visible en la tira de días) se guarda en el historial pero **NO** toca el Disponible.
+   * **PROHIBIDO** volver a agregar una "ventana de 14 días", "desde inicio de mes" o cualquier lookback antes de `periodStart`: eso restaba los gastos del período anterior del sueldo nuevo (bug corregido, ver tests `Bug #1` en `src/lib/balance.test.ts`).
+   * **Rango variable vencido**: si hoy es posterior a `periodEnd`, la ventana se estira hasta hoy (`max(periodEnd, hoy)`) para que los gastos nuevos sigan bajando el Disponible hasta que se cargue un rango nuevo. El ingreso base no cambia (test `Bug #2`).
+   * En modo variable el ingreso base sigue siendo el rango completo (`días × dailyRate`) desde el primer día, proyectado (decisión del dueño).
 
 ### E. Despliegue en Acordeón por Categoría
 * Tanto en `MovementsPanel.tsx` como en `DayDetailModal.tsx`, los movimientos se agrupan por categoría con un resumen colapsable que muestra:

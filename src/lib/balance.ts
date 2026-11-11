@@ -1,6 +1,5 @@
-import { addDays } from "date-fns";
 import { IncomeMode, Movement, WorkDay } from "../types";
-import { formatLocalDate, parseLocalDate } from "./format";
+import { formatLocalDate } from "./format";
 
 export interface BalanceSummary {
   incomeMode: IncomeMode;
@@ -47,25 +46,17 @@ export function calculateBalance(params: {
     todayDateStr,
   } = params;
 
-  // Active tracking window:
-  // Include movements from the period itself, plus movements from the visible day strip (last 14 days) or start of month
-  const todayParsed = todayDateStr ? parseLocalDate(todayDateStr) : new Date();
-  const fourteenDaysAgo = formatLocalDate(addDays(todayParsed, -14));
-  const startOfMonth = todayDateStr ? `${todayDateStr.slice(0, 7)}-01` : periodStart;
+  // Only movements inside the current period count (never the previous one).
+  // If the period already ended (expired variable range), it stretches to today so new movements still count.
+  const todayStr = todayDateStr ?? formatLocalDate(new Date());
+  const windowEnd = todayStr > periodEnd ? todayStr : periodEnd;
 
-  const earliestDate = [periodStart, fourteenDaysAgo, startOfMonth].reduce(
-    (min, d) => (d < min ? d : min),
-    periodStart
-  );
-
-  // Filter movements belonging to this active tracking window
   const periodMovements = movements.filter(
-    (m) => m.date >= earliestDate && m.date <= periodEnd
+    (m) => m.date >= periodStart && m.date <= windowEnd
   );
 
-  // Work days in this period that were worked
   const periodWorkDays = workDays.filter(
-    (w) => w.worked && w.date >= earliestDate && w.date <= periodEnd
+    (w) => w.worked && w.date >= periodStart && w.date <= windowEnd
   );
 
   const workDaysTotal = periodWorkDays.reduce((acc, w) => acc + (w.amount || 0), 0);
