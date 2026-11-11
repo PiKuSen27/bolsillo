@@ -6,13 +6,14 @@ import { formatCurrency } from "../lib/format";
 
 interface HeroProps {
   summary: BalanceSummary;
+  previousBalance?: number | null; // saldo con el que cerró el período anterior (informativo)
   daysRemaining: number;
   isLight?: boolean;
   onOpenMovements: () => void;
   onOpenWorkDays?: () => void; // solo en modo variable
 }
 
-export function Hero({ summary, daysRemaining, isLight, onOpenMovements, onOpenWorkDays }: HeroProps) {
+export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays }: HeroProps) {
   const isPositive = summary.available >= 0;
 
   return (
@@ -67,6 +68,24 @@ export function Hero({ summary, daysRemaining, isLight, onOpenMovements, onOpenW
           />
         </div>
       </div>
+
+      {previousBalance != null && previousBalance !== 0 && (
+        <div
+          className={`self-start px-2 py-0.5 rounded-md text-[10px] font-extrabold tabular-numbers ${
+            previousBalance > 0
+              ? isLight
+                ? "bg-[#DCFCE7] text-[#15803D]"
+                : "bg-[#052E16] text-[#4ADE80]"
+              : isLight
+              ? "bg-[#FEE2E2] text-[#B91C1C]"
+              : "bg-[#450A0A] text-[#F87171]"
+          }`}
+        >
+          {previousBalance > 0
+            ? `Empezaste con ${formatCurrency(previousBalance)} a favor`
+            : `Cerraste el período anterior ${formatCurrency(Math.abs(previousBalance))} abajo`}
+        </div>
+      )}
 
       {/* Main big balance (Blanco Puro en dark, Negro Puro en light, o Rojo sobrio si es negativo) */}
       <div className="flex items-baseline justify-between">

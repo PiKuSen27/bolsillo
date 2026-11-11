@@ -85,7 +85,15 @@ export function SettingsPanel({
 
   const handleSaveGeneral = (e: React.FormEvent) => {
     e.preventDefault();
+    // Si cambió el rango variable, el viejo pasa a ser "período anterior" (cartel del Hero)
+    const rangeChanged =
+      settings.dailyRangeStart &&
+      settings.dailyRangeEnd &&
+      (settings.dailyRangeStart !== dailyRangeStart || settings.dailyRangeEnd !== dailyRangeEnd);
     onUpdateSettings({
+      ...(rangeChanged
+        ? { dailyPreviousRange: { startDate: settings.dailyRangeStart!, endDate: settings.dailyRangeEnd! } }
+        : {}),
       incomeMode,
       fixedSalary: parseInt(fixedSalary.replace(/\./g, ""), 10) || 0,
       payday: Math.min(31, Math.max(1, parseInt(payday, 10) || 1)),

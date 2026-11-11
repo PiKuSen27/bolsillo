@@ -47,6 +47,7 @@ import {
 import { calculatePeriod, calculateVariablePeriod } from "./lib/period";
 import { calculateBalance } from "./lib/balance";
 import { calculateVariableIncome } from "./lib/workdays";
+import { calculatePreviousPeriodBalance } from "./lib/carryover";
 import {
   getUpcomingItems,
   processAutoAddRules,
@@ -278,6 +279,15 @@ export default function App() {
       todayDateStr: todayStr,
     });
   }, [settings?.incomeMode, settings?.fixedSalary, variableIncome, periodInfo, movements, todayStr]);
+
+  // Cartel informativo "Empezaste con $X a favor / Cerraste abajo" (no toca el Disponible)
+  const previousBalance = useMemo(
+    () =>
+      settings
+        ? calculatePreviousPeriodBalance({ settings, movements, workDays, currentPeriodStart: periodInfo.startDate })
+        : null,
+    [settings, movements, workDays, periodInfo.startDate]
+  );
 
   const upcomingItems = useMemo(() => {
     return getUpcomingItems({
@@ -607,6 +617,7 @@ export default function App() {
               {/* HERO Card */}
               <Hero
                 summary={balanceSummary}
+                previousBalance={previousBalance}
                 daysRemaining={periodInfo.daysRemaining}
                 isLight={isLight}
                 onOpenMovements={() => setActiveSheet("movements")}
@@ -741,6 +752,7 @@ export default function App() {
             {/* Top HERO: Saldo disponible, barra de progreso y gasto diario */}
             <Hero
               summary={balanceSummary}
+              previousBalance={previousBalance}
               daysRemaining={periodInfo.daysRemaining}
               isLight={isLight}
               onOpenMovements={() => setActiveSheet("movements")}
