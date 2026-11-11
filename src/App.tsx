@@ -936,11 +936,6 @@ export default function App() {
           <SettingsPanel
             settings={settings}
             isLight={isLight}
-            isMobilePreview={isMobilePreview}
-            onToggleMobilePreview={() => {
-              setIsMobilePreview(!isMobilePreview);
-              setActiveSheet(null);
-            }}
             onUpdateSettings={handleUpdateSettings}
             onRefreshData={loadData}
             onOpenWorkDays={() => setActiveSheet("income")}

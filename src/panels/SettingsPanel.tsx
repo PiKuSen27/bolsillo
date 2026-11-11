@@ -7,15 +7,13 @@ import {
   Bell,
   ShieldAlert,
   Plus,
-  Smartphone,
-  Laptop,
   Heart,
-  Sparkles,
   Check,
 } from "lucide-react";
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings } from "../types";
 import { exportAllData, importAllData, resetAllData } from "../db/repo";
+import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
 import {
   formatCurrency,
@@ -28,20 +26,16 @@ import {
 interface SettingsPanelProps {
   settings: Settings;
   isLight?: boolean;
-  isMobilePreview?: boolean;
   onUpdateSettings: (s: Partial<Settings>) => void;
   onRefreshData: () => void;
-  onToggleMobilePreview?: () => void;
   onOpenWorkDays?: () => void;
 }
 
 export function SettingsPanel({
   settings,
   isLight,
-  isMobilePreview,
   onUpdateSettings,
   onRefreshData,
-  onToggleMobilePreview,
   onOpenWorkDays,
 }: SettingsPanelProps) {
   const [incomeMode, setIncomeMode] = useState<IncomeMode>(settings.incomeMode || "salary");
@@ -576,69 +570,6 @@ export function SettingsPanel({
         </div>
       </div>
 
-      {/* Guide: Usar en Celular (iOS / Android) y Windows */}
-      <div
-        className={`p-3.5 rounded-2xl border flex flex-col gap-2.5 ${
-          isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"
-        }`}
-      >
-        <span className="text-xs font-black uppercase opacity-80 flex items-center gap-1.5">
-          <Smartphone size={14} />
-          <span>Usar en Celular (iOS / Android) y Windows</span>
-        </span>
-
-        <div className="flex flex-col gap-2 text-xs font-bold leading-relaxed">
-          <div
-            className={`p-2.5 rounded-xl border flex flex-col gap-1 ${
-              isLight ? "bg-zinc-50 border-zinc-200" : "bg-black border-[#222224]"
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-black text-[11px] text-[#22C55E]">
-              <Smartphone size={13} />
-              <span>iPhone o Android en tu Red Local (PWA)</span>
-            </div>
-            <p className="text-[11px] opacity-75">
-              1. En la carpeta de la app corré: <code className="font-mono bg-zinc-800/30 px-1 py-0.5 rounded text-[10px]">pnpm mobile</code><br />
-              2. Abrí Safari o Chrome en tu celular con la IP que te muestre (ej. <code className="font-mono text-[10px]">http://192.168.1.X:5173</code>).<br />
-              3. Tocá <strong>Compartir → Agregar al Inicio</strong> para instalarla como una app nativa en tu pantalla.
-            </p>
-
-            {onToggleMobilePreview && (
-              <button
-                type="button"
-                onClick={onToggleMobilePreview}
-                className={`mt-2 py-2 px-3 rounded-xl border font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  isMobilePreview
-                    ? "bg-[#22C55E] text-black border-[#22C55E]"
-                    : isLight
-                    ? "bg-zinc-200 hover:bg-zinc-300 border-zinc-300 text-black"
-                    : "bg-zinc-800 hover:bg-zinc-700 border-zinc-600 text-white"
-                }`}
-              >
-                <Smartphone size={14} />
-                <span>
-                  {isMobilePreview ? "Volver a Vista Escritorio (PC)" : "Previsualizar como Celular (iPhone)"}
-                </span>
-              </button>
-            )}
-          </div>
-
-          <div
-            className={`p-2.5 rounded-xl border flex flex-col gap-1 ${
-              isLight ? "bg-zinc-50 border-zinc-200" : "bg-black border-[#222224]"
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-black text-[11px] text-blue-400">
-              <Laptop size={13} />
-              <span>Versión Windows (.exe)</span>
-            </div>
-            <p className="text-[11px] opacity-75">
-              El repositorio incluye el flujo de <strong>GitHub Actions</strong> para compilar el instalador <strong>.exe</strong> de Windows automáticamente en cada push a la nube.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Backup Section */}
       <div
         className={`p-3.5 rounded-2xl border flex flex-col gap-2 ${
@@ -718,48 +649,45 @@ export function SettingsPanel({
         )}
       </div>
 
-      {/* Author Card: PiKuSen27 */}
+      {/* Créditos */}
       <div
-        className={`p-4 rounded-2xl border flex flex-col gap-2 relative overflow-hidden ${
-          isLight
-            ? "bg-gradient-to-br from-zinc-100 via-white to-zinc-50 border-zinc-300"
-            : "bg-gradient-to-br from-[#121216] via-[#0A0A0C] to-black border-zinc-800"
+        className={`p-4 rounded-2xl border flex flex-col gap-3 ${
+          isLight ? "bg-white border-zinc-200" : "bg-[#0A0A0C] border-[#222224]"
         }`}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Sparkles size={15} />
-            </div>
-            <div>
-              <span className="text-xs font-black tracking-tight block">
-                Creado y diseñado por PiKuSen27
-              </span>
-              <span className="text-[9px] font-extrabold text-zinc-500 uppercase tracking-wider">
-                Bolsillo • Edición Especial
-              </span>
-            </div>
+        <div className="flex items-center gap-3">
+          <img
+            src="/icons/bolsillo.svg"
+            alt=""
+            width={40}
+            height={40}
+            className={`w-10 h-10 rounded-xl ${isLight ? "ring-1 ring-zinc-200" : ""}`}
+          />
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-extrabold tracking-tight">Bolsillo</span>
+            <span className={`text-[11px] font-bold ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+              Versión {APP_VERSION}
+            </span>
           </div>
-
-          <span
-            className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
-              isLight
-                ? "bg-zinc-200 border-zinc-300 text-zinc-800"
-                : "bg-zinc-800 border-zinc-700 text-zinc-200"
-            }`}
-          >
-            v1.2.0 PRO
-          </span>
         </div>
 
-        <p className="text-[11px] font-bold opacity-80 leading-relaxed mt-1">
-          Desarrollado a medida con dedicación para llevar tus cuentas claras, rápido y sin vueltas. Hecho por PiKuSen27 — Edición Especial.
+        <p className={`text-[11px] font-semibold leading-relaxed ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
+          Una app chiquita para saber, cada día, cuánta plata te queda. Sin cuentas en la nube,
+          sin planillas y sin vueltas: todo se guarda en tu dispositivo.
         </p>
 
-        <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-zinc-500 pt-1">
-          <span>Hecho con</span>
-          <Heart size={11} className="text-red-500 fill-red-500 inline" />
-          <span>para simplificar tu día a día</span>
+        <div
+          className={`pt-3 border-t flex items-center justify-between gap-2 text-[11px] font-bold ${
+            isLight ? "border-zinc-200 text-zinc-500" : "border-[#222224] text-zinc-400"
+          }`}
+        >
+          <span>
+            Creado por <span className={isLight ? "text-black" : "text-white"}>PiKuSen27</span>
+          </span>
+          <span className="flex items-center gap-1" title="Hecho a cuatro manos con Claude, de Anthropic">
+            <Heart size={11} className={isLight ? "text-zinc-400" : "text-zinc-500"} />
+            <span>a cuatro manos con Claude</span>
+          </span>
         </div>
       </div>
     </div>

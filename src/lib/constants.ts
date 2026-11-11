@@ -1,5 +1,8 @@
 import { Category, Settings } from "../types";
 
+// Versión real del proyecto (la inyecta vite.config.ts desde package.json)
+export const APP_VERSION: string = __APP_VERSION__;
+
 // Largest amount accepted anywhere (calculator, backup import): $ 1.000.000.000.000
 export const MAX_AMOUNT = 1e12;
 
