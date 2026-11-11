@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Download,
   Upload,
@@ -63,8 +64,9 @@ export function SettingsPanel({
   const [newCatName, setNewCatName] = useState("");
   const [newCatColor, setNewCatColor] = useState("#8B5CF6");
 
-  // Double confirmation state for full reset
-  const [resetConfirmStep, setResetConfirmStep] = useState(0);
+  // Confirmación de borrado total (se dibuja arriba de todo, fuera del panel)
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -173,16 +175,10 @@ export function SettingsPanel({
   };
 
   const handleResetData = async () => {
-    if (resetConfirmStep === 0) {
-      setResetConfirmStep(1);
-    } else if (resetConfirmStep === 1) {
-      setResetConfirmStep(2);
-    } else if (resetConfirmStep === 2) {
-      await resetAllData();
-      setResetConfirmStep(0);
-      alert("Todos los datos fueron borrados");
-      onRefreshData();
-    }
+    await resetAllData();
+    setShowResetConfirm(false);
+    setResetDone(true);
+    onRefreshData();
   };
 
   return (
@@ -706,23 +702,60 @@ export function SettingsPanel({
 
         <button
           type="button"
-          onClick={handleResetData}
+          onClick={() => setShowResetConfirm(true)}
           className="mt-1 px-4 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-black text-xs transition-all cursor-pointer text-center"
         >
-          {resetConfirmStep === 0 && "Borrar todos los datos"}
-          {resetConfirmStep === 1 && "¿Estás completamente seguro? Tocar otra vez"}
-          {resetConfirmStep === 2 && "Confirmación final: BORRAR TODO DEFINITIVAMENTE"}
+          Borrar todos los datos
         </button>
-        {resetConfirmStep > 0 && (
-          <button
-            type="button"
-            onClick={() => setResetConfirmStep(0)}
-            className="text-[11px] font-bold opacity-60 hover:opacity-100 text-center cursor-pointer"
-          >
-            Cancelar borrado
-          </button>
+        {resetDone && (
+          <span role="status" className="text-[11px] font-bold opacity-70 text-center">
+            Listo: todos los datos fueron borrados.
+          </span>
         )}
       </div>
+
+      {showResetConfirm &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-title"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          >
+            <div onClick={() => setShowResetConfirm(false)} className="absolute inset-0 bg-black/70" />
+            <div
+              className={`relative w-full max-w-xs rounded-2xl border p-4 flex flex-col gap-3 shadow-2xl ${
+                isLight ? "bg-white border-zinc-300 text-black" : "bg-[#0A0A0C] border-[#262626] text-white"
+              }`}
+            >
+              <h4 id="reset-title" className="text-sm font-extrabold">
+                ¿Borrar todos los datos?
+              </h4>
+              <p className={`text-xs font-semibold ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
+                Esta acción no se puede deshacer.
+              </p>
+              <div className="flex flex-col gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleResetData}
+                  className="w-full py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-extrabold text-xs cursor-pointer transition-colors"
+                >
+                  Borrar todos los datos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className={`w-full py-2 rounded-xl font-extrabold text-xs border cursor-pointer transition-colors ${
+                    isLight ? "bg-zinc-100 border-zinc-300 text-black hover:bg-zinc-200" : "bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
+                  }`}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Créditos */}
       <div
