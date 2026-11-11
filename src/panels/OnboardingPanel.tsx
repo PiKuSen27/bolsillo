@@ -11,8 +11,7 @@ import {
   formatLocalDate,
   formatNumberWithDots,
   formatShortDate,
-  parseLocalDate,
-} from "../lib/format";
+  parseLocalDate, formatAmountInput } from "../lib/format";
 
 interface OnboardingPanelProps {
   onComplete: (settings: Partial<Settings>) => void;
@@ -153,8 +152,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                       type="text"
                       value={fixedSalary}
                       onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, "");
-                        setFixedSalary(raw ? formatNumberWithDots(raw) : "");
+                        setFixedSalary(formatAmountInput(e.target.value));
                       }}
                       placeholder="700.000"
                       className="w-full bg-[#111113] text-white font-black text-sm px-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
@@ -185,8 +183,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                       type="text"
                       value={dailyRate}
                       onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, "");
-                        setDailyRate(raw ? formatNumberWithDots(raw) : "");
+                        setDailyRate(formatAmountInput(e.target.value));
                       }}
                       placeholder="40.000"
                       className="w-full bg-[#111113] text-white font-black text-sm px-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
@@ -242,8 +239,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                         type="text"
                         value={dailyGoalAmount}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(/\D/g, "");
-                          setDailyGoalAmount(raw ? formatNumberWithDots(raw) : "");
+                          setDailyGoalAmount(formatAmountInput(e.target.value));
                         }}
                         placeholder="180.000"
                         className="w-full bg-[#111113] text-white font-bold text-xs px-2.5 py-1.5 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"

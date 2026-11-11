@@ -7,8 +7,7 @@ import {
   formatDayShortWithNum,
   formatNumberWithDots,
   formatShortDate,
-  parseLocalDate,
-} from "../lib/format";
+  parseLocalDate, formatAmountInput } from "../lib/format";
 
 interface WorkDaysPanelProps {
   settings: Settings;
@@ -145,8 +144,7 @@ export function WorkDaysPanel({
                 placeholder="Tarifa nueva ($)"
                 value={rateValue}
                 onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "");
-                  setRateValue(raw ? formatNumberWithDots(raw) : "");
+                  setRateValue(formatAmountInput(e.target.value));
                 }}
                 className={inputCls}
               />
@@ -223,8 +221,7 @@ export function WorkDaysPanel({
                       inputMode="numeric"
                       value={editAmount}
                       onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, "");
-                        setEditAmount(raw ? formatNumberWithDots(raw) : "");
+                        setEditAmount(formatAmountInput(e.target.value));
                       }}
                       onKeyDown={(e) => e.key === "Enter" && saveAmount(d.date, d.rate)}
                       className={`${inputCls} flex-1 min-w-0`}

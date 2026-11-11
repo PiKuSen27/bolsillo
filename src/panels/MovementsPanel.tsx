@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Trash2, Edit2, Filter, ChevronDown, PieChart, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Category, Movement, MovementKind } from "../types";
-import { formatCurrency, formatNumberWithDots, formatShortDate } from "../lib/format";
+import { formatCurrency, formatNumberWithDots, formatShortDate, formatAmountInput } from "../lib/format";
 import { filterMovements } from "../lib/search";
 
 interface MovementsPanelProps {
@@ -367,8 +367,7 @@ export function MovementsPanel({
                                     type="text"
                                     value={editAmount}
                                     onChange={(e) => {
-                                      const raw = e.target.value.replace(/\D/g, "");
-                                      setEditAmount(raw ? formatNumberWithDots(raw) : "");
+                                      setEditAmount(formatAmountInput(e.target.value));
                                     }}
                                     className={`w-28 text-xs font-black px-2.5 py-1 rounded-xl border focus:outline-none ${
                                       isLight

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Trash2, CheckCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Category, Installment, Recurring } from "../types";
-import { formatCurrency, formatNumberWithDots } from "../lib/format";
+import { formatCurrency, formatAmountInput } from "../lib/format";
 
 interface FixedAndInstallmentsPanelProps {
   recurrings: Recurring[];
@@ -224,8 +224,7 @@ export function FixedAndInstallmentsPanel({
                   placeholder="Monto ($ ARS)"
                   value={recAmount}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "");
-                    setRecAmount(raw ? formatNumberWithDots(raw) : "");
+                    setRecAmount(formatAmountInput(e.target.value));
                   }}
                   className={`text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none ${
                     isLight
@@ -292,8 +291,7 @@ export function FixedAndInstallmentsPanel({
                   placeholder="Total ($ ARS)"
                   value={instTotal}
                   onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "");
-                    setInstTotal(raw ? formatNumberWithDots(raw) : "");
+                    setInstTotal(formatAmountInput(e.target.value));
                   }}
                   className={`text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none ${
                     isLight

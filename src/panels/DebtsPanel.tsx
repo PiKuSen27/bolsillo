@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Debt, DebtKind } from "../types";
-import { formatCurrency, formatNumberWithDots, formatShortDate } from "../lib/format";
+import { formatCurrency, formatShortDate, formatAmountInput } from "../lib/format";
 
 interface DebtsPanelProps {
   debts: Debt[];
@@ -170,8 +170,7 @@ export function DebtsPanel({
               placeholder="Monto ($ ARS)"
               value={amount}
               onChange={(e) => {
-                const raw = e.target.value.replace(/\D/g, "");
-                setAmount(raw ? formatNumberWithDots(raw) : "");
+                setAmount(formatAmountInput(e.target.value));
               }}
               className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none ${
                 isLight

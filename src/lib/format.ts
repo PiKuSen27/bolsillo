@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { MAX_AMOUNT } from "./constants";
 
 /**
  * Formats an integer amount with dots for thousands (e.g. 20000 -> "20.000")
@@ -111,4 +112,15 @@ export function formatLongDate(dateStr: string): string {
 export function formatShortDate(dateStr: string): string {
   const date = parseLocalDate(dateStr);
   return format(date, "d MMM", { locale: es });
+}
+
+/**
+ * Normaliza lo que el usuario escribe en un campo de monto: solo dígitos, con puntos de miles,
+ * y nunca por encima de MAX_AMOUNT. Devuelve "" si no hay dígitos.
+ */
+export function formatAmountInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (!digits) return "";
+  const n = Math.min(parseInt(digits, 10), MAX_AMOUNT);
+  return formatNumberWithDots(n);
 }

@@ -9,6 +9,7 @@ import {
   WorkDay,
 } from "../types";
 import { DEFAULT_SETTINGS } from "../lib/constants";
+import { validateBackup, ValidBackup } from "../lib/backup";
 
 export interface DatabaseExport {
   version: number;
@@ -131,58 +132,34 @@ export async function exportAllData(): Promise<string> {
 }
 
 export async function importAllData(jsonContent: string): Promise<{ success: boolean; error?: string }> {
+  const result = validateBackup(jsonContent);
+  if (!result.ok) return { success: false, error: result.error };
+  return importValidatedBackup(result.data);
+}
+
+/** Reemplaza TODA la base con un backup ya validado (todo o nada: si algo falla, no se pierde nada). */
+export async function importValidatedBackup(data: ValidBackup): Promise<{ success: boolean; error?: string }> {
   try {
-    const data = JSON.parse(jsonContent);
-
-    if (!data || typeof data !== "object") {
-      return { success: false, error: "El archivo no tiene un formato JSON válido" };
-    }
-
-    if (!data.settings || !Array.isArray(data.movements)) {
-      return {
-        success: false,
-        error: "Estructura de copia de seguridad no válida (faltan ajustes o movimientos)",
-      };
-    }
-
     await db.transaction(
       "rw",
-      [
-        db.settings,
-        db.movements,
-        db.recurrings,
-        db.installments,
-        db.workDays,
-        db.dayLogs,
-        db.remindersSent,
-        db.debts,
-      ],
+      [db.settings, db.movements, db.recurrings, db.installments, db.workDays, db.dayLogs, db.remindersSent, db.debts],
       async () => {
-        await db.settings.clear();
-        await db.movements.clear();
-        await db.recurrings.clear();
-        await db.installments.clear();
-        await db.workDays.clear();
-        await db.dayLogs.clear();
-        await db.remindersSent.clear();
-        await db.debts.clear();
-
+        await Promise.all([
+          db.settings.clear(), db.movements.clear(), db.recurrings.clear(), db.installments.clear(),
+          db.workDays.clear(), db.dayLogs.clear(), db.remindersSent.clear(), db.debts.clear(),
+        ]);
         await db.settings.put(data.settings);
-        if (data.movements?.length) await db.movements.bulkPut(data.movements);
-        if (data.recurrings?.length) await db.recurrings.bulkPut(data.recurrings);
-        if (data.installments?.length) await db.installments.bulkPut(data.installments);
-        if (data.workDays?.length) await db.workDays.bulkPut(data.workDays);
-        if (data.dayLogs?.length) await db.dayLogs.bulkPut(data.dayLogs);
-        if (data.debts?.length) await db.debts.bulkPut(data.debts);
+        await db.movements.bulkPut(data.movements);
+        await db.recurrings.bulkPut(data.recurrings);
+        await db.installments.bulkPut(data.installments);
+        await db.workDays.bulkPut(data.workDays);
+        await db.dayLogs.bulkPut(data.dayLogs);
+        await db.debts.bulkPut(data.debts);
       }
     );
-
     return { success: true };
-  } catch (err: any) {
-    return {
-      success: false,
-      error: err?.message || "Error al procesar el archivo JSON",
-    };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error al guardar los datos" };
   }
 }
 

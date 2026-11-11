@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings } from "../types";
-import { exportAllData, importAllData, resetAllData } from "../db/repo";
+import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
+import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
 import {
@@ -20,8 +21,7 @@ import {
   formatLocalDate,
   formatNumberWithDots,
   formatShortDate,
-  parseLocalDate,
-} from "../lib/format";
+  parseLocalDate, formatAmountInput } from "../lib/format";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -138,23 +138,40 @@ export function SettingsPanel({
     }
   };
 
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Importar: primero se valida y se muestra un resumen; recién al confirmar se reemplaza la base.
+  const [pendingImport, setPendingImport] = useState<{ data: ValidBackup; summary: string } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file) return;
+    setImportError(null);
+    setPendingImport(null);
 
     const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const content = evt.target?.result as string;
-      const res = await importAllData(content);
-      if (res.success) {
-        alert("¡Datos restaurados con éxito!");
-        onRefreshData();
-      } else {
-        alert(`Error al importar: ${res.error}`);
+    reader.onload = (evt) => {
+      const content = typeof evt.target?.result === "string" ? evt.target.result : "";
+      const result = validateBackup(content);
+      if (!result.ok) {
+        setImportError(result.error);
+        return;
       }
+      setPendingImport({ data: result.data, summary: summarizeBackup(result.data) });
     };
+    reader.onerror = () => setImportError("No se pudo leer el archivo");
     reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImport) return;
+    const res = await importValidatedBackup(pendingImport.data);
+    setPendingImport(null);
+    if (res.success) {
+      onRefreshData();
+    } else {
+      setImportError(res.error ?? "No se pudo importar");
+    }
   };
 
   const handleResetData = async () => {
@@ -273,8 +290,7 @@ export function SettingsPanel({
                 type="text"
                 value={fixedSalary}
                 onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "");
-                  setFixedSalary(raw ? formatNumberWithDots(raw) : "");
+                  setFixedSalary(formatAmountInput(e.target.value));
                 }}
                 className={`w-full text-xs font-black px-2.5 py-1.5 rounded-xl border focus:outline-none ${
                   isLight
@@ -312,8 +328,7 @@ export function SettingsPanel({
                 type="text"
                 value={dailyRate}
                 onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "");
-                  setDailyRate(raw ? formatNumberWithDots(raw) : "");
+                  setDailyRate(formatAmountInput(e.target.value));
                 }}
                 className={`w-full text-xs font-black px-2.5 py-1.5 rounded-xl border focus:outline-none ${
                   isLight
@@ -617,6 +632,51 @@ export function SettingsPanel({
             className="hidden"
           />
         </div>
+
+        {importError && (
+          <div
+            role="alert"
+            className={`p-2.5 rounded-xl border text-[11px] font-bold ${
+              isLight ? "bg-red-50 border-red-200 text-red-700" : "bg-[#2A0A0A] border-red-900 text-red-300"
+            }`}
+          >
+            No se importó nada. {importError}
+          </div>
+        )}
+
+        {pendingImport && (
+          <div
+            role="dialog"
+            aria-label="Confirmar importación"
+            className={`p-3 rounded-xl border flex flex-col gap-2 text-xs font-bold ${
+              isLight ? "bg-zinc-50 border-zinc-300" : "bg-black border-zinc-700"
+            }`}
+          >
+            <span className="font-extrabold">El archivo es válido y contiene:</span>
+            <span className="opacity-80">{pendingImport.summary}.</span>
+            <span className={isLight ? "text-red-700" : "text-red-300"}>
+              Al confirmar se reemplazan TODOS los datos actuales por los del archivo.
+            </span>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingImport(null)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold opacity-70 hover:opacity-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmImport}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer ${
+                  isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+                }`}
+              >
+                Sí, reemplazar mis datos
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Danger Zone: Reset All Data with Double Confirmation */}
