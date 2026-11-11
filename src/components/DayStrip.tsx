@@ -24,6 +24,8 @@ interface DayStripProps {
   categories: Category[];
   dayLogs: DayLog[];
   isLight?: boolean;
+  onDeleteMovement: (id: string) => void;
+  onUpdateMovement: (m: Movement) => void;
 }
 
 export function DayStrip({
@@ -37,6 +39,8 @@ export function DayStrip({
   categories,
   dayLogs,
   isLight,
+  onDeleteMovement,
+  onUpdateMovement,
 }: DayStripProps) {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [showAllDaysModal, setShowAllDaysModal] = useState(false);
@@ -323,6 +327,8 @@ export function DayStrip({
             setModalDate(null);
           }}
           onMarkNoExpenses={onMarkNoExpenses}
+          onDeleteMovement={onDeleteMovement}
+          onUpdateMovement={onUpdateMovement}
         />
       )}
     </>

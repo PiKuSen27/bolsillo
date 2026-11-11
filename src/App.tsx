@@ -653,6 +653,8 @@ export default function App() {
                 categories={settings.categories}
                 dayLogs={dayLogs}
                 isLight={isLight}
+                onDeleteMovement={handleDeleteMovement}
+                onUpdateMovement={handleUpdateMovement}
               />
 
               {/* Full Width Calculator for Thumb typing */}
@@ -792,6 +794,8 @@ export default function App() {
                 categories={settings.categories}
                 dayLogs={dayLogs}
                 isLight={isLight}
+                onDeleteMovement={handleDeleteMovement}
+                onUpdateMovement={handleUpdateMovement}
               />
 
               {/* Centro: Calculadora y Carga Rápida */}

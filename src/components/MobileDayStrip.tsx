@@ -15,6 +15,8 @@ interface MobileDayStripProps {
   categories: Category[];
   dayLogs: DayLog[];
   isLight?: boolean;
+  onDeleteMovement: (id: string) => void;
+  onUpdateMovement: (m: Movement) => void;
 }
 
 export function MobileDayStrip({
@@ -26,6 +28,8 @@ export function MobileDayStrip({
   categories,
   dayLogs,
   isLight,
+  onDeleteMovement,
+  onUpdateMovement,
 }: MobileDayStripProps) {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [showAllDaysModal, setShowAllDaysModal] = useState(false);
@@ -218,6 +222,8 @@ export function MobileDayStrip({
             setModalDate(null);
           }}
           onMarkNoExpenses={onMarkNoExpenses}
+          onDeleteMovement={onDeleteMovement}
+          onUpdateMovement={onUpdateMovement}
         />
       )}
     </>

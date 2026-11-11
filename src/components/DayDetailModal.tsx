@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, CheckCircle2, Plus, Calendar, ChevronDown, Trash2 } from "lucide-react";
+import { X, CheckCircle2, Plus, Calendar, ChevronDown, Trash2, Edit2 } from "lucide-react";
 import { Category, DayLog, Movement } from "../types";
-import { formatCurrency, formatLongDate } from "../lib/format";
+import { formatAmountInput, formatCurrency, formatLongDate, formatNumberWithDots } from "../lib/format";
 import { isDayLogged } from "../lib/reminders";
 
 interface DayDetailModalProps {
@@ -16,6 +16,7 @@ interface DayDetailModalProps {
   onSelectForEntry: (dateStr: string) => void;
   onMarkNoExpenses: (dateStr: string) => void;
   onDeleteMovement?: (id: string) => void;
+  onUpdateMovement?: (m: Movement) => void;
 }
 
 export function DayDetailModal({
@@ -29,11 +30,34 @@ export function DayDetailModal({
   onSelectForEntry,
   onMarkNoExpenses,
   onDeleteMovement,
+  onUpdateMovement,
 }: DayDetailModalProps) {
   // Store expanded category IDs
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  // Edición en línea (monto + nota), igual que en el panel de Movimientos
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editNote, setEditNote] = useState("");
 
   if (!isOpen) return null;
+
+  const startEdit = (m: Movement) => {
+    setEditingId(m.id);
+    setEditAmount(formatNumberWithDots(m.amount));
+    setEditNote(m.note || "");
+  };
+
+  const saveEdit = (m: Movement) => {
+    const parsed = parseInt(editAmount.replace(/\./g, ""), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      onUpdateMovement?.({ ...m, amount: parsed, note: editNote.trim() || undefined });
+    }
+    setEditingId(null);
+  };
+
+  const inputCls = `text-xs font-bold px-2 py-1 rounded-lg border focus:outline-none ${
+    isLight ? "bg-white border-zinc-300 text-black" : "bg-zinc-900 border-zinc-700 text-white"
+  }`;
 
   const dayMovements = movements.filter((m) => m.date === dateStr);
   const hasMovements = dayMovements.length > 0;
@@ -224,47 +248,110 @@ export function DayDetailModal({
                             isLight ? "border-zinc-200 bg-white" : "border-[#1F1F22] bg-[#0A0A0C]"
                           }`}
                         >
-                          {items.map((m) => (
-                            <div
-                              key={m.id}
-                              className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
-                                isLight
-                                  ? "bg-zinc-50 border-zinc-200"
-                                  : "bg-zinc-900/60 border-[#222224]"
-                              }`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-extrabold">
-                                  {m.note || cat.name}
-                                </span>
-                                {m.source !== "manual" && (
-                                  <span className="text-[8px] uppercase font-bold opacity-50">
-                                    {m.source}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="font-extrabold tabular-numbers text-xs"
-                                  style={{ color: cat.color }}
-                                >
-                                  {m.kind === "expense" ? "− " : "+ "}
-                                  {formatCurrency(m.amount)}
-                                </span>
-                                {onDeleteMovement && (
+                          {items.map((m) =>
+                            editingId === m.id ? (
+                              <div
+                                key={m.id}
+                                className={`p-2 rounded-xl border flex flex-col gap-1.5 text-xs ${
+                                  isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-[#222224]"
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="text"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(formatAmountInput(e.target.value))}
+                                    className={`w-24 ${inputCls}`}
+                                    placeholder="Monto"
+                                    aria-label="Monto"
+                                    autoFocus
+                                  />
+                                  <input
+                                    type="text"
+                                    value={editNote}
+                                    onChange={(e) => setEditNote(e.target.value)}
+                                    className={`flex-1 min-w-0 ${inputCls}`}
+                                    placeholder="Nota opcional"
+                                    aria-label="Nota"
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => onDeleteMovement(m.id)}
-                                    className="p-1 opacity-40 hover:opacity-100 hover:text-red-500 transition-colors"
-                                    title="Borrar"
+                                    onClick={() => setEditingId(null)}
+                                    className="px-2 py-0.5 rounded-lg font-bold opacity-70 hover:opacity-100 cursor-pointer"
                                   >
-                                    <Trash2 size={12} />
+                                    Cancelar
                                   </button>
-                                )}
+                                  <button
+                                    type="button"
+                                    onClick={() => saveEdit(m)}
+                                    className={`px-3 py-0.5 rounded-lg font-black cursor-pointer ${
+                                      isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+                                    }`}
+                                  >
+                                    Guardar
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ) : (
+                              <div
+                                key={m.id}
+                                className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
+                                  isLight
+                                    ? "bg-zinc-50 border-zinc-200"
+                                    : "bg-zinc-900/60 border-[#222224]"
+                                }`}
+                              >
+                                <div className="flex flex-col min-w-0 mr-2">
+                                  <span className="font-extrabold truncate">
+                                    {m.note || cat.name}
+                                  </span>
+                                  {m.source !== "manual" && (
+                                    <span className="text-[8px] uppercase font-bold opacity-50">
+                                      {m.source}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span
+                                    className="font-extrabold tabular-numbers text-xs"
+                                    style={{ color: cat.color }}
+                                  >
+                                    {m.kind === "expense" ? "− " : "+ "}
+                                    {formatCurrency(m.amount)}
+                                  </span>
+                                  {onUpdateMovement && (
+                                    <button
+                                      type="button"
+                                      onClick={() => startEdit(m)}
+                                      className={`p-1 rounded-md transition-colors cursor-pointer ${
+                                        isLight ? "text-zinc-500 hover:text-black hover:bg-zinc-200" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                                      }`}
+                                      title="Editar"
+                                      aria-label="Editar"
+                                    >
+                                      <Edit2 size={12} />
+                                    </button>
+                                  )}
+                                  {onDeleteMovement && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onDeleteMovement(m.id)}
+                                      className={`p-1 rounded-md transition-colors cursor-pointer hover:text-red-500 hover:bg-red-500/10 ${
+                                        isLight ? "text-zinc-500" : "text-zinc-400"
+                                      }`}
+                                      title="Borrar"
+                                      aria-label="Borrar"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -305,7 +392,9 @@ export function DayDetailModal({
                 onSelectForEntry(dateStr);
                 onClose();
               }}
-              className="py-2.5 px-3 rounded-xl bg-white text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all hover:bg-zinc-200 cursor-pointer shadow-sm"
+              className={`py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+              }`}
             >
               <Plus size={15} />
               <span>Anotar aquí</span>
