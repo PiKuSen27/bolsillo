@@ -47,7 +47,7 @@ cp bolsillo.desktop ~/.local/share/applications/   # entrada en el menú de apli
 
 Antes de instalar una versión nueva, copiá la carpeta de datos: `~/.local/share/com.bolsillo.desktop/`.
 
-Este proyecto se usa en **Niri (Wayland)**. La regla de ventana que deja la app flotante de 540×600 está en `CLAUDE.md`.
+Este proyecto se usa en **Niri (Wayland)**. La regla de ventana que deja la app flotante de 810×900 está en `CLAUDE.md`.
 
 ## Usarla en el celular (PWA)
 

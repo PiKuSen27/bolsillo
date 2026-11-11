@@ -755,7 +755,7 @@ export default function App() {
           </div>
         ) : (
           /* ============================================================== */
-          /* VIEW B: DESKTOP 3-COLUMN LAYOUT (540x600)                      */
+          /* VIEW B: DESKTOP 3-COLUMN LAYOUT (540x600 lógicos, zoom 1,5 en Tauri) */
           /* ============================================================== */
           <main
             data-tauri-drag-region

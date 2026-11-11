@@ -108,6 +108,12 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray, save_backup, tray_host_available])
         .setup(|app| {
+            // La interfaz está diseñada a 540×600; la ventana es 810×900 y el webview
+            // escala todo ×1,5 (letras y botones más grandes sin rehacer el layout).
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.set_zoom(1.5);
+            }
+
             // Build Tray Icon
             let quit_i = MenuItem::with_id(app, "quit", "Salir de Bolsillo", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "Abrir Bolsillo", true, None::<&str>)?;

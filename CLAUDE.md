@@ -22,8 +22,8 @@
       match app-id=r#"(?i)bolsillo"#
       match title=r#"(?i)bolsillo"#
       open-floating true
-      default-column-width { fixed 540; }
-      default-window-height { fixed 600; }
+      default-column-width { fixed 810; }
+      default-window-height { fixed 900; }
       focus-ring { off }
       border { off }
       shadow { off }
@@ -96,7 +96,7 @@ Bolsillo/
 ├── src-tauri/
 │   ├── src/lib.rs              # Plugins, tray, comandos: minimize_window, set_autostart, set_close_to_tray
 │   ├── capabilities/default.json # Permisos (solo los que el frontend usa)
-│   ├── tauri.conf.json         # Ventana 540×600 fija, CSP, íconos
+│   ├── tauri.conf.json         # Ventana 810×900 fija (interfaz a 540×600 con zoom 1,5), CSP, íconos
 │   └── icons/                  # Generados con `pnpm tauri icon` desde public/icons/bolsillo.svg
 ├── public/icons/               # bolsillo.svg (logo fuente), PWA, favicon, apple-touch-icon
 ├── public/_headers             # Cabeceras (CSP) para Cloudflare Pages; Tauri lo ignora
@@ -111,8 +111,8 @@ Bolsillo/
 
 ## 4. Reglas de negocio (PROHIBIDO ROMPER)
 
-### A. Ventana de escritorio (540 × 600 px)
-1. Tamaño fijo 540 × 600: `resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`.
+### A. Ventana de escritorio (810 × 900 px)
+1. Tamaño fijo 810 × 900 (`tauri.conf.json`): `resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`. **La interfaz sigue diseñada a 540 × 600 px lógicos**: en `lib.rs` el webview hace `set_zoom(1.5)`, así todo (letras, botones) se ve ×1,5 sin tocar el layout. Para cambiar el tamaño hay que tocar los tres lugares: `tauri.conf.json`, el zoom en `lib.rs` y la regla de Niri.
 2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en Niri abría a pantalla completa).
 3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (📱, pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
 4. `–` llama al comando `minimize_window` (minimiza y esconde). El tray (click izquierdo o "Abrir Bolsillo") y volver a ejecutar el binario (`single-instance`) hacen `show()` + `set_focus()`.
