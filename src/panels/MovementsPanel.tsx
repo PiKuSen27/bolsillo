@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Trash2, Edit2, Filter, ChevronDown, PieChart } from "lucide-react";
+import { Trash2, Edit2, Filter, ChevronDown, PieChart, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Category, Movement, MovementKind } from "../types";
 import { formatCurrency, formatNumberWithDots, formatShortDate } from "../lib/format";
+import { filterMovements } from "../lib/search";
 
 interface MovementsPanelProps {
   movements: Movement[];
   categories: Category[];
+  periodStart: string;
+  periodEnd: string;
   isLight?: boolean;
   onDeleteMovement: (id: string) => void;
   onUpdateMovement: (m: Movement) => void;
@@ -15,10 +18,14 @@ interface MovementsPanelProps {
 export function MovementsPanel({
   movements,
   categories,
+  periodStart,
+  periodEnd,
   isLight,
   onDeleteMovement,
   onUpdateMovement,
 }: MovementsPanelProps) {
+  const [query, setQuery] = useState("");
+  const isSearching = query.trim() !== "";
   const [filterKind, setFilterKind] = useState<"all" | MovementKind>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
@@ -33,7 +40,10 @@ export function MovementsPanel({
     }));
   };
 
-  const filtered = movements.filter((m) => {
+  // Sin búsqueda: solo el período. Con búsqueda: todo el historial.
+  const scoped = filterMovements({ movements, categories, query, periodStart, periodEnd });
+
+  const filtered = scoped.filter((m) => {
     if (filterKind !== "all" && m.kind !== filterKind) return false;
     if (filterCategory !== "all" && m.categoryId !== filterCategory) return false;
     return true;
@@ -115,6 +125,40 @@ export function MovementsPanel({
           <Filter size={13} />
           <span>Filtros</span>
         </div>
+
+        {/* Buscador: nota, categoría o monto, en todo el historial */}
+        <div
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border ${
+            isLight ? "bg-zinc-100 border-zinc-200" : "bg-zinc-900 border-zinc-800"
+          }`}
+        >
+          <Search size={13} className="opacity-50 shrink-0" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nota, categoría o monto…"
+            aria-label="Buscar movimientos"
+            className={`flex-1 min-w-0 bg-transparent text-xs font-bold focus:outline-none ${
+              isLight ? "text-black placeholder:text-zinc-400" : "text-white placeholder:text-zinc-500"
+            }`}
+          />
+          {isSearching && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Limpiar búsqueda"
+              className="p-0.5 rounded-md opacity-60 hover:opacity-100 cursor-pointer"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <span className="text-[10px] font-bold opacity-50">
+          {isSearching
+            ? `${filtered.length} ${filtered.length === 1 ? "resultado" : "resultados"} en todo el historial`
+            : `Mostrando el período actual (${formatShortDate(periodStart)} al ${formatShortDate(periodEnd)})`}
+        </span>
 
         <div className="flex items-center gap-1.5">
           {(["all", "expense", "income"] as const).map((k) => (
@@ -244,7 +288,7 @@ export function MovementsPanel({
           </div>
         ) : (
           groups.map(({ category: cat, items, total }) => {
-            const isExpanded = !!expandedCategories[cat.id];
+            const isExpanded = isSearching || !!expandedCategories[cat.id];
 
             return (
               <div

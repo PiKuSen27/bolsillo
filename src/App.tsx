@@ -837,6 +837,8 @@ export default function App() {
           <MovementsPanel
             movements={movements}
             categories={settings.categories}
+            periodStart={periodInfo.startDate}
+            periodEnd={periodInfo.endDate}
             isLight={isLight}
             onDeleteMovement={handleDeleteMovement}
             onUpdateMovement={handleUpdateMovement}
