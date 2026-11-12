@@ -152,10 +152,12 @@ export function processAutoAddRules(params: {
     let updatedRec = { ...rec };
     let hasChanged = false;
 
-    // Check months: from lastAppliedDate + 1 month, or starting from today's month if newly created
+    // Desde el mes siguiente al último cobro; si nunca se cobró, desde el mes en que se creó
+    // (si la app estuvo cerrada desde entonces, los meses atrasados se cobran igual)
+    const firstMonth = parseLocalDate(rec.createdAt ?? todayStr);
     const startCheckDate = rec.lastAppliedDate
       ? addMonths(parseLocalDate(rec.lastAppliedDate), 1)
-      : new Date(today.getFullYear(), today.getMonth(), 1);
+      : new Date(firstMonth.getFullYear(), firstMonth.getMonth(), 1);
 
     // Iterating months up to today's month
     let curYear = startCheckDate.getFullYear();
