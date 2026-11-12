@@ -32,7 +32,7 @@ rustup default stable
 ```bash
 pnpm install      # instala las dependencias de Node
 pnpm tauri dev    # abre la app de escritorio con recarga automática
-pnpm test         # corre los 85 tests de lógica
+pnpm test         # corre los 93 tests
 ```
 
 ## Compilar e instalar en Linux

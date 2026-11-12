@@ -44,7 +44,7 @@
 | Fechas | **date-fns 4** | Períodos, meses cortos, formato en español |
 | PWA | **vite-plugin-pwa 2** (Workbox) | Instalable y offline en celular |
 | Íconos | **lucide-react** | Iconos de la UI |
-| Tests | **Vitest 5** | 85 tests de lógica pura (sin DOM) |
+| Tests | **Vitest 5** | 93 tests (lógica pura + backup ida y vuelta sobre IndexedDB simulada con `fake-indexeddb`) |
 | Build | **Vite 8**, pnpm | |
 
 ---
@@ -79,7 +79,7 @@ Bolsillo/
 │   │   ├── OnboardingPanel.tsx     # Primer uso
 │   │   ├── SettingsPanel.tsx       # Tema, ingresos, recordatorios, categorías, backup, créditos
 │   │   └── WorkDaysPanel.tsx       # Modo variable: días del rango, montos, días libres, cambio de tarifa
-│   ├── lib/                    # Lógica pura, cada archivo tiene su .test.ts
+│   ├── lib/                    # Lógica pura, cada archivo tiene su .test.ts (salary-flow.test.ts: sueldo fijo de punta a punta)
 │   │   ├── balance.ts              # Disponible = ingreso base + ingresos del período − gastos del período
 │   │   ├── backup.ts               # Validación completa del JSON de respaldo
 │   │   ├── calc.ts                 # Evaluador de la calculadora (sin eval), tope MAX_AMOUNT
@@ -94,7 +94,8 @@ Bolsillo/
 │   │   └── workdays.ts             # Modo variable: tarifa por fecha, valor de cada día, suma del rango
 │   ├── db/
 │   │   ├── db.ts                   # Esquema Dexie (versiones 1→5) y tablas
-│   │   └── repo.ts                 # Ajustes, días, deudas, exportar/importar
+│   │   ├── repo.ts                 # Ajustes, días, deudas, exportar/importar
+│   │   └── backup-roundtrip.test.ts # Exportar → base vacía → importar = idéntica; archivo roto no toca nada
 │   ├── platform/index.ts       # isTauri(), ventana, tray, notificaciones, cerrar-al-tray
 │   └── types/index.ts          # Tipos de datos
 ├── src-tauri/
@@ -200,7 +201,7 @@ Bolsillo/
 
 | Comando | Qué hace |
 | :--- | :--- |
-| `pnpm test` | Corre los 85 tests de lógica (sin abrir ventanas). |
+| `pnpm test` | Corre los 93 tests (sin abrir ventanas). |
 | `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
