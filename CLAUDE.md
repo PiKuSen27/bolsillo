@@ -188,6 +188,11 @@ Bolsillo/
 
 ### J. Celular y PWA
 * Ancho `< 480 px` (celular real; ya no hay simulador en el escritorio) → layout vertical con `MobileDayStrip` y barra inferior.
+* **Zonas seguras**: `viewport-fit=cover` en `index.html`; variables `--safe-top` / `--safe-bottom` en `index.css` (`env(safe-area-inset-*)`, 0 en escritorio). Usar `pt-safe`, `pb-safe` o `calc(... + var(--safe-*))`; nunca pegar contenido al borde de arriba o de abajo. La barra de estado usa `apple-mobile-web-app-status-bar-style: default` y `theme-color`, que `App.tsx` cambia según el tema (solo en la PWA).
+* La calculadora en celular usa `fill`: el teclado crece para llenar el alto (filas `minmax(2rem,1fr)`), anclada abajo. En pantallas bajas (≤ 700 px de alto y < 480 de ancho) el Hero se compacta con variantes `[@media(max-width:479px)_and_(max-height:700px)]` (no afectan al escritorio, que mide 540 de ancho).
+* Los `Sheet` se cierran arrastrando hacia abajo desde el asa o el título (`useDragControls`); al enfocar un campo se hace `scrollIntoView` para que el teclado no lo tape.
+* En Ajustes, "Minimizar a la bandeja", "Iniciar con la PC" y "Tamaño de ventana" solo aparecen en escritorio (`isTauri()`).
+* Bienvenida: los montos arrancan vacíos con un `$` de guía (no seleccionable) y "Siguiente" queda bloqueado hasta escribirlos.
 * `vite-plugin-pwa` precachea todo `dist/` (manifest, service worker `sw.js`, fallback a `index.html`). Ícono maskable para Android.
 
 ### K. Seguridad
