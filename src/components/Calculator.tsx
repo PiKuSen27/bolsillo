@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Delete, MessageSquare, Calendar as CalendarIcon } from "lucide-react";
+import { Delete, MessageSquare } from "lucide-react";
+import { DateField } from "./DateField";
 import { Category } from "../types";
 import { evaluateCalcExpression } from "../lib/calc";
 import { shouldCalculatorHandleKey } from "../lib/keyboard";
 import { MAX_AMOUNT } from "../lib/constants";
-import { formatCurrency, formatExpressionWithDots, formatShortDate } from "../lib/format";
+import { formatCurrency, formatExpressionWithDots } from "../lib/format";
 
 interface CalculatorProps {
   categories: Category[];
@@ -35,7 +36,6 @@ export function Calculator({
   );
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [note, setNote] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const noteInputRef = useRef<HTMLInputElement>(null);
 
   // Evaluate expression preview if valid
@@ -197,18 +197,7 @@ export function Calculator({
       >
         <div className="flex items-center justify-between text-[11px] font-bold">
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              className={`flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                isLight
-                  ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
-                  : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
-              }`}
-            >
-              <CalendarIcon size={11} />
-              <span>{formatShortDate(selectedDateStr)}</span>
-            </button>
+            <DateField ariaLabel="Fecha del movimiento" value={selectedDateStr} onChange={onChangeDate} isLight={isLight} compact />
 
             <button
               type="button"
@@ -241,25 +230,6 @@ export function Calculator({
             </span>
           )}
         </div>
-
-        {/* Date picker popover */}
-        {showDatePicker && (
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="date"
-              value={selectedDateStr}
-              onChange={(e) => {
-                if (e.target.value) onChangeDate(e.target.value);
-                setShowDatePicker(false);
-              }}
-              className={`text-xs font-bold rounded px-2 py-0.5 border focus:outline-none ${
-                isLight
-                  ? "bg-zinc-100 text-black border-zinc-300"
-                  : "bg-zinc-900 text-white border-zinc-700"
-              }`}
-            />
-          </div>
-        )}
 
         {/* Note input inline with spring animation */}
         <AnimatePresence>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CalendarDays, Coffee, RotateCcw, TrendingUp } from "lucide-react";
 import { Settings, WorkDay } from "../types";
+import { DateField } from "../components/DateField";
 import { listRangeDays, calculateVariableIncome, getRateForDate } from "../lib/workdays";
 import {
   formatCurrency,
@@ -131,13 +132,7 @@ export function WorkDaysPanel({
               Los días anteriores quedan como estaban. Los días modificados a mano conservan su monto.
             </span>
             <div className="grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                value={rateFrom}
-                onChange={(e) => setRateFrom(e.target.value)}
-                className={inputCls}
-                aria-label="Desde la fecha"
-              />
+              <DateField ariaLabel="Desde la fecha" value={rateFrom} onChange={setRateFrom} isLight={isLight} />
               <input
                 type="text"
                 inputMode="numeric"

@@ -3,6 +3,8 @@ import { Plus, Trash2, CheckCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Category, Installment, Recurring } from "../types";
 import { formatCurrency, formatAmountInput, formatLocalDate } from "../lib/format";
+import { Select } from "../components/Select";
+import { DateField } from "../components/DateField";
 
 interface FixedAndInstallmentsPanelProps {
   recurrings: Recurring[];
@@ -49,22 +51,13 @@ export function FixedAndInstallmentsPanel({
   const [instCategory, setInstCategory] = useState(() => defaultCategory("otros"));
 
   const categorySelect = (value: string, onChange: (id: string) => void) => (
-    <select
-      aria-label="Categoría"
+    <Select
+      ariaLabel="Categoría"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer ${
-        isLight
-          ? "bg-zinc-100 border-zinc-300 text-black"
-          : "bg-zinc-900 border-zinc-700 text-white"
-      }`}
-    >
-      {categories.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.name}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      isLight={isLight}
+      options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+    />
   );
   const [instAutoAdd, setInstAutoAdd] = useState(true);
 
@@ -316,15 +309,12 @@ export function FixedAndInstallmentsPanel({
               {categorySelect(instCategory, setInstCategory)}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold opacity-70">Primer vencimiento:</span>
-                <input
-                  type="date"
+                <DateField
+                  ariaLabel="Primer vencimiento"
                   value={instFirstDate}
-                  onChange={(e) => setInstFirstDate(e.target.value)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border focus:outline-none ${
-                    isLight
-                      ? "bg-zinc-100 border-zinc-300 text-black"
-                      : "bg-zinc-900 border-zinc-700 text-white"
-                  }`}
+                  onChange={setInstFirstDate}
+                  isLight={isLight}
+                  className="flex-1"
                 />
               </div>
 

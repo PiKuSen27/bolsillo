@@ -6,6 +6,7 @@ import { calculateVariableIncome } from "../lib/workdays";
 import { DEFAULT_SETTINGS } from "../lib/constants";
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { IncomeMode, Settings } from "../types";
+import { DateField } from "../components/DateField";
 import {
   formatCurrency,
   formatLocalDate,
@@ -196,24 +197,14 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                         <Calendar size={11} />
                         <span>2. Fecha de inicio</span>
                       </label>
-                      <input
-                        type="date"
-                        value={dailyRangeStart}
-                        onChange={(e) => setDailyRangeStart(e.target.value)}
-                        className="w-full bg-[#111113] text-white font-bold text-xs px-2.5 py-1.5 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
-                      />
+                      <DateField ariaLabel="Fecha de inicio" value={dailyRangeStart} onChange={setDailyRangeStart} />
                     </div>
                     <div>
                       <label className="text-[10px] font-extrabold text-zinc-400 block mb-1 flex items-center gap-1">
                         <Calendar size={11} />
                         <span>3. Fecha fin / cobro</span>
                       </label>
-                      <input
-                        type="date"
-                        value={dailyRangeEnd}
-                        onChange={(e) => setDailyRangeEnd(e.target.value)}
-                        className="w-full bg-[#111113] text-white font-bold text-xs px-2.5 py-1.5 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
-                      />
+                      <DateField ariaLabel="Fecha fin / cobro" value={dailyRangeEnd} onChange={setDailyRangeEnd} />
                     </div>
                   </div>
 

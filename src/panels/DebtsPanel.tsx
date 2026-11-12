@@ -3,6 +3,7 @@ import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight } from "lucide-
 import confetti from "canvas-confetti";
 import { Debt, DebtKind } from "../types";
 import { formatCurrency, formatShortDate, formatAmountInput } from "../lib/format";
+import { DateField } from "../components/DateField";
 
 interface DebtsPanelProps {
   debts: Debt[];
@@ -194,16 +195,7 @@ export function DebtsPanel({
               <label className="text-[10px] font-bold block mb-0.5 opacity-60">
                 Fecha límite (opcional)
               </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className={`w-full text-xs font-bold px-2 py-1 rounded-lg border focus:outline-none ${
-                  isLight
-                    ? "bg-zinc-100 border-zinc-300 text-black"
-                    : "bg-zinc-900 border-zinc-700 text-white"
-                }`}
-              />
+              <DateField ariaLabel="Fecha límite" value={dueDate} onChange={setDueDate} isLight={isLight} />
             </div>
             <div>
               <label className="text-[10px] font-bold block mb-0.5 opacity-60">

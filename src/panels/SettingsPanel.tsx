@@ -15,6 +15,7 @@ import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
 import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
+import { DateField } from "../components/DateField";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
@@ -343,32 +344,14 @@ export function SettingsPanel({
                 <label className="text-[10px] font-black block mb-1 opacity-70">
                   Fecha de inicio
                 </label>
-                <input
-                  type="date"
-                  value={dailyRangeStart}
-                  onChange={(e) => setDailyRangeStart(e.target.value)}
-                  className={`w-full text-xs font-bold px-2.5 py-1.5 rounded-xl border focus:outline-none ${
-                    isLight
-                      ? "bg-zinc-100 border-zinc-300 text-black"
-                      : "bg-zinc-900 border-zinc-700 text-white"
-                  }`}
-                />
+                <DateField ariaLabel="Fecha de inicio" value={dailyRangeStart} onChange={setDailyRangeStart} isLight={isLight} />
               </div>
 
               <div>
                 <label className="text-[10px] font-black block mb-1 opacity-70">
                   Fecha de fin / límite
                 </label>
-                <input
-                  type="date"
-                  value={dailyRangeEnd}
-                  onChange={(e) => setDailyRangeEnd(e.target.value)}
-                  className={`w-full text-xs font-bold px-2.5 py-1.5 rounded-xl border focus:outline-none ${
-                    isLight
-                      ? "bg-zinc-100 border-zinc-300 text-black"
-                      : "bg-zinc-900 border-zinc-700 text-white"
-                  }`}
-                />
+                <DateField ariaLabel="Fecha de fin" value={dailyRangeEnd} onChange={setDailyRangeEnd} isLight={isLight} />
               </div>
             </div>
 
