@@ -25,7 +25,7 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
         if (e.key === "Enter" || e.key === " ") onOpenMovements();
       }}
       // Sin escala ni cambio de fondo al tocar: en WebKitGTK el transform dejaba el texto borroso
-      className={`w-full rounded-2xl p-3.5 flex flex-col gap-2 cursor-pointer relative select-none border ${
+      className={`w-full rounded-2xl p-3.5 flex flex-col gap-2 [@media(max-width:479px)_and_(max-height:700px)]:p-3 [@media(max-width:479px)_and_(max-height:700px)]:gap-1 cursor-pointer relative select-none border ${
         isLight
           ? "bg-[#F4F4F5] border-[#E4E4E7] text-black shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]"
           : "bg-[#0D0D0E] border-[#262626] text-white"
@@ -94,7 +94,7 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
       <div className="flex items-baseline justify-between">
         <AnimatedNumber
           value={summary.available}
-          className={`text-3xl font-extrabold tracking-tight ${
+          className={`text-3xl [@media(max-width:479px)_and_(max-height:700px)]:text-2xl font-extrabold tracking-tight ${
             !isPositive
               ? isLight
                 ? "text-[#DC2626]"

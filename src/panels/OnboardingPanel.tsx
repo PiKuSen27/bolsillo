@@ -75,7 +75,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
   };
 
   return (
-    <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 rounded-[18px] bg-[#000000] border border-[#262626] p-6 pt-[calc(1.5rem+var(--safe-top))] pb-[calc(1.5rem+var(--safe-bottom))] flex flex-col justify-between text-white select-none overflow-y-auto">
+    <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 rounded-[18px] max-[479px]:rounded-none bg-[#000000] border border-[#262626] max-[479px]:border-0 p-6 pt-[calc(1.5rem+var(--safe-top))] pb-[calc(1.5rem+var(--safe-bottom))] flex flex-col justify-between text-white select-none overflow-y-auto">
       {/* Top Header */}
       <div className="flex items-center justify-between shrink-0 pb-2">
         <div className="flex items-center gap-2 text-xs font-black text-[#22C55E]">
@@ -218,7 +218,8 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                     </div>
                   </div>
 
-                  {/* Proyección en vivo */}
+                  {/* Proyección en vivo (solo cuando ya hay tarifa) */}
+                  {parsedRate > 0 && (
                   <div className="p-3 rounded-xl bg-[#141416] border border-zinc-800 flex flex-col gap-1 mt-1">
                     <span className="text-[10px] uppercase font-black text-zinc-400">
                       Proyección estimada
@@ -229,6 +230,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                       <span className="text-[#22C55E]">Vas a juntar {formatCurrency(projectedTotal)}</span>
                     </p>
                   </div>
+                  )}
                 </div>
               )}
             </motion.div>

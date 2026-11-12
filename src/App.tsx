@@ -644,7 +644,7 @@ export default function App() {
               />
 
               {/* Calculadora abajo, en la zona del pulgar: el teclado crece hasta llenar el alto */}
-              <div className="flex-1 min-h-[330px] max-h-[540px] mt-auto flex">
+              <div className="flex-1 min-h-[328px] max-h-[540px] mt-auto flex">
                 <Calculator
                   fill
                   categories={settings.categories}
