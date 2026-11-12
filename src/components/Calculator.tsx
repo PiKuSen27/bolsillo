@@ -21,6 +21,8 @@ interface CalculatorProps {
     note?: string;
     date: string;
   }) => void;
+  /** Celular: el teclado crece para llenar el alto disponible (sin huecos) */
+  fill?: boolean;
 }
 
 export function Calculator({
@@ -29,6 +31,7 @@ export function Calculator({
   onChangeDate,
   isLight,
   onSaveMovement,
+  fill,
 }: CalculatorProps) {
   // Store raw expression without decorative dots
   const [expression, setExpression] = useState("");
@@ -182,7 +185,9 @@ export function Calculator({
 
   return (
     <div
-      className={`flex-1 h-full rounded-2xl p-2 flex flex-col justify-between overflow-hidden select-none border ${
+      className={`flex-1 h-full rounded-2xl p-2 flex flex-col overflow-hidden select-none border ${
+        fill ? "gap-2" : "justify-between"
+      } ${
         isLight
           ? "bg-[#F4F4F5] border-[#E4E4E7] text-black"
           : "bg-[#0D0D0E] border-[#262626] text-white"
@@ -321,7 +326,7 @@ export function Calculator({
       </HScroll>
 
       {/* Numpad Grid with elastic press animation */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className={fill ? "flex-1 min-h-0 grid grid-cols-4 grid-rows-4 gap-1.5" : "grid grid-cols-4 gap-1.5"}>
         {numpadKeys.map((key, idx) => (
           <motion.button
             key={idx}
@@ -332,7 +337,7 @@ export function Calculator({
               if (key.action) key.action();
               else if (key.val) handleInputChar(key.val);
             }}
-            className={`h-9 rounded-xl text-sm font-extrabold flex items-center justify-center transition-colors cursor-pointer border ${
+            className={`${fill ? "h-full min-h-11 text-lg" : "h-9 text-sm"} rounded-xl font-extrabold flex items-center justify-center transition-colors cursor-pointer border ${
               key.isOp
                 ? isLight
                   ? "bg-zinc-200 border-zinc-300 text-zinc-900 hover:bg-zinc-300"
@@ -348,12 +353,12 @@ export function Calculator({
       </div>
 
       {/* Action Buttons: Gasto & Ingreso */}
-      <div className="grid grid-cols-2 gap-2 pt-1">
+      <div className={`grid grid-cols-2 gap-2 ${fill ? "" : "pt-1"}`}>
         <motion.button
           whileTap={{ scale: 0.94 }}
           type="button"
           onClick={() => handleSave("expense")}
-          className={`h-9 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer ${
+          className={`${fill ? "h-12 text-sm" : "h-9 text-xs"} rounded-xl font-extrabold flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer ${
             isLight
               ? "bg-[#DC2626] hover:bg-[#B91C1C] text-white shadow-[#DC2626]/20"
               : "bg-[#EF4444] hover:bg-[#DC2626] text-white shadow-[#EF4444]/20"
@@ -366,7 +371,7 @@ export function Calculator({
           whileTap={{ scale: 0.94 }}
           type="button"
           onClick={() => handleSave("income")}
-          className={`h-9 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer ${
+          className={`${fill ? "h-12 text-sm" : "h-9 text-xs"} rounded-xl font-extrabold flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer ${
             isLight
               ? "bg-[#16A34A] hover:bg-[#15803D] text-white shadow-[#16A34A]/20"
               : "bg-[#22C55E] hover:bg-[#16A34A] text-black shadow-[#22C55E]/20"

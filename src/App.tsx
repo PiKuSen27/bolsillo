@@ -609,7 +609,7 @@ export default function App() {
         {isMobileLayout ? (
           <div className="flex-1 flex flex-col justify-between overflow-hidden relative">
             {/* Scrollable Mobile Body */}
-            <div className="flex-1 overflow-y-auto scrollbar-none p-3 flex flex-col gap-2">
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none p-3 flex flex-col gap-2">
               {/* Missing Days Banner if any */}
               <BannerMissingDays
                 missingDays={missingDays}
@@ -643,9 +643,10 @@ export default function App() {
                 onUpdateMovement={handleUpdateMovement}
               />
 
-              {/* Full Width Calculator for Thumb typing */}
-              <div className="flex-1 min-h-[300px]">
+              {/* Calculadora abajo, en la zona del pulgar: el teclado crece hasta llenar el alto */}
+              <div className="flex-1 min-h-[330px] max-h-[540px] mt-auto flex">
                 <Calculator
+                  fill
                   categories={settings.categories}
                   selectedDateStr={selectedDateStr}
                   onChangeDate={(date) => setSelectedDateStr(date)}
