@@ -98,12 +98,12 @@ export function WorkDaysPanel({
               Del {formatShortDate(days[0].date)} al {formatShortDate(days[days.length - 1].date)}
             </span>
           </div>
-          <span className="text-[11px] font-bold opacity-60">
+          <span className="text-[11px] font-bold opacity-75">
             {workedCount} {workedCount === 1 ? "día trabajado" : "días trabajados"}
           </span>
         </div>
         <div className="flex items-baseline justify-between">
-          <span className="text-[11px] font-bold opacity-60">Ingreso del rango</span>
+          <span className="text-[11px] font-bold opacity-75">Ingreso del rango</span>
           <span
             className={`text-lg font-extrabold tabular-numbers ${
               isLight ? "text-[#16A34A]" : "text-[#22C55E]"
@@ -113,7 +113,7 @@ export function WorkDaysPanel({
           </span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-bold">
-          <span className="opacity-60">
+          <span className="opacity-75">
             Tarifa hoy: {formatCurrency(getRateForDate(todayStr, settings))}
           </span>
           <button
@@ -152,7 +152,7 @@ export function WorkDaysPanel({
       </div>
 
       {/* Leyenda */}
-      <div className="flex items-center gap-3 text-[10px] font-bold opacity-60 px-1">
+      <div className="flex items-center gap-3 text-[10px] font-bold opacity-75 px-1">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-[#D97706]" /> Monto distinto a la tarifa
         </span>
@@ -180,7 +180,7 @@ export function WorkDaysPanel({
                   : d.free
                   ? isLight
                     ? "border-dashed border-zinc-300 bg-zinc-50 opacity-70"
-                    : "border-dashed border-zinc-700 bg-[#050506] opacity-60"
+                    : "border-dashed border-zinc-700 bg-[#050506] opacity-75"
                   : isLight
                   ? "border-zinc-200 bg-white"
                   : "border-[#222224] bg-[#0A0A0C]"
@@ -195,13 +195,13 @@ export function WorkDaysPanel({
                   <span className={isToday ? (isLight ? "text-[#16A34A]" : "text-[#22C55E]") : ""}>
                     {formatDayShortWithNum(d.date)}
                   </span>
-                  {isToday && <span className="text-[9px] uppercase opacity-60">Hoy</span>}
-                  {d.free && <Coffee size={12} className="opacity-60" />}
+                  {isToday && <span className="text-[9px] uppercase opacity-75">Hoy</span>}
+                  {d.free && <Coffee size={12} className="opacity-75" />}
                   {d.modified && <span className="w-2 h-2 rounded-full bg-[#D97706]" />}
                 </div>
                 <span
                   className={`text-xs font-extrabold tabular-numbers ${
-                    d.free ? "line-through opacity-50" : d.modified ? "text-[#D97706]" : ""
+                    d.free ? "line-through opacity-70" : d.modified ? "text-[#D97706]" : ""
                   }`}
                 >
                   {d.free ? "Día libre" : formatCurrency(d.value)}

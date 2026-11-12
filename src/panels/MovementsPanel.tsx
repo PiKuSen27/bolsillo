@@ -122,7 +122,7 @@ export function MovementsPanel({
           isLight ? "bg-white border-zinc-200" : "bg-[#0A0A0C] border-[#222224]"
         }`}
       >
-        <div className="flex items-center gap-1.5 text-xs font-extrabold opacity-60">
+        <div className="flex items-center gap-1.5 text-xs font-extrabold opacity-75">
           <Filter size={13} />
           <span>Filtros</span>
         </div>
@@ -133,7 +133,7 @@ export function MovementsPanel({
             isLight ? "bg-zinc-100 border-zinc-200" : "bg-zinc-900 border-zinc-800"
           }`}
         >
-          <Search size={13} className="opacity-50 shrink-0" />
+          <Search size={13} className="opacity-70 shrink-0" />
           <input
             type="search"
             value={query}
@@ -149,13 +149,13 @@ export function MovementsPanel({
               type="button"
               onClick={() => setQuery("")}
               aria-label="Limpiar búsqueda"
-              className="p-0.5 rounded-md opacity-60 hover:opacity-100 cursor-pointer"
+              className="p-0.5 rounded-md opacity-75 hover:opacity-100 cursor-pointer"
             >
               <X size={13} />
             </button>
           )}
         </div>
-        <span className="text-[10px] font-bold opacity-50">
+        <span className="text-[10px] font-bold opacity-70">
           {isSearching
             ? `${filtered.length} ${filtered.length === 1 ? "resultado" : "resultados"} en todo el historial`
             : `Mostrando el período actual (${formatShortDate(periodStart)} al ${formatShortDate(periodEnd)})`}
@@ -268,7 +268,7 @@ export function MovementsPanel({
                   style={{ backgroundColor: g.category.color }}
                 />
                 <span className="truncate max-w-[90px]">{g.category.name}</span>
-                <span className="opacity-60 tabular-numbers">
+                <span className="opacity-75 tabular-numbers">
                   {Math.round((g.total / totalPeriodExpenses) * 100)}%
                 </span>
               </div>
@@ -394,7 +394,7 @@ export function MovementsPanel({
                                   <button
                                     type="button"
                                     onClick={() => setEditingId(null)}
-                                    className="px-2.5 py-0.5 rounded-lg text-xs font-bold opacity-60 hover:opacity-100 cursor-pointer"
+                                    className="px-2.5 py-0.5 rounded-lg text-xs font-bold opacity-75 hover:opacity-100 cursor-pointer"
                                   >
                                     Cancelar
                                   </button>
@@ -414,10 +414,10 @@ export function MovementsPanel({
                             ) : (
                               <div className="flex items-center justify-between">
                                 <div className="flex flex-col text-left overflow-hidden mr-2">
-                                  <span className="text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 truncate max-w-[200px]">
+                                  <span className={`text-[11px] font-extrabold truncate max-w-[200px] ${isLight ? "text-zinc-800" : "text-zinc-100"}`}>
                                     {m.note || "Sin nota"}
                                   </span>
-                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-400">
+                                  <div className={`flex items-center gap-1.5 text-[9px] font-bold ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
                                     <span>{formatShortDate(m.date)}</span>
                                     {m.source !== "manual" && (
                                       <>
@@ -442,7 +442,7 @@ export function MovementsPanel({
                                     <button
                                       type="button"
                                       onClick={(e) => handleStartEdit(m, e)}
-                                      className="p-1 rounded-md text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-500/10 transition-colors cursor-pointer"
+                                      className={`p-1 rounded-md hover:bg-zinc-500/10 transition-colors cursor-pointer ${isLight ? "text-zinc-500 hover:text-black" : "text-zinc-400 hover:text-white"}`}
                                       title="Editar"
                                     >
                                       <Edit2 size={12} />

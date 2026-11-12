@@ -99,7 +99,7 @@ export function CalendarPanel({
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 text-center">
         {weekDays.map((wd, i) => (
-          <span key={i} className="text-[10px] font-extrabold opacity-50">
+          <span key={i} className="text-[10px] font-extrabold opacity-70">
             {wd}
           </span>
         ))}
@@ -193,7 +193,7 @@ export function CalendarPanel({
         </div>
 
         {selectedMovements.length === 0 ? (
-          <div className="text-[11px] font-semibold opacity-60 py-1">
+          <div className="text-[11px] font-semibold opacity-75 py-1">
             {isSelectedLogged
               ? "Día marcado como registrado sin gastos"
               : "Sin movimientos registrados para esta fecha"}

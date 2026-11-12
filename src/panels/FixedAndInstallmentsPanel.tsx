@@ -363,7 +363,7 @@ export function FixedAndInstallmentsPanel({
               >
                 <div className="flex flex-col">
                   <span className="text-xs font-extrabold">{r.name}</span>
-                  <span className="text-[11px] font-semibold opacity-60">
+                  <span className="text-[11px] font-semibold opacity-75">
                     Vence los días {r.dueDay} · {r.autoAdd ? "Automático" : "Manual"}
                   </span>
                 </div>
@@ -375,7 +375,7 @@ export function FixedAndInstallmentsPanel({
                   <button
                     type="button"
                     onClick={() => onDeleteRecurring(r.id)}
-                    className="p-1 opacity-40 hover:opacity-100 hover:text-red-500 transition-colors"
+                    className="p-1 opacity-75 hover:opacity-100 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -411,7 +411,7 @@ export function FixedAndInstallmentsPanel({
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="text-xs font-extrabold">{inst.name}</span>
-                    <span className="text-[11px] font-semibold opacity-60">
+                    <span className="text-[11px] font-semibold opacity-75">
                       Total: {formatCurrency(inst.totalAmount)} ({inst.installmentsCount}{" "}
                       cuotas de {formatCurrency(inst.installmentAmount)}{inst.totalAmount !== inst.installmentAmount * inst.installmentsCount ? ", la última ajusta el redondeo" : ""})
                     </span>
@@ -424,7 +424,7 @@ export function FixedAndInstallmentsPanel({
                     <button
                       type="button"
                       onClick={() => onDeleteInstallment(inst.id)}
-                      className="p-1 opacity-40 hover:opacity-100 hover:text-red-500 transition-colors"
+                      className="p-1 opacity-75 hover:opacity-100 hover:text-red-500 transition-colors"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -462,7 +462,7 @@ export function FixedAndInstallmentsPanel({
                       <span>Pagar cuota {inst.paidCount + 1}</span>
                     </button>
                   )}
-                  <span className="opacity-60 text-[10px]">
+                  <span className="opacity-75 text-[10px]">
                     {inst.autoAdd ? "Auto-anotado" : "Manual"}
                   </span>
                 </div>

@@ -168,7 +168,7 @@ export function DayStrip({
                   {item.work && (item.work.free || item.work.modified) && (
                     <span
                       className={`text-[9px] font-extrabold ${
-                        item.work.free ? "line-through opacity-60" : "text-[#D97706]"
+                        item.work.free ? "line-through opacity-75" : "text-[#D97706]"
                       }`}
                       title={item.work.free ? "Día libre" : "Monto distinto a la tarifa"}
                     >
@@ -261,7 +261,7 @@ export function DayStrip({
             }`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+            <div className={`flex items-center justify-between pb-3 border-b ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
               <div className="flex items-center gap-2">
                 <CalendarDays size={18} className="text-zinc-400" />
                 <h3 className="text-sm font-extrabold">Historial de los últimos 14 días</h3>
@@ -331,7 +331,7 @@ export function DayStrip({
 
                     <div className="flex items-center gap-2">
                       {dayExpenses > 0 && (
-                        <span className="text-xs font-extrabold text-[#DC2626] dark:text-[#EF4444]">
+                        <span className={`text-xs font-extrabold ${isLight ? "text-[#DC2626]" : "text-[#EF4444]"}`}>
                           -$ {dayExpenses.toLocaleString("es-AR")}
                         </span>
                       )}

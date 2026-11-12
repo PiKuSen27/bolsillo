@@ -197,7 +197,7 @@ export function SettingsPanel({
       >
         <div className="flex flex-col">
           <span className="text-sm">Tema Visual</span>
-          <span className="text-[11px] font-bold opacity-60">
+          <span className="text-[11px] font-bold opacity-75">
             {settings.theme === "dark"
               ? "Negro (#000000) con bordes finos"
               : "Blanco (#FFFFFF) con bordes finos"}
@@ -368,7 +368,7 @@ export function SettingsPanel({
               <span className={isLight ? "text-[#16A34A]" : "text-[#22C55E]"}>
                 {formatCurrency(variableTotalProjected)} aprox.
               </span>
-              <span className="block text-[10px] font-bold opacity-60 mt-0.5">
+              <span className="block text-[10px] font-bold opacity-75 mt-0.5">
                 Lunes a sábado a la tarifa, domingos libres. Guardá y después editá cada día.
               </span>
             </div>
@@ -473,7 +473,7 @@ export function SettingsPanel({
             </p>
           )}
           {closeToTray && trayAvailable && (
-            <p className="text-[10px] font-bold opacity-60 pl-0.5">
+            <p className="text-[10px] font-bold opacity-75 pl-0.5">
               Si no ves el ícono en la barra, abrí Bolsillo de nuevo desde el menú y la ventana reaparece.
             </p>
           )}
@@ -591,7 +591,7 @@ export function SettingsPanel({
         <span className="text-xs font-black uppercase opacity-80">
           Copia de Seguridad (JSON)
         </span>
-        <p className="text-[11px] font-bold opacity-60">
+        <p className="text-[11px] font-bold opacity-75">
           Guardá tus datos o pasalos a tu celular o computadora.
         </p>
 

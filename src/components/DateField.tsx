@@ -82,7 +82,7 @@ export function DateField({
         </div>
         <div className="grid grid-cols-7 gap-0.5 text-center">
           {WEEK.map((w) => (
-            <span key={w} className="text-[9px] font-extrabold opacity-50 py-0.5">
+            <span key={w} className="text-[9px] font-extrabold opacity-70 py-0.5">
               {w}
             </span>
           ))}

@@ -71,7 +71,7 @@ export function Sheet({
                   {title}
                 </h3>
                 {subtitle && (
-                  <p className="text-[11px] font-semibold opacity-60">
+                  <p className="text-[11px] font-semibold opacity-75">
                     {subtitle}
                   </p>
                 )}

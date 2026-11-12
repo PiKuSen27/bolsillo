@@ -235,7 +235,7 @@ export function DayDetailModal({
                           animate={{ rotate: isExpanded ? 180 : 0 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <ChevronDown size={14} className="opacity-60" />
+                          <ChevronDown size={14} className="opacity-75" />
                         </motion.div>
                       </div>
                     </button>
@@ -312,7 +312,7 @@ export function DayDetailModal({
                                     {m.note || cat.name}
                                   </span>
                                   {m.source !== "manual" && (
-                                    <span className="text-[8px] uppercase font-bold opacity-50">
+                                    <span className="text-[8px] uppercase font-bold opacity-70">
                                       {m.source}
                                     </span>
                                   )}

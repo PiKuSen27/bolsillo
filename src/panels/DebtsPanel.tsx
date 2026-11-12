@@ -192,13 +192,13 @@ export function DebtsPanel({
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] font-bold block mb-0.5 opacity-60">
+              <label className="text-[10px] font-bold block mb-0.5 opacity-75">
                 Fecha límite (opcional)
               </label>
               <DateField ariaLabel="Fecha límite" value={dueDate} onChange={setDueDate} isLight={isLight} />
             </div>
             <div>
-              <label className="text-[10px] font-bold block mb-0.5 opacity-60">
+              <label className="text-[10px] font-bold block mb-0.5 opacity-75">
                 Nota adicional (opcional)
               </label>
               <input
@@ -230,7 +230,7 @@ export function DebtsPanel({
 
       {/* Pending debts list */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-extrabold uppercase opacity-60">
+        <span className="text-[11px] font-extrabold uppercase opacity-75">
           Pendientes ({pendingDebts.length})
         </span>
 
@@ -328,14 +328,14 @@ export function DebtsPanel({
       {/* Settled debts history */}
       {settledDebts.length > 0 && (
         <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
-          <span className="text-[11px] font-extrabold uppercase opacity-40">
+          <span className="text-[11px] font-extrabold uppercase opacity-75">
             Saldadas ({settledDebts.length})
           </span>
 
           {settledDebts.map((d) => (
             <div
               key={d.id}
-              className={`p-2 rounded-xl border flex items-center justify-between opacity-60 ${
+              className={`p-2 rounded-xl border flex items-center justify-between opacity-75 ${
                 isLight ? "bg-zinc-100 border-zinc-200" : "bg-[#09090A] border-[#1C1C1E]"
               }`}
             >
@@ -411,7 +411,7 @@ export function DebtsPanel({
               <button
                 type="button"
                 onClick={() => setSettlingDebt(null)}
-                className="text-[10px] font-bold opacity-60 hover:opacity-100 text-center pt-1"
+                className="text-[10px] font-bold opacity-75 hover:opacity-100 text-center pt-1"
               >
                 Cancelar
               </button>

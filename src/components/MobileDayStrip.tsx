@@ -162,7 +162,7 @@ export function MobileDayStrip({
                 : "bg-[#0D0D0E] border-[#262626] text-white"
             }`}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+            <div className={`flex items-center justify-between pb-3 border-b ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
               <span className="text-xs font-black">Historial de 14 días</span>
               <button
                 type="button"
