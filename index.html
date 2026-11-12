@@ -6,7 +6,13 @@
     <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="theme-color" content="#000000" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- viewport-fit=cover: la app usa las zonas seguras del iPhone (notch y rayita de inicio) con env(safe-area-inset-*) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- default: la barra de estado toma el color de theme-color, que la app cambia según el tema -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Bolsillo" />
     <title>Bolsillo</title>
   </head>
   <body class="bg-transparent text-white antialiased">

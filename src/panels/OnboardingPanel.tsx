@@ -70,7 +70,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
   };
 
   return (
-    <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 rounded-[18px] bg-[#000000] border border-[#262626] p-6 flex flex-col justify-between text-white select-none overflow-y-auto">
+    <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 rounded-[18px] bg-[#000000] border border-[#262626] p-6 pt-[calc(1.5rem+var(--safe-top))] pb-[calc(1.5rem+var(--safe-bottom))] flex flex-col justify-between text-white select-none overflow-y-auto">
       {/* Top Header */}
       <div className="flex items-center justify-between shrink-0 pb-2">
         <div className="flex items-center gap-2 text-xs font-black text-[#22C55E]">

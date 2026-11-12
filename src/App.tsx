@@ -154,6 +154,15 @@ export default function App() {
     if (settings) setCloseToTray(settings.closeToTray);
   }, [settings?.closeToTray]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // PWA: la barra de estado del celular y el fondo detrás de la app siguen el tema (en escritorio no se toca)
+  useEffect(() => {
+    if (!settings || isTauri()) return;
+    const color = settings.theme === "light" ? "#FFFFFF" : "#000000";
+    document.documentElement.style.background = color;
+    document.body.style.background = color;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
+  }, [settings?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Tamaño de ventana guardado (Automático = Rust mira el monitor)
   useEffect(() => {
     if (!settings) return;
@@ -515,7 +524,9 @@ export default function App() {
       {/* Main card container with solid color, 18px rounded borders and 1px border */}
       <div
         data-tauri-drag-region
-        className={`w-full h-full rounded-[18px] border relative overflow-hidden flex flex-col transition-colors duration-150 ${
+        className={`w-full h-full relative overflow-hidden flex flex-col transition-colors duration-150 ${
+          isMobileLayout ? "pt-safe" : "rounded-[18px] border"
+        } ${
           isLight
             ? "bg-[#FFFFFF] border-[#E4E4E7] text-black"
             : "bg-[#000000] border-[#262626] text-white"
