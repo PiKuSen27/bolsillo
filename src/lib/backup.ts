@@ -226,8 +226,6 @@ function settings(raw: unknown): Settings {
     dailyRangeStart: dateStr(o.dailyRangeStart, "dailyRangeStart", where, true),
     dailyRangeEnd: dateStr(o.dailyRangeEnd, "dailyRangeEnd", where, true),
     dailyPreviousRange,
-    dailyGoalName: str(o.dailyGoalName, "dailyGoalName", where, { optional: true, max: 100 }),
-    dailyGoalAmount: o.dailyGoalAmount === undefined || o.dailyGoalAmount === null ? undefined : amount(o.dailyGoalAmount, "dailyGoalAmount", where),
     reminderTime: pick(o.reminderTime, d.reminderTime, (v) => {
       const s = str(v, "reminderTime", where, { max: 5 })!;
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(s)) fail(`${where}: "reminderTime" tiene que ser HH:MM`);

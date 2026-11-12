@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, ArrowRight, Check, Calendar, Target } from "lucide-react";
+import { Sparkles, ArrowRight, Check, Calendar } from "lucide-react";
 import confetti from "canvas-confetti";
 import { calculateVariableIncome } from "../lib/workdays";
 import { DEFAULT_SETTINGS } from "../lib/constants";
@@ -28,8 +28,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
   const [dailyRangeEnd, setDailyRangeEnd] = useState(() =>
     formatLocalDate(addDays(new Date(), 20))
   );
-  const [dailyGoalName, setDailyGoalName] = useState("");
-  const [dailyGoalAmount, setDailyGoalAmount] = useState("");
   const [reminderTime, setReminderTime] = useState("21:00");
 
   // Live projection calculations for daily mode
@@ -42,8 +40,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
     { ...DEFAULT_SETTINGS, dailyRate: parsedRate, dailyRangeStart, dailyRangeEnd },
     []
   );
-  const parsedGoal = parseInt(dailyGoalAmount.replace(/\./g, ""), 10) || 0;
-  const goalDiff = projectedTotal - parsedGoal;
 
   const handleNext = () => {
     if (step < 3) {
@@ -66,8 +62,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
         dailyRate: parsedRate || 40000,
         dailyRangeStart,
         dailyRangeEnd,
-        dailyGoalName: dailyGoalName.trim() || undefined,
-        dailyGoalAmount: parsedGoal > 0 ? parsedGoal : undefined,
         reminderTime,
         reminderEnabled: true,
         onboardingDone: true,
@@ -208,36 +202,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-extrabold text-zinc-400 block mb-1 flex items-center gap-1">
-                        <Target size={11} />
-                        <span>4. Objetivo opcional</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={dailyGoalName}
-                        onChange={(e) => setDailyGoalName(e.target.value)}
-                        placeholder="Ej. Pagar la tele"
-                        className="w-full bg-[#111113] text-white font-bold text-xs px-2.5 py-1.5 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-extrabold text-zinc-400 block mb-1">
-                        Monto objetivo ($ ARS)
-                      </label>
-                      <input
-                        type="text"
-                        value={dailyGoalAmount}
-                        onChange={(e) => {
-                          setDailyGoalAmount(formatAmountInput(e.target.value));
-                        }}
-                        placeholder="180.000"
-                        className="w-full bg-[#111113] text-white font-bold text-xs px-2.5 py-1.5 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
-                      />
-                    </div>
-                  </div>
-
                   {/* Proyección en vivo */}
                   <div className="p-3 rounded-xl bg-[#141416] border border-zinc-800 flex flex-col gap-1 mt-1">
                     <span className="text-[10px] uppercase font-black text-zinc-400">
@@ -248,20 +212,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                       {totalDays} días, domingos libres) a ${formatNumberWithDots(parsedRate)} ={" "}
                       <span className="text-[#22C55E]">Vas a juntar {formatCurrency(projectedTotal)}</span>
                     </p>
-                    {parsedGoal > 0 && (
-                      <div className="text-xs font-black mt-0.5">
-                        {goalDiff >= 0 ? (
-                          <span className="text-[#22C55E]">
-                            ✓ Te sobran {formatCurrency(goalDiff)} para {dailyGoalName || "tu objetivo"}
-                          </span>
-                        ) : (
-                          <span className="text-[#EF4444]">
-                            ⚠ Te faltan {formatCurrency(Math.abs(goalDiff))} para{" "}
-                            {dailyGoalName || "tu objetivo"}
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

@@ -33,8 +33,6 @@ export interface Settings {
   dailyRangeStart?: string; // YYYY-MM-DD
   dailyRangeEnd?: string; // YYYY-MM-DD
   dailyPreviousRange?: { startDate: string; endDate: string }; // rango anterior, para el cartel "Empezaste con…"
-  dailyGoalName?: string; // e.g. "Pagar tele"
-  dailyGoalAmount?: number; // e.g. 150000
   reminderTime: string; // "21:00"
   reminderEnabled: boolean;
   dueAlertDays: number; // e.g. 3

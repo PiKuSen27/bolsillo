@@ -89,7 +89,7 @@ Bolsillo/
 │   │   ├── search.ts               # Buscador de movimientos
 │   │   └── workdays.ts             # Modo variable: tarifa por fecha, valor de cada día, suma del rango
 │   ├── db/
-│   │   ├── db.ts                   # Esquema Dexie (versiones 1→3) y tablas
+│   │   ├── db.ts                   # Esquema Dexie (versiones 1→4) y tablas
 │   │   └── repo.ts                 # Ajustes, días, deudas, exportar/importar
 │   ├── platform/index.ts       # isTauri(), ventana, tray, notificaciones, cerrar-al-tray
 │   └── types/index.ts          # Tipos de datos
@@ -105,7 +105,7 @@ Bolsillo/
 └── package.json · vite.config.ts · vitest.config.ts · tsconfig*.json
 ```
 
-**Tablas de Dexie** (`BolsilloDB`, versión 3): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
+**Tablas de Dexie** (`BolsilloDB`, versión 4): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
 
 ---
 
@@ -129,7 +129,7 @@ Bolsillo/
    * `fixedSalary` y día de cobro `payday` (1 a 31).
    * El período va desde el último día de cobro hasta el día anterior al próximo (`calculatePeriod`). Si el mes no tiene ese día, se usa el último día del mes.
 2. **Sueldo Variable por día** (`incomeMode: "daily"`, lógica en `src/lib/workdays.ts`, UI en `WorkDaysPanel.tsx`):
-   * Campos en `Settings`: `dailyRate` (tarifa base), `dailyRangeStart`/`dailyRangeEnd`, `dailyRateChanges[]` (`{ fromDate, rate }`), `dailyPreviousRange` (rango anterior, para el cartel del Hero), meta opcional `dailyGoalName`/`dailyGoalAmount`.
+   * Campos en `Settings`: `dailyRate` (tarifa base), `dailyRangeStart`/`dailyRangeEnd`, `dailyRateChanges[]` (`{ fromDate, rate }`), `dailyPreviousRange` (rango anterior, para el cartel del Hero). Ya no existe el "objetivo opcional".
    * **Todos los días del rango de lunes a sábado valen la tarifa automáticamente.** **Los domingos arrancan como "Día libre" ($ 0).**
    * El usuario puede tocar cualquier día: ponerle un monto propio, marcarlo "Día libre" o volver un día libre (domingo incluido) a trabajado. Eso se guarda en `workDays` (`{ date, worked, amount }`); **solo hay registros para los días tocados a mano**.
    * **Naranja SOLO si el monto quedó distinto de la tarifa de ese día.** Si se edita y queda igual, se borra el registro y no cuenta como modificado. El día libre se ve tachado/punteado, nunca naranja.

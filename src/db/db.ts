@@ -56,6 +56,19 @@ export class BolsilloDatabase extends Dexie {
             if (!Array.isArray(s.dailyRateChanges)) s.dailyRateChanges = [];
           });
       });
+
+    // v4: se quitó el "objetivo opcional" del modo variable (dailyGoalName / dailyGoalAmount).
+    this.version(4)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table("settings")
+          .toCollection()
+          .modify((s: Record<string, unknown>) => {
+            delete s.dailyGoalName;
+            delete s.dailyGoalAmount;
+          });
+      });
   }
 
   async initDefaults(): Promise<Settings> {
