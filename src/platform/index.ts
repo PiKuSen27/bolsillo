@@ -30,6 +30,16 @@ export async function isTrayAvailable(): Promise<boolean> {
   }
 }
 
+/** Tamaño de ventana (solo Tauri): null = automático según el monitor. */
+export async function setWindowZoom(zoom: number | null): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke("set_window_zoom", { zoom });
+  } catch (e) {
+    console.warn("Failed to set window zoom:", e);
+  }
+}
+
 /** Le avisa a Rust si al cerrar la ventana hay que esconderla al tray (true) o cerrar la app (false). */
 export async function setCloseToTray(enable: boolean): Promise<void> {
   if (isTauri()) {

@@ -20,6 +20,7 @@ import {
   sendAppNotification,
   setAppAutostart,
   setCloseToTray,
+  setWindowZoom,
   toggleAlwaysOnTop,
 } from "./platform";
 import {
@@ -30,6 +31,7 @@ import {
   PeriodInfo,
   Recurring,
   Settings,
+  WINDOW_ZOOM_VALUES,
   WorkDay,
 } from "./types";
 import { db } from "./db/db";
@@ -151,6 +153,13 @@ export default function App() {
   useEffect(() => {
     if (settings) setCloseToTray(settings.closeToTray);
   }, [settings?.closeToTray]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tamaño de ventana guardado (Automático = Rust mira el monitor)
+  useEffect(() => {
+    if (!settings) return;
+    const z = settings.windowZoom ?? "auto";
+    setWindowZoom(z === "auto" ? null : WINDOW_ZOOM_VALUES[z]);
+  }, [settings?.windowZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodic date & autoAdd & reminder check
   useEffect(() => {

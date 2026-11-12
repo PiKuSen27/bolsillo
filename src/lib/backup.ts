@@ -238,6 +238,7 @@ function settings(raw: unknown): Settings {
     onboardingDone: bool(o.onboardingDone, "onboardingDone", where, true),
     closeToTray: bool(o.closeToTray, "closeToTray", where, d.closeToTray),
     autostart: bool(o.autostart, "autostart", where, d.autostart),
+    windowZoom: pick(o.windowZoom, d.windowZoom, (v) => oneOf(v, ["auto", "small", "medium", "large"] as const, "windowZoom", where)),
     createdAt: str(o.createdAt, "createdAt", where, { optional: true, max: 40 }) ?? d.createdAt,
   };
 }

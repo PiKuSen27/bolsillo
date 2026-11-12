@@ -17,6 +17,10 @@ export interface Category {
 
 export type IncomeMode = "salary" | "daily";
 
+/** Automático = según el monitor; chico 1,0 · mediano 1,25 · grande 1,5 */
+export type WindowZoom = "auto" | "small" | "medium" | "large";
+export const WINDOW_ZOOM_VALUES: Record<Exclude<WindowZoom, "auto">, number> = { small: 1.0, medium: 1.25, large: 1.5 };
+
 export interface DailyRateChange {
   fromDate: string; // YYYY-MM-DD (inclusive)
   rate: number;
@@ -41,6 +45,7 @@ export interface Settings {
   onboardingDone: boolean;
   closeToTray: boolean;
   autostart: boolean;
+  windowZoom: WindowZoom; // Tamaño de ventana (solo escritorio)
   createdAt: string;
 }
 

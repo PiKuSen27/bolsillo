@@ -33,5 +33,6 @@ export const DEFAULT_SETTINGS: Settings = {
   onboardingDone: false,
   closeToTray: true,
   autostart: false,
+  windowZoom: "auto",
   createdAt: new Date().toISOString(),
 };

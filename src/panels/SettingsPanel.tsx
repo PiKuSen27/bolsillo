@@ -12,7 +12,7 @@ import {
   Check,
 } from "lucide-react";
 import { addDays, differenceInCalendarDays } from "date-fns";
-import { Category, IncomeMode, Settings } from "../types";
+import { Category, IncomeMode, Settings, WindowZoom } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
 import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
 import { DateField } from "../components/DateField";
@@ -229,6 +229,53 @@ export function SettingsPanel({
           )}
         </button>
       </div>
+
+      {/* Tamaño de ventana (solo escritorio) */}
+      {isTauri() && (
+        <div
+          className={`p-3.5 rounded-2xl border flex flex-col gap-2 text-xs font-black ${
+            isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"
+          }`}
+        >
+          <div className="flex flex-col">
+            <span className="text-sm">Tamaño de ventana</span>
+            <span className="text-[11px] font-bold opacity-75">
+              Automático elige el tamaño según tu pantalla.
+            </span>
+          </div>
+          <div
+            className={`p-1 rounded-xl border flex items-center gap-1 ${
+              isLight ? "bg-zinc-100 border-zinc-200" : "bg-black border-[#222224]"
+            }`}
+          >
+            {(
+              [
+                ["auto", "Automático"],
+                ["small", "Chico"],
+                ["medium", "Mediano"],
+                ["large", "Grande"],
+              ] as [WindowZoom, string][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onUpdateSettings({ windowZoom: value })}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  (settings.windowZoom ?? "auto") === value
+                    ? isLight
+                      ? "bg-white text-black shadow-xs"
+                      : "bg-zinc-800 text-white"
+                    : isLight
+                    ? "text-zinc-600 hover:text-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* General Settings Form */}
       <form

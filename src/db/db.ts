@@ -69,6 +69,18 @@ export class BolsilloDatabase extends Dexie {
             delete s.dailyGoalAmount;
           });
       });
+
+    // v5: settings.windowZoom ("Tamaño de ventana", por defecto automático).
+    this.version(5)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table("settings")
+          .toCollection()
+          .modify((s: Settings) => {
+            if (!s.windowZoom) s.windowZoom = "auto";
+          });
+      });
   }
 
   async initDefaults(): Promise<Settings> {

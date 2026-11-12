@@ -93,7 +93,7 @@ Bolsillo/
 │   │   ├── search.ts               # Buscador de movimientos
 │   │   └── workdays.ts             # Modo variable: tarifa por fecha, valor de cada día, suma del rango
 │   ├── db/
-│   │   ├── db.ts                   # Esquema Dexie (versiones 1→4) y tablas
+│   │   ├── db.ts                   # Esquema Dexie (versiones 1→5) y tablas
 │   │   └── repo.ts                 # Ajustes, días, deudas, exportar/importar
 │   ├── platform/index.ts       # isTauri(), ventana, tray, notificaciones, cerrar-al-tray
 │   └── types/index.ts          # Tipos de datos
@@ -109,7 +109,7 @@ Bolsillo/
 └── package.json · vite.config.ts · vitest.config.ts · tsconfig*.json
 ```
 
-**Tablas de Dexie** (`BolsilloDB`, versión 4): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
+**Tablas de Dexie** (`BolsilloDB`, versión 5): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
 
 ---
 
