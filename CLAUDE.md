@@ -44,7 +44,7 @@
 | Fechas | **date-fns 4** | Períodos, meses cortos, formato en español |
 | PWA | **vite-plugin-pwa 2** (Workbox) | Instalable y offline en celular |
 | Íconos | **lucide-react** | Iconos de la UI |
-| Tests | **Vitest 5** | 82 tests de lógica pura (sin DOM) |
+| Tests | **Vitest 5** | 85 tests de lógica pura (sin DOM) |
 | Build | **Vite 8**, pnpm | |
 
 ---
@@ -60,12 +60,16 @@ Bolsillo/
 │   ├── components/
 │   │   ├── AnimatedNumber.tsx      # Monto que "cuenta" hasta el valor (sin animar si el sistema lo pide)
 │   │   ├── BannerMissingDays.tsx   # Aviso "Te falta anotar…"
-│   │   ├── Calculator.tsx          # Teclado, display, categorías, nota, fecha; tope de monto con aviso
-│   │   ├── DayDetailModal.tsx      # Detalle de un día, agrupado por categoría
+│   │   ├── Calculator.tsx          # Teclado, display, chips de categorías (HScroll), nota, fecha (DateField); tope de monto
+│   │   ├── DateField.tsx           # Selector de fecha propio (calendario con el estilo del tema)
+│   │   ├── DayDetailModal.tsx      # Detalle de un día por categoría, con editar y borrar movimientos
 │   │   ├── DayStrip.tsx            # Columna izquierda PC: Hoy + 3 días + "+ Días" (14 días)
-│   │   ├── Hero.tsx                # Disponible, Plata total · Gastos, cartel del período anterior, "Días trabajados"
+│   │   ├── Hero.tsx                # Disponible, Plata total · Gastos, cartel del período anterior, "Días trabajados" (sin efecto al tocar)
+│   │   ├── HScroll.tsx             # Fila de chips con rueda del mouse, arrastre y degradado en el borde
+│   │   ├── Popover.tsx             # Base de los desplegables propios (Select y DateField)
 │   │   ├── MobileDayStrip.tsx      # Tira de días para celular
 │   │   ├── RightColumnWidget.tsx   # Próximos vencimientos y deudas (columna derecha PC)
+│   │   ├── Select.tsx              # Desplegable propio (reemplaza al <select> nativo)
 │   │   └── Sheet.tsx               # Panel deslizante con asa (role="dialog")
 │   ├── panels/
 │   │   ├── CalendarPanel.tsx       # Calendario mensual
@@ -116,7 +120,9 @@ Bolsillo/
 2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en Niri abría a pantalla completa).
 3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
 4. `–` llama al comando `minimize_window` (minimiza y esconde). El tray (click izquierdo o "Abrir Bolsillo") y volver a ejecutar el binario (`single-instance`) hacen `show()` + `set_focus()`.
-5. `×` respeta el ajuste **"Cerrar al tray"** (`set_close_to_tray` → estado en Rust): encendido esconde la ventana y siguen los recordatorios; apagado cierra la app.
+5. `×` respeta el ajuste **"Cerrar al tray"** (`set_close_to_tray` → estado en Rust): encendido esconde la ventana y siguen los recordatorios; apagado cierra la app. **Antes de esconder, Rust consulta por D-Bus (`zbus`) si hay una bandeja registrada** (`org.kde.StatusNotifierWatcher` → `IsStatusNotifierHostRegistered`); si no la hay, cierra de verdad para no dejar una app fantasma, y Ajustes muestra un aviso (`tray_host_available`). Si el ícono no se ve en la barra, volver a ejecutar el binario muestra la ventana (`single-instance`).
+6. **No usar `<select>` ni `<input type="date">` nativos**: en WebKitGTK salen con el tema del sistema (negro sobre el tema Blanco). Usar `Select` y `DateField` de `src/components/`.
+7. **Sin `whileHover`/`whileTap` con escala en tarjetas grandes** (Hero): en WebKitGTK el transform deja el texto borroso.
 
 ### B. Temas y colores
 1. Solo dos temas: **Blanco** (`#FFFFFF`, tarjetas `#F4F4F5`) y **Negro** (`#000000`, tarjetas `#0A0A0C`/`#0D0D0E`). El manifest de la PWA usa `#000000`.
@@ -147,6 +153,10 @@ Bolsillo/
    * **Rango variable vencido**: si hoy es posterior a `periodEnd`, la ventana se estira hasta hoy (`max(periodEnd, hoy)`) para que los gastos nuevos sigan bajando el Disponible (test `Bug #2`).
 
 ### E. Movimientos
+* El encabezado del panel muestra el período como `11 nov – 1 dic` (`formatShortDate`), nunca `2026-11-11`.
+* Desde el detalle de un día (tira de días y calendario del celular) se puede **editar (monto y nota) y borrar** cada movimiento, igual que en el panel.
+* El estado "Registrado" del detalle usa el mismo criterio que la tira (`isDayLogged`): algo anotado a mano o "no gasté nada". Un día con solo cargos automáticos figura "Sin registrar · solo cargos automáticos".
+* En modo variable, la tira de días muestra "Libre" (tachado) o el monto en naranja cuando el día está editado, con los mismos datos que "Días trabajados" (`getDayValue` / `isDayModified`).
 * `MovementsPanel` muestra **solo el período actual**; con texto en el buscador recorre **todo el historial** por nota, nombre de categoría o monto (con o sin puntos), sin distinguir mayúsculas ni acentos (`search.ts`).
 * En `MovementsPanel` y `DayDetailModal` se agrupa por categoría con acordeón: ícono, nombre, cantidad, subtotal y flecha.
 
@@ -161,14 +171,15 @@ Bolsillo/
 * Fijos son **siempre mensuales** (`dueDay` 1–31, en meses cortos cae el último día). Tienen `createdAt`: **un fijo creado después de su vencimiento arranca el mes siguiente**. Si la app estuvo cerrada, se cobra una vez por cada mes atrasado con su fecha real. Ids deterministas (`rec_<id>_<fecha>`) evitan duplicados.
 * Cuotas: `installmentAmount = round(total / cuotas)`; **la última cuota absorbe el redondeo** (`getInstallmentAmount`) para que la suma dé el total exacto.
 * Formularios de fijos y cuotas tienen selector de categoría.
-* Deudas: "Debo plata" / "Me deben plata", tabla `debts`; saldar (opcionalmente creando el movimiento) o borrar.
+* Deudas: pestañas "Todas / Debo plata / Me deben", cada una muestra solo sus deudas (pendientes y saldadas). Al tocar "+ Nueva" parado en una pestaña, la deuda toma ese tipo sin preguntar; el selector "Debo / Me deben" aparece solo en "Todas". Saldar (opcionalmente creando el movimiento) o borrar.
 
 ### H. Recordatorios
 * Recordatorio diario: dispara a `reminderTime` **o en el primer chequeo posterior** del mismo día (si la app estaba cerrada), una sola vez (`remindersSent`). No avisa si ya se anotó algo ese día.
 * Alertas de vencimiento: `dueAlertDays` días antes y el mismo día.
 
 ### I. Backup
-* Exportar genera JSON `version: 2` con todas las tablas menos `remindersSent`.
+* Exportar genera JSON `version: 2` con todas las tablas menos `remindersSent`. **En Tauri el `<a download>` no hace nada**: se usa el comando Rust `save_backup`, que escribe en la carpeta de Descargas (`~/Descargas`, sin pisar archivos) y la app muestra la ruta. En el navegador/PWA sí se descarga. No hace falta ningún permiso extra.
+* "Borrar todos los datos" abre una confirmación propia (portal sobre `document.body`, `z-[100]`) con título "¿Borrar todos los datos?" y botones "Borrar todos los datos" / "Cancelar".
 * Importar pasa por `validateBackup` (versión 1 o 2, máximo 10 MB, fechas `AAAA-MM-DD` reales, montos enteros 0..`MAX_AMOUNT`, enums, ids únicos, campos desconocidos descartados, ajustes completados con los valores por defecto). Antes de reemplazar muestra un resumen y pide confirmación; es todo o nada.
 
 ### J. Celular y PWA
@@ -186,7 +197,7 @@ Bolsillo/
 
 | Comando | Qué hace |
 | :--- | :--- |
-| `pnpm test` | Corre los 82 tests de lógica (sin abrir ventanas). |
+| `pnpm test` | Corre los 85 tests de lógica (sin abrir ventanas). |
 | `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
