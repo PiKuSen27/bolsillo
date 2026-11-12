@@ -21,9 +21,9 @@ interface OnboardingPanelProps {
 export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
   const [step, setStep] = useState(1);
   const [incomeMode, setIncomeMode] = useState<IncomeMode>("salary");
-  const [fixedSalary, setFixedSalary] = useState("700.000");
+  const [fixedSalary, setFixedSalary] = useState("");
   const [payday, setPayday] = useState("1");
-  const [dailyRate, setDailyRate] = useState("40.000");
+  const [dailyRate, setDailyRate] = useState("");
   const [dailyRangeStart, setDailyRangeStart] = useState(() => formatLocalDate(new Date()));
   const [dailyRangeEnd, setDailyRangeEnd] = useState(() =>
     formatLocalDate(addDays(new Date(), 20))
@@ -41,7 +41,12 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
     []
   );
 
+  // Sin monto no se puede seguir (antes había uno de ejemplo cargado)
+  const amountMissing =
+    step === 1 && (incomeMode === "salary" ? !parseInt(fixedSalary.replace(/\./g, ""), 10) : !parsedRate);
+
   const handleNext = () => {
+    if (amountMissing) return;
     if (step < 3) {
       setStep(step + 1);
     } else {
@@ -57,9 +62,9 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
 
       onComplete({
         incomeMode,
-        fixedSalary: parseInt(fixedSalary.replace(/\./g, ""), 10) || 700000,
+        fixedSalary: parseInt(fixedSalary.replace(/\./g, ""), 10) || 0,
         payday: Math.min(31, Math.max(1, parseInt(payday, 10) || 1)),
-        dailyRate: parsedRate || 40000,
+        dailyRate: parsedRate,
         dailyRangeStart,
         dailyRangeEnd,
         reminderTime,
@@ -142,15 +147,21 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                     <label className="text-[10px] font-extrabold text-zinc-400 block mb-1">
                       Sueldo mensual fijo ($ ARS)
                     </label>
-                    <input
-                      type="text"
-                      value={fixedSalary}
-                      onChange={(e) => {
-                        setFixedSalary(formatAmountInput(e.target.value));
-                      }}
-                      placeholder="700.000"
-                      className="w-full bg-[#111113] text-white font-black text-sm px-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
-                    />
+                    <div className="relative">
+                      {/* "$" de guía: no es parte del texto, no se selecciona */}
+                      <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-600 pointer-events-none select-none">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={fixedSalary}
+                        onChange={(e) => {
+                          setFixedSalary(formatAmountInput(e.target.value));
+                        }}
+                        className="w-full bg-[#111113] text-white font-black text-sm pl-7 pr-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -173,15 +184,21 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
                     <label className="text-[10px] font-extrabold text-zinc-400 block mb-1">
                       1. Tarifa por día ($ ARS)
                     </label>
-                    <input
-                      type="text"
-                      value={dailyRate}
-                      onChange={(e) => {
-                        setDailyRate(formatAmountInput(e.target.value));
-                      }}
-                      placeholder="40.000"
-                      className="w-full bg-[#111113] text-white font-black text-sm px-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
-                    />
+                    <div className="relative">
+                      {/* "$" de guía: no es parte del texto, no se selecciona */}
+                      <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-600 pointer-events-none select-none">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={dailyRate}
+                        onChange={(e) => {
+                          setDailyRate(formatAmountInput(e.target.value));
+                        }}
+                        className="w-full bg-[#111113] text-white font-black text-sm pl-7 pr-3 py-2 rounded-xl border border-zinc-800 focus:outline-none focus:border-white"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -283,6 +300,8 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
           >
             Atrás
           </button>
+        ) : amountMissing ? (
+          <span className="text-[11px] font-bold text-zinc-400">Escribí el monto para seguir</span>
         ) : (
           <span />
         )}
@@ -290,7 +309,8 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
         <button
           type="button"
           onClick={handleNext}
-          className="px-5 py-2.5 rounded-xl bg-white text-black font-black text-xs flex items-center gap-2 hover:bg-zinc-200 transition-all cursor-pointer shadow-lg"
+          disabled={amountMissing}
+          className="px-5 py-2.5 rounded-xl bg-white text-black font-black text-xs flex items-center gap-2 hover:bg-zinc-200 transition-all cursor-pointer shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <span>{step === 3 ? "Empezar a usar Bolsillo" : "Siguiente"}</span>
           {step === 3 ? <Check size={14} /> : <ArrowRight size={14} />}
