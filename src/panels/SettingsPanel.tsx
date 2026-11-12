@@ -198,8 +198,8 @@ export function SettingsPanel({
           <span className="text-sm">Tema Visual</span>
           <span className="text-[11px] font-bold opacity-75">
             {settings.theme === "dark"
-              ? "Negro (#000000) con bordes finos"
-              : "Blanco (#FFFFFF) con bordes finos"}
+              ? "Fondo negro y letras blancas"
+              : "Fondo blanco y letras negras"}
           </span>
         </div>
 
@@ -490,6 +490,9 @@ export function SettingsPanel({
             />
           </div>
 
+          {/* Bandeja e inicio automático: solo existen en la app de escritorio */}
+          {isTauri() && (
+          <>
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs font-black">Minimizar a la bandeja al cerrar (Tray)</span>
             <button
@@ -542,6 +545,8 @@ export function SettingsPanel({
               {autostart && <Check size={14} strokeWidth={3.5} />}
             </button>
           </div>
+          </>
+          )}
         </div>
 
         <div className="flex justify-end pt-2">
