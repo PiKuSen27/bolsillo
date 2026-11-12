@@ -3,8 +3,48 @@ use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WindowEvent,
+    AppHandle, LogicalSize, Manager, WebviewWindow, WindowEvent,
 };
+
+/// La interfaz está diseñada a 540×600 px lógicos; la ventana se escala con el zoom del webview.
+const BASE_W: f64 = 540.0;
+const BASE_H: f64 = 600.0;
+
+/// Zoom automático: el más grande entre 1,0 y 1,5 con el que la ventana ocupa
+/// como máximo el 85 % del alto y del ancho del monitor (1,5 en 2560×1440; ~1,09 en 1366×768).
+fn auto_zoom(w: &WebviewWindow) -> f64 {
+    let monitor = w
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| w.primary_monitor().ok().flatten())
+        .or_else(|| w.available_monitors().ok().and_then(|m| m.into_iter().next()));
+    let Some(m) = monitor else { return 1.0 };
+    let scale = m.scale_factor();
+    let lw = m.size().width as f64 / scale;
+    let lh = m.size().height as f64 / scale;
+    let z = (0.85 * lh / BASE_H).min(0.85 * lw / BASE_W).min(1.5);
+    (z.max(1.0) * 100.0).floor() / 100.0
+}
+
+/// Aplica un zoom (None = automático) y ajusta el tamaño fijo de la ventana a juego.
+fn apply_zoom(w: &WebviewWindow, requested: Option<f64>) {
+    let z = requested.unwrap_or_else(|| auto_zoom(w)).clamp(1.0, 1.5);
+    let size = LogicalSize::new(BASE_W * z, BASE_H * z);
+    let _ = w.set_min_size(Some(size));
+    let _ = w.set_max_size(Some(size));
+    let _ = w.set_size(size);
+    let _ = w.set_zoom(z);
+    let _ = w.center();
+}
+
+/// Ajustes → "Tamaño de ventana". zoom: None = Automático, Some(1.0 | 1.25 | 1.5).
+#[tauri::command]
+fn set_window_zoom(app: AppHandle, zoom: Option<f64>) {
+    if let Some(w) = app.get_webview_window("main") {
+        apply_zoom(&w, zoom);
+    }
+}
 use tauri_plugin_window_state::{Builder as WindowStateBuilder, StateFlags};
 
 #[tauri::command]
@@ -106,12 +146,11 @@ pub fn run() {
                 let _ = w.set_focus();
             }
         }))
-        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray, save_backup, tray_host_available])
+        .invoke_handler(tauri::generate_handler![set_autostart, minimize_window, set_close_to_tray, save_backup, tray_host_available, set_window_zoom])
         .setup(|app| {
-            // La interfaz está diseñada a 540×600; la ventana es 810×900 y el webview
-            // escala todo ×1,5 (letras y botones más grandes sin rehacer el layout).
+            // Tamaño inicial automático según el monitor (el frontend reaplica el ajuste guardado)
             if let Some(w) = app.get_webview_window("main") {
-                let _ = w.set_zoom(1.5);
+                apply_zoom(&w, None);
             }
 
             // Build Tray Icon

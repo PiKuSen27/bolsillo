@@ -116,7 +116,10 @@ Bolsillo/
 ## 4. Reglas de negocio (PROHIBIDO ROMPER)
 
 ### A. Ventana de escritorio (810 × 900 px)
-1. Tamaño fijo 810 × 900 (`tauri.conf.json`): `resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`. **La interfaz sigue diseñada a 540 × 600 px lógicos**: en `lib.rs` el webview hace `set_zoom(1.5)`, así todo (letras, botones) se ve ×1,5 sin tocar el layout. Para cambiar el tamaño hay que tocar los tres lugares: `tauri.conf.json`, el zoom en `lib.rs` y la regla de Niri.
+1. **La interfaz está diseñada a 540 × 600 px lógicos** y la ventana es `540×zoom` por `600×zoom`, no redimensionable (`resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`). El zoom lo aplica `apply_zoom` en `lib.rs` (webview `set_zoom` + `set_min_size`/`set_max_size`/`set_size` + `center`):
+   * **Automático** (por defecto): el mayor entre 1,0 y 1,5 con el que la ventana ocupa como máximo el 85 % del alto y del ancho del monitor (`auto_zoom`). En 2560×1440 da 1,5 (810 × 900); en 1366×768 da 1,08. Si no se puede leer el monitor, 1,0.
+   * Ajustes → "Tamaño de ventana": Automático / Chico (1,0) / Mediano (1,25) / Grande (1,5) (`settings.windowZoom`, comando `set_window_zoom`). El frontend lo reaplica al cargar.
+   * `tauri.conf.json` trae 810 × 900 solo como tamaño inicial; en la PC del dueño la regla de Niri también fija 810 × 900, en otras máquinas no hace falta ninguna regla.
 2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en Niri abría a pantalla completa).
 3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
 4. `–` llama al comando `minimize_window` (minimiza y esconde). El tray (click izquierdo o "Abrir Bolsillo") y volver a ejecutar el binario (`single-instance`) hacen `show()` + `set_focus()`.
