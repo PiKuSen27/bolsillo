@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Delete, MessageSquare } from "lucide-react";
 import { DateField } from "./DateField";
+import { HScroll } from "./HScroll";
 import { Category } from "../types";
 import { evaluateCalcExpression } from "../lib/calc";
 import { shouldCalculatorHandleKey } from "../lib/keyboard";
@@ -279,7 +280,7 @@ export function Calculator({
       </div>
 
       {/* Categories Chips with sliding layoutId indicator */}
-      <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
+      <HScroll className={isLight ? "[--hscroll-bg:#F4F4F5]" : "[--hscroll-bg:#0D0D0E]"}>
         {categories.map((cat) => {
           const isSelected = cat.id === selectedCategoryId;
           return (
@@ -317,7 +318,7 @@ export function Calculator({
             </button>
           );
         })}
-      </div>
+      </HScroll>
 
       {/* Numpad Grid with elastic press animation */}
       <div className="grid grid-cols-4 gap-1.5">

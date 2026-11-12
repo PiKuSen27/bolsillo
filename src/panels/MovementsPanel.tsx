@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Category, Movement, MovementKind } from "../types";
 import { formatCurrency, formatNumberWithDots, formatShortDate, formatAmountInput } from "../lib/format";
 import { filterMovements } from "../lib/search";
+import { HScroll } from "../components/HScroll";
 
 interface MovementsPanelProps {
   movements: Movement[];
@@ -182,7 +183,7 @@ export function MovementsPanel({
         </div>
 
         {/* Categories filter */}
-        <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
+        <HScroll className={isLight ? "[--hscroll-bg:#FFFFFF]" : "[--hscroll-bg:#0A0A0C]"}>
           <button
             type="button"
             onClick={() => setFilterCategory("all")}
@@ -220,7 +221,7 @@ export function MovementsPanel({
               <span className="truncate max-w-[90px]">{c.name}</span>
             </button>
           ))}
-        </div>
+        </HScroll>
       </div>
 
       {/* Segmented Multi-Color Expense Bar */}
