@@ -138,7 +138,7 @@ Bolsillo/
    * Si `dailyRangeEnd < dailyRangeStart` se intercambian solos.
    * `calculateBalance` recibe `variableIncome` ya calculado; **no** multiplica días × tarifa.
 3. **Hero**: Disponible grande; `Plata total: $ X · Gastos: $ Y`; rojo si es negativo; en modo variable, pastilla **"Días trabajados"** que abre `WorkDaysPanel` (también desde Ajustes).
-4. **Cartel del período anterior** (`carryover.ts`): "Empezaste con $ X a favor" (verde) o "Cerraste el período anterior $ X abajo" (rojo). **Solo informativo, no toca el Disponible.** No se muestra si es 0, si no hubo movimientos en ese período o si la app se empezó a usar después. En modo variable usa `dailyPreviousRange`, que se guarda al cambiar el rango en Ajustes.
+4. **Cartel del período anterior** (`carryover.ts`): "Empezaste con $ X a favor" (verde) o "Cerraste el período anterior $ X abajo" (rojo). **Solo informativo, no toca el Disponible.** No se muestra si es 0, si no hubo movimientos en ese período o si la app se empezó a usar después. En modo variable usa `dailyPreviousRange`, que se guarda al cambiar el rango en Ajustes **solo si el rango viejo terminó antes de que empiece el nuevo** (`shouldStorePreviousRange`); además el cartel exige que ese rango haya terminado antes de hoy. Editar las fechas del rango actual nunca crea un "período anterior" (Bug E, tests en `carryover.test.ts`).
 
 ### D. "+ Ingreso" y el Disponible
 1. `+ Ingreso` (o `Shift + Enter`) ignora los chips de categoría: siempre `categoryId: 'income'`, "Ingreso de plata", verde.

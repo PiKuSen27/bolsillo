@@ -291,9 +291,9 @@ export default function App() {
   const previousBalance = useMemo(
     () =>
       settings
-        ? calculatePreviousPeriodBalance({ settings, movements, workDays, currentPeriodStart: periodInfo.startDate })
+        ? calculatePreviousPeriodBalance({ settings, movements, workDays, currentPeriodStart: periodInfo.startDate, todayStr })
         : null,
-    [settings, movements, workDays, periodInfo.startDate]
+    [settings, movements, workDays, periodInfo.startDate, todayStr]
   );
 
   const upcomingItems = useMemo(() => {

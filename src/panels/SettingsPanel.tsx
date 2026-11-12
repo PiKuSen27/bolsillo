@@ -19,6 +19,7 @@ import { DateField } from "../components/DateField";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
+import { shouldStorePreviousRange } from "../lib/carryover";
 import {
   formatCurrency,
   formatLocalDate,
@@ -88,15 +89,13 @@ export function SettingsPanel({
 
   const handleSaveGeneral = (e: React.FormEvent) => {
     e.preventDefault();
-    // Si cambió el rango variable, el viejo pasa a ser "período anterior" (cartel del Hero)
-    const rangeChanged =
-      settings.dailyRangeStart &&
-      settings.dailyRangeEnd &&
-      (settings.dailyRangeStart !== dailyRangeStart || settings.dailyRangeEnd !== dailyRangeEnd);
+    // El rango viejo pasa a ser "período anterior" solo si terminó antes del nuevo (no al editar fechas del actual)
+    const oldRange =
+      settings.dailyRangeStart && settings.dailyRangeEnd
+        ? { startDate: settings.dailyRangeStart, endDate: settings.dailyRangeEnd }
+        : undefined;
     onUpdateSettings({
-      ...(rangeChanged
-        ? { dailyPreviousRange: { startDate: settings.dailyRangeStart!, endDate: settings.dailyRangeEnd! } }
-        : {}),
+      ...(shouldStorePreviousRange(oldRange, dailyRangeStart) ? { dailyPreviousRange: oldRange } : {}),
       incomeMode,
       fixedSalary: parseInt(fixedSalary.replace(/\./g, ""), 10) || 0,
       payday: Math.min(31, Math.max(1, parseInt(payday, 10) || 1)),
