@@ -846,9 +846,9 @@ export function SettingsPanel({
           <span>
             Creado por <span className={isLight ? "text-black" : "text-white"}>PiKuSen27</span>
           </span>
-          <span className="flex items-center gap-1" title="Hecho a cuatro manos con Claude, de Anthropic">
+          <span className="flex items-center gap-1">
             <Heart size={11} className={isLight ? "text-zinc-400" : "text-zinc-500"} />
-            <span>a cuatro manos con Claude</span>
+            <span>Con mucho esfuerzo y cariño</span>
           </span>
         </div>
       </div>

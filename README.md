@@ -75,4 +75,4 @@ Con un panel abierto la calculadora no reacciona al teclado.
 
 ## Créditos
 
-Creado por **PiKuSen27**, a cuatro manos con Claude.
+Creado por **PiKuSen27**, con mucho esfuerzo y cariño.
