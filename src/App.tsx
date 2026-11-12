@@ -60,7 +60,7 @@ import {
   isDayLogged,
   shouldTriggerDailyReminder,
 } from "./lib/reminders";
-import { formatLocalDate, formatNumberWithDots } from "./lib/format";
+import { formatLocalDate, formatNumberWithDots, formatShortDate } from "./lib/format";
 import { Hero } from "./components/Hero";
 import { DayStrip } from "./components/DayStrip";
 import { MobileDayStrip } from "./components/MobileDayStrip";
@@ -856,7 +856,7 @@ export default function App() {
           isOpen={activeSheet === "movements"}
           onClose={() => setActiveSheet(null)}
           title="Movimientos del Período"
-          subtitle={`Desde el ${periodInfo.startDate} hasta el ${periodInfo.endDate}`}
+          subtitle={`${formatShortDate(periodInfo.startDate)} – ${formatShortDate(periodInfo.endDate)}`}
           isLight={isLight}
         >
           <MovementsPanel
