@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { Sparkles, ArrowRight, Check, Calendar } from "lucide-react";
 import confetti from "canvas-confetti";
 import { calculateVariableIncome } from "../lib/workdays";
@@ -95,13 +95,12 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
 
       {/* Main Step Body with slide animations */}
       <div className="my-auto py-2">
-        <AnimatePresence mode="wait">
+        {/* Sin AnimatePresence mode="wait": en el escritorio dejaba el paso en negro, vacío, si la animación de salida no terminaba (bug F) */}
           {step === 1 && (
             <motion.div
               key="step1"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
               transition={{ type: "spring", stiffness: 350, damping: 25 }}
               className="flex flex-col gap-2.5"
             >
@@ -223,7 +222,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
               key="step2"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
               transition={{ type: "spring", stiffness: 350, damping: 25 }}
               className="flex flex-col gap-3"
             >
@@ -249,7 +247,6 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
               key="step3"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
               transition={{ type: "spring", stiffness: 350, damping: 25 }}
               className="flex flex-col gap-3"
             >
@@ -273,7 +270,7 @@ export function OnboardingPanel({ onComplete }: OnboardingPanelProps) {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+
       </div>
 
       {/* Footer controls */}
