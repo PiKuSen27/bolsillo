@@ -114,7 +114,7 @@ Bolsillo/
 ### A. Ventana de escritorio (810 × 900 px)
 1. Tamaño fijo 810 × 900 (`tauri.conf.json`): `resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`. **La interfaz sigue diseñada a 540 × 600 px lógicos**: en `lib.rs` el webview hace `set_zoom(1.5)`, así todo (letras, botones) se ve ×1,5 sin tocar el layout. Para cambiar el tamaño hay que tocar los tres lugares: `tauri.conf.json`, el zoom en `lib.rs` y la regla de Niri.
 2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en Niri abría a pantalla completa).
-3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (📱, pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
+3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
 4. `–` llama al comando `minimize_window` (minimiza y esconde). El tray (click izquierdo o "Abrir Bolsillo") y volver a ejecutar el binario (`single-instance`) hacen `show()` + `set_focus()`.
 5. `×` respeta el ajuste **"Cerrar al tray"** (`set_close_to_tray` → estado en Rust): encendido esconde la ventana y siguen los recordatorios; apagado cierra la app.
 
@@ -172,7 +172,7 @@ Bolsillo/
 * Importar pasa por `validateBackup` (versión 1 o 2, máximo 10 MB, fechas `AAAA-MM-DD` reales, montos enteros 0..`MAX_AMOUNT`, enums, ids únicos, campos desconocidos descartados, ajustes completados con los valores por defecto). Antes de reemplazar muestra un resumen y pide confirmación; es todo o nada.
 
 ### J. Celular y PWA
-* Ancho `< 480 px` (o botón 📱 del header) → layout vertical con `MobileDayStrip` y barra inferior.
+* Ancho `< 480 px` (celular real; ya no hay simulador en el escritorio) → layout vertical con `MobileDayStrip` y barra inferior.
 * `vite-plugin-pwa` precachea todo `dist/` (manifest, service worker `sw.js`, fallback a `index.html`). Ícono maskable para Android.
 
 ### K. Seguridad

@@ -3,7 +3,6 @@ import {
   Pin,
   Minus,
   X,
-  Smartphone,
   Wallet,
   Receipt,
   Repeat,
@@ -98,8 +97,7 @@ export default function App() {
   const [undoToast, setUndoToast] = useState<{ id: string; message: string } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mobile layout detection & simulator
-  const [isMobilePreview, setIsMobilePreview] = useState(false);
+  // Celular real (PWA): ancho menor a 480 px
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
   useEffect(() => {
@@ -111,7 +109,7 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const isMobileLayout = isNarrowScreen || isMobilePreview;
+  const isMobileLayout = isNarrowScreen;
 
   // Load all data from Dexie
   const loadData = useCallback(async () => {
@@ -515,7 +513,7 @@ export default function App() {
         }`}
       >
         {/* DESKTOP HEADER (Only in desktop view or when running in Tauri) */}
-        {!isMobilePreview && isTauri() && (
+        {isTauri() && (
           <header
             data-tauri-drag-region
             className={`h-9 px-4 pt-1 flex items-center justify-between shrink-0 select-none cursor-grab active:cursor-grabbing border-b ${
@@ -538,21 +536,6 @@ export default function App() {
 
             {/* Window action buttons */}
             <div className="flex items-center gap-1.5 z-10" data-no-drag>
-              {/* Mobile Preview Toggle Button */}
-              <button
-                type="button"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={() => setIsMobilePreview(!isMobilePreview)}
-                title="Previsualizar modo Celular (iPhone)"
-                className={`p-1.5 rounded-lg transition-all duration-150 cursor-pointer ${
-                  isLight
-                    ? "hover:bg-zinc-100 text-zinc-500 hover:text-black"
-                    : "hover:bg-zinc-800 text-zinc-400 hover:text-white"
-                }`}
-              >
-                <Smartphone size={13} />
-              </button>
-
               <button
                 type="button"
                 onMouseDown={(e) => e.stopPropagation()}
@@ -601,27 +584,10 @@ export default function App() {
         )}
 
         {/* ============================================================== */}
-        {/* VIEW A: MOBILE LAYOUT (Active when width < 480 or preview)     */}
+        {/* VIEW A: MOBILE LAYOUT (celular real, ancho < 480)              */}
         {/* ============================================================== */}
         {isMobileLayout ? (
           <div className="flex-1 flex flex-col justify-between overflow-hidden relative">
-            {/* If Preview inside Desktop: iPhone Outer Frame Header */}
-            {isMobilePreview && (
-              <div className="w-full px-3 py-1 flex items-center justify-between border-b border-zinc-500/10 bg-zinc-900/40 text-xs font-black z-30 shrink-0">
-                <div className="flex items-center gap-1.5 text-zinc-300">
-                  <Smartphone size={13} />
-                  <span>Simulador iPhone (Vista Móvil)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMobilePreview(false)}
-                  className="px-2 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black cursor-pointer"
-                >
-                  Volver a PC ✕
-                </button>
-              </div>
-            )}
-
             {/* Scrollable Mobile Body */}
             <div className="flex-1 overflow-y-auto scrollbar-none p-3 flex flex-col gap-2">
               {/* Missing Days Banner if any */}
