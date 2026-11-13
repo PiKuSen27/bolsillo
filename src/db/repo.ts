@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { store, applyAtomically, DATA_TABLES, wipeEverything } from "./store";
 import {
   DayLog,
   Debt,
@@ -24,22 +24,25 @@ export interface DatabaseExport {
 }
 
 export async function getSettings(): Promise<Settings> {
-  const current = await db.settings.get("main");
+  const current = await store.settings.get("main");
   if (!current) {
-    return await db.initDefaults();
+    const fresh = { ...DEFAULT_SETTINGS, createdAt: new Date().toISOString() };
+    await store.settings.put(fresh);
+    return fresh;
   }
-  return current;
+  // Campos nuevos que una versión vieja no tenía (y que una migración no puede agregar a un registro cifrado)
+  return { ...DEFAULT_SETTINGS, ...current };
 }
 
 export async function updateSettings(partial: Partial<Settings>): Promise<Settings> {
   const current = await getSettings();
   const updated: Settings = { ...current, ...partial };
-  await db.settings.put(updated);
+  await store.settings.put(updated);
   return updated;
 }
 
 export async function markDayAsNoExpenses(dateStr: string): Promise<void> {
-  await db.dayLogs.put({
+  await store.dayLogs.put({
     date: dateStr,
     logged: true,
     noExpenses: true,
@@ -47,8 +50,8 @@ export async function markDayAsNoExpenses(dateStr: string): Promise<void> {
 }
 
 export async function markDayAsLogged(dateStr: string): Promise<void> {
-  const existing = await db.dayLogs.get(dateStr);
-  await db.dayLogs.put({
+  const existing = await store.dayLogs.get(dateStr);
+  await store.dayLogs.put({
     date: dateStr,
     logged: true,
     noExpenses: existing?.noExpenses || false,
@@ -57,12 +60,12 @@ export async function markDayAsLogged(dateStr: string): Promise<void> {
 
 /** Guarda el valor propio de un día (modo variable). worked=false → "Día libre". */
 export async function setWorkDay(dateStr: string, worked: boolean, amount: number): Promise<void> {
-  await db.workDays.put({ date: dateStr, worked, amount: worked ? Math.max(0, Math.round(amount)) : 0 });
+  await store.workDays.put({ date: dateStr, worked, amount: worked ? Math.max(0, Math.round(amount)) : 0 });
 }
 
 /** Vuelve un día a su valor por defecto (tarifa, o libre si es domingo). */
 export async function resetWorkDay(dateStr: string): Promise<void> {
-  await db.workDays.delete(dateStr);
+  await store.workDays.delete(dateStr);
 }
 
 export async function addDebt(debt: Omit<Debt, "id" | "settled" | "createdAt">): Promise<Debt> {
@@ -72,7 +75,7 @@ export async function addDebt(debt: Omit<Debt, "id" | "settled" | "createdAt">):
     settled: false,
     createdAt: new Date().toISOString(),
   };
-  await db.debts.put(newDebt);
+  await store.debts.put(newDebt);
   return newDebt;
 }
 
@@ -86,51 +89,51 @@ export async function settleDebts(
   todayStr: string
 ): Promise<() => Promise<void>> {
   const before: Debt[] = [];
-  const createdMovementIds: string[] = [];
-  await db.transaction("rw", db.debts, db.movements, async () => {
-    const settledAt = new Date().toISOString();
-    const found = await db.debts.bulkGet(debtIds);
-    for (const debt of found) {
-      if (!debt || debt.settled) continue;
-      before.push(debt);
-      await db.debts.put({ ...debt, settled: true, settledAt });
-      if (addToMovement) {
-        const movement: Movement = {
-          id: `mov_debt_${debt.id}_${Date.now()}`,
-          date: todayStr,
-          amount: debt.amount,
-          kind: debt.kind === "i_owe" ? "expense" : "income",
-          categoryId: "otros",
-          note: debt.kind === "i_owe" ? `Pago a ${debt.person}` : `Cobro a ${debt.person}`,
-          source: "debt",
-          debtId: debt.id,
-          createdAt: settledAt,
-        };
-        await db.movements.put(movement);
-        createdMovementIds.push(movement.id);
-      }
+  const settled: Debt[] = [];
+  const created: Movement[] = [];
+  const settledAt = new Date().toISOString();
+  for (const debt of await store.debts.bulkGet(debtIds)) {
+    if (!debt || debt.settled) continue;
+    before.push(debt);
+    settled.push({ ...debt, settled: true, settledAt });
+    if (addToMovement) {
+      created.push({
+        id: `mov_debt_${debt.id}_${Date.now()}`,
+        date: todayStr,
+        amount: debt.amount,
+        kind: debt.kind === "i_owe" ? "expense" : "income",
+        categoryId: "otros",
+        note: debt.kind === "i_owe" ? `Pago a ${debt.person}` : `Cobro a ${debt.person}`,
+        source: "debt",
+        debtId: debt.id,
+        createdAt: settledAt,
+      });
     }
-  });
+  }
+  await applyAtomically([
+    { type: "put", table: "debts", recs: settled },
+    { type: "put", table: "movements", recs: created },
+  ]);
   return async () => {
-    await db.transaction("rw", db.debts, db.movements, async () => {
-      await db.debts.bulkPut(before);
-      await db.movements.bulkDelete(createdMovementIds);
-    });
+    await applyAtomically([
+      { type: "put", table: "debts", recs: before },
+      { type: "delete", table: "movements", keys: created.map((m) => m.id) },
+    ]);
   };
 }
 
 export async function deleteDebt(id: string): Promise<void> {
-  await db.debts.delete(id);
+  await store.debts.delete(id);
 }
 
 export async function exportAllData(): Promise<string> {
   const settings = await getSettings();
-  const movements = await db.movements.toArray();
-  const recurrings = await db.recurrings.toArray();
-  const installments = await db.installments.toArray();
-  const workDays = await db.workDays.toArray();
-  const dayLogs = await db.dayLogs.toArray();
-  const debts = await db.debts.toArray();
+  const movements = await store.movements.toArray();
+  const recurrings = await store.recurrings.toArray();
+  const installments = await store.installments.toArray();
+  const workDays = await store.workDays.toArray();
+  const dayLogs = await store.dayLogs.toArray();
+  const debts = await store.debts.toArray();
 
   const exportData: DatabaseExport = {
     version: 2,
@@ -156,53 +159,24 @@ export async function importAllData(jsonContent: string): Promise<{ success: boo
 /** Reemplaza TODA la base con un backup ya validado (todo o nada: si algo falla, no se pierde nada). */
 export async function importValidatedBackup(data: ValidBackup): Promise<{ success: boolean; error?: string }> {
   try {
-    await db.transaction(
-      "rw",
-      [db.settings, db.movements, db.recurrings, db.installments, db.workDays, db.dayLogs, db.remindersSent, db.debts],
-      async () => {
-        await Promise.all([
-          db.settings.clear(), db.movements.clear(), db.recurrings.clear(), db.installments.clear(),
-          db.workDays.clear(), db.dayLogs.clear(), db.remindersSent.clear(), db.debts.clear(),
-        ]);
-        await db.settings.put(data.settings);
-        await db.movements.bulkPut(data.movements);
-        await db.recurrings.bulkPut(data.recurrings);
-        await db.installments.bulkPut(data.installments);
-        await db.workDays.bulkPut(data.workDays);
-        await db.dayLogs.bulkPut(data.dayLogs);
-        await db.debts.bulkPut(data.debts);
-      }
-    );
+    await applyAtomically([
+      ...DATA_TABLES.map((table) => ({ type: "clear" as const, table })),
+      { type: "put", table: "settings", recs: [data.settings] },
+      { type: "put", table: "movements", recs: data.movements },
+      { type: "put", table: "recurrings", recs: data.recurrings },
+      { type: "put", table: "installments", recs: data.installments },
+      { type: "put", table: "workDays", recs: data.workDays },
+      { type: "put", table: "dayLogs", recs: data.dayLogs },
+      { type: "put", table: "debts", recs: data.debts },
+    ]);
     return { success: true };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Error al guardar los datos" };
   }
 }
 
+/** "Borrar todos los datos": también apaga el cifrado y vuelve a los ajustes por defecto. */
 export async function resetAllData(): Promise<void> {
-  await db.transaction(
-    "rw",
-    [
-      db.settings,
-      db.movements,
-      db.recurrings,
-      db.installments,
-      db.workDays,
-      db.dayLogs,
-      db.remindersSent,
-      db.debts,
-    ],
-    async () => {
-      await db.settings.clear();
-      await db.movements.clear();
-      await db.recurrings.clear();
-      await db.installments.clear();
-      await db.workDays.clear();
-      await db.dayLogs.clear();
-      await db.remindersSent.clear();
-      await db.debts.clear();
-
-      await db.settings.put(DEFAULT_SETTINGS);
-    }
-  );
+  await wipeEverything();
+  await store.settings.put({ ...DEFAULT_SETTINGS, createdAt: new Date().toISOString() });
 }

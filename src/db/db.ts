@@ -9,7 +9,7 @@ import {
   Settings,
   WorkDay,
 } from "../types";
-import { DEFAULT_SETTINGS } from "../lib/constants";
+import type { VaultMeta } from "../lib/vault";
 
 export class BolsilloDatabase extends Dexie {
   settings!: Table<Settings, string>;
@@ -20,6 +20,7 @@ export class BolsilloDatabase extends Dexie {
   dayLogs!: Table<DayLog, string>;
   remindersSent!: Table<ReminderSent, string>;
   debts!: Table<Debt, string>;
+  vault!: Table<VaultMeta, string>;
 
   constructor() {
     super("BolsilloDB");
@@ -94,20 +95,11 @@ export class BolsilloDatabase extends Dexie {
             if (typeof s.startHidden !== "boolean") s.startHidden = false;
           });
       });
-  }
 
-  async initDefaults(): Promise<Settings> {
-    const existing = await this.settings.get("main");
-    if (!existing) {
-      await this.settings.put(DEFAULT_SETTINGS);
-      return DEFAULT_SETTINGS;
-    }
-    // Ensure incomeMode is set for existing records
-    if (!existing.incomeMode) {
-      existing.incomeMode = "salary";
-      await this.settings.put(existing);
-    }
-    return existing;
+    // v7: tabla "vault" con lo necesario para abrir los datos cifrados (sal, clave envuelta, intentos).
+    // OJO futuras migraciones: si el cifrado está activo los registros son { clave, enc } y no se pueden
+    // modificar acá; los valores por defecto nuevos los completa getSettings() al leer.
+    this.version(7).stores({ vault: "id" });
   }
 }
 

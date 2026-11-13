@@ -34,7 +34,9 @@ import {
   WINDOW_ZOOM_VALUES,
   WorkDay,
 } from "./types";
-import { db } from "./db/db";
+import { getVaultPrefs, isVaultEnabled, loadVaultMeta, lock as lockStore, store, updateVaultPrefs } from "./db/store";
+import { LockScreen } from "./components/LockScreen";
+import { flushSync } from "react-dom";
 import {
   addDebt,
   deleteDebt,
@@ -132,19 +134,19 @@ export default function App() {
     setAmountsHiddenState((cur) => (cur === null ? s.startHidden || s.hideAmounts : cur));
 
     const [allM, allR, allI, allW, allD, allDebts] = await Promise.all([
-      db.movements.orderBy("date").reverse().toArray(),
-      db.recurrings.toArray(),
-      db.installments.toArray(),
-      db.workDays.toArray(),
-      db.dayLogs.toArray(),
-      db.debts.toArray(),
+      store.movements.toArray().then((ms) => ms.sort((a, b) => b.date.localeCompare(a.date))),
+      store.recurrings.toArray(),
+      store.installments.toArray(),
+      store.workDays.toArray(),
+      store.dayLogs.toArray(),
+      store.debts.toArray(),
     ]);
 
     // Automatic migration: Any income movement with categoryId !== 'income' gets converted to 'income'
     for (const m of allM) {
       if (m.kind === "income" && m.categoryId !== "income") {
         m.categoryId = "income";
-        await db.movements.update(m.id, { categoryId: "income" });
+        await store.movements.put(m);
       }
     }
 
@@ -156,11 +158,59 @@ export default function App() {
     setDebts(allDebts);
   }, []);
 
+  // Contraseña y cifrado: "checking" al arrancar, "off" sin cifrado, "locked" / "unlocked" con cifrado
+  const [vault, setVault] = useState<"checking" | "off" | "locked" | "unlocked">("checking");
+  const [covered, setCovered] = useState(false); // tapa la app en el selector de apps
   useEffect(() => {
-    loadData();
+    loadVaultMeta().then((m) => setVault(m ? "locked" : "off"));
     isWindowAlwaysOnTop().then(setIsPinned);
     requestAppNotificationPermission();
-  }, [loadData]);
+  }, []);
+
+  useEffect(() => {
+    if (vault === "off" || vault === "unlocked") loadData();
+  }, [vault, loadData]);
+
+  /** Bloquea: borra las claves de memoria y desmonta toda la interfaz con datos. */
+  const lockApp = useCallback(() => {
+    lockStore();
+    setSettings(null);
+    setMovements([]);
+    setRecurrings([]);
+    setInstallments([]);
+    setWorkDays([]);
+    setDayLogs([]);
+    setDebts([]);
+    setActiveSheet(null);
+    setPendingDelete(null);
+    setUndoToast(null);
+    setAmountsHiddenState(null);
+    setVault("locked");
+  }, []);
+
+  // La pantalla de bloqueo se dibuja con el tema elegido, sin descifrar nada: se copia afuera
+  useEffect(() => {
+    if (settings && isVaultEnabled()) updateVaultPrefs({ theme: settings.theme }).catch(() => {});
+  }, [settings?.theme, vault]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Al salir de la app: tapar la pantalla (selector de apps) y bloquear según "Bloquear al salir de la app"
+  useEffect(() => {
+    if (vault !== "unlocked") return;
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      const delay = getVaultPrefs()?.lockAfterMs ?? 5000;
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        flushSync(() => setCovered(true));
+        if (delay === 0) lockApp();
+      } else {
+        if (Date.now() - hiddenAt >= delay) lockApp();
+        setCovered(false);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [vault, lockApp]);
 
   // Rust necesita saber si "cerrar" esconde al tray o cierra de verdad (bug #10)
   useEffect(() => {
@@ -204,13 +254,13 @@ export default function App() {
         setSelectedDateStr((sel) => (sel === todayStr ? curToday : sel));
       }
 
-      if (!settings) return;
+      if (!settings || (isVaultEnabled() && vault !== "unlocked")) return;
 
       // 1. Process Auto-Add for recurring and installments
       const [currentRecs, currentInsts, currentMovements] = await Promise.all([
-        db.recurrings.toArray(),
-        db.installments.toArray(),
-        db.movements.toArray(),
+        store.recurrings.toArray(),
+        store.installments.toArray(),
+        store.movements.toArray(),
       ]);
 
       const autoResult = processAutoAddRules({
@@ -222,23 +272,23 @@ export default function App() {
 
       if (autoResult.movementsToAdd.length > 0) {
         for (const mov of autoResult.movementsToAdd) {
-          await db.movements.put(mov);
+          await store.movements.put(mov);
         }
         for (const rec of autoResult.updatedRecurrings) {
-          await db.recurrings.put(rec);
+          await store.recurrings.put(rec);
         }
         for (const inst of autoResult.updatedInstallments) {
-          await db.installments.put(inst);
+          await store.installments.put(inst);
         }
         await loadData();
       }
 
       // 2. Check Daily Reminder
-      const curMovements = await db.movements.toArray();
-      const curLogs = await db.dayLogs.toArray();
+      const curMovements = await store.movements.toArray();
+      const curLogs = await store.dayLogs.toArray();
       const hasLoggedToday = isDayLogged(curToday, curMovements, curLogs);
 
-      const reminderSentRecord = await db.remindersSent.get(`daily_${curToday}`);
+      const reminderSentRecord = await store.remindersSent.get(`daily_${curToday}`);
       const alreadySentToday = !!reminderSentRecord;
 
       const currentHHMM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -256,14 +306,14 @@ export default function App() {
           "Bolsillo: Recordatorio diario",
           "¿Tuviste algún gasto hoy? Anotalo para mantener tus números claros."
         );
-        await db.remindersSent.put({
+        await store.remindersSent.put({
           key: `daily_${curToday}`,
           sentAt: now.toISOString(),
         });
       }
 
       // 3. Check Due Alerts
-      const allSentRecords = await db.remindersSent.toArray();
+      const allSentRecords = await store.remindersSent.toArray();
       const sentKeysSet = new Set(allSentRecords.map((r) => r.key));
 
       const currentUpcoming = getUpcomingItems({
@@ -280,17 +330,19 @@ export default function App() {
 
       for (const alert of alerts) {
         await sendAppNotification(alert.title, alert.body);
-        await db.remindersSent.put({
+        await store.remindersSent.put({
           key: alert.key,
           sentAt: now.toISOString(),
         });
       }
     };
 
-    checkRoutine();
-    const interval = setInterval(checkRoutine, 60000);
+    // Si se bloqueó a mitad de camino, el próximo chequeo lo retoma
+    const safeRoutine = () => checkRoutine().catch(() => {});
+    safeRoutine();
+    const interval = setInterval(safeRoutine, 60000);
     return () => clearInterval(interval);
-  }, [settings, todayStr, loadData]);
+  }, [settings, todayStr, loadData, vault]);
 
   // Derived Calculations
   const periodInfo: PeriodInfo = useMemo(() => {
@@ -379,7 +431,7 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-    await db.movements.put(newMovement);
+    await store.movements.put(newMovement);
     await markDayAsLogged(params.date);
     await loadData();
 
@@ -392,11 +444,11 @@ export default function App() {
     const msg = `Guardado: ${sign} ${formatNumberWithDots(Math.round(params.amount))} en ${catName}`;
 
     showUndo(msg, async () => {
-      await db.movements.delete(newMovement.id);
+      await store.movements.delete(newMovement.id);
       // Si ese día queda sin movimientos y no estaba marcado "no gasté nada", vuelve a "sin anotar"
-      const remaining = await db.movements.where("date").equals(newMovement.date).count();
-      const log = await db.dayLogs.get(newMovement.date);
-      if (remaining === 0 && log && !log.noExpenses) await db.dayLogs.delete(newMovement.date);
+      const remaining = (await store.movements.toArray()).filter((x) => x.date === newMovement.date).length;
+      const log = await store.dayLogs.get(newMovement.date);
+      if (remaining === 0 && log && !log.noExpenses) await store.dayLogs.delete(newMovement.date);
     }, 4000);
   };
 
@@ -439,7 +491,7 @@ export default function App() {
       ...recData,
       id: `rec_${Date.now()}`,
     };
-    await db.recurrings.put(newRec);
+    await store.recurrings.put(newRec);
     await loadData();
   };
 
@@ -473,8 +525,8 @@ export default function App() {
       r,
       "¿Borrar este fijo?",
       r ? `"${r.name}" · ${formatCurrency(r.amount)} por mes. Los gastos que ya se anotaron quedan.` : "",
-      () => db.recurrings.delete(id),
-      (x) => db.recurrings.put(x),
+      () => store.recurrings.delete(id),
+      (x) => store.recurrings.put(x),
       "Fijo borrado"
     );
   };
@@ -484,7 +536,7 @@ export default function App() {
       ...instData,
       id: `inst_${Date.now()}`,
     };
-    await db.installments.put(newInst);
+    await store.installments.put(newInst);
     await loadData();
   };
 
@@ -496,8 +548,8 @@ export default function App() {
       i
         ? `"${i.name}" · ${formatCurrency(i.totalAmount)} en ${i.installmentsCount} cuotas (${i.paidCount} pagadas). Las cuotas ya anotadas quedan.`
         : "",
-      () => db.installments.delete(id),
-      (x) => db.installments.put(x),
+      () => store.installments.delete(id),
+      (x) => store.installments.put(x),
       "Cuotas borradas"
     );
   };
@@ -519,8 +571,8 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-    await db.movements.put(movement);
-    await db.installments.put({
+    await store.movements.put(movement);
+    await store.installments.put({
       ...inst,
       paidCount: nextPaid,
       active: !isDone,
@@ -538,14 +590,14 @@ export default function App() {
       m
         ? `${m.kind === "expense" ? "Gasto" : "Ingreso"} de ${formatCurrency(m.amount)} · ${cat}${m.note ? ` · ${m.note}` : ""} · ${formatShortDate(m.date)}`
         : "",
-      () => db.movements.delete(id),
-      (x) => db.movements.put(x),
+      () => store.movements.delete(id),
+      (x) => store.movements.put(x),
       "Movimiento borrado"
     );
   };
 
   const handleUpdateMovement = async (m: Movement) => {
-    await db.movements.put(m);
+    await store.movements.put(m);
     await loadData();
   };
 
@@ -575,10 +627,21 @@ export default function App() {
         ? `${d.person} · ${formatCurrency(d.amount)} (${d.kind === "i_owe" ? "le debés" : "te debe"})${d.note ? ` · ${d.note}` : ""}${d.settled ? " · ya saldada" : ""}`
         : "",
       () => deleteDebt(id),
-      (x) => db.debts.put(x),
+      (x) => store.debts.put(x),
       "Deuda borrada"
     );
   };
+
+  if (vault === "locked") {
+    return (
+      <LockScreen
+        onUnlocked={() => setVault("unlocked")}
+        onWiped={() => {
+          setVault("off");
+        }}
+      />
+    );
+  }
 
   if (!settings) {
     return (
@@ -914,6 +977,12 @@ export default function App() {
 
         {/* ============================================================== */}
         {/* FLOATING UNDO (DESHACER) TOAST                                 */}
+        {/* Tapa todo al salir de la app (así el selector de apps no muestra montos) */}
+        {covered && isVaultEnabled() && (
+          <div aria-hidden="true" className={`fixed inset-0 z-[300] flex items-center justify-center ${isLight ? "bg-white" : "bg-black"}`}>
+            <img src="/icons/bolsillo.svg" alt="" width={64} height={64} className="w-16 h-16 rounded-2xl" />
+          </div>
+        )}
         {updateReady && (
           <div
             role="status"
@@ -1002,13 +1071,13 @@ export default function App() {
             isLight={isLight}
             onAddRecurring={handleAddRecurring}
             onUpdateRecurring={async (r) => {
-              await db.recurrings.put(r);
+              await store.recurrings.put(r);
               await loadData();
             }}
             onDeleteRecurring={handleDeleteRecurring}
             onAddInstallment={handleAddInstallment}
             onUpdateInstallment={async (i) => {
-              await db.installments.put(i);
+              await store.installments.put(i);
               await loadData();
             }}
             onDeleteInstallment={handleDeleteInstallment}
@@ -1030,7 +1099,7 @@ export default function App() {
             onSettleDebt={handleSettleDebts}
             onDeleteDebt={handleDeleteDebtItem}
             onUpdateDebt={async (d) => {
-              await db.debts.put(d);
+              await store.debts.put(d);
               await loadData();
             }}
           />
@@ -1081,6 +1150,11 @@ export default function App() {
           isLight={isLight}
         >
           <SettingsPanel
+            onLockNow={lockApp}
+            onVaultChanged={async () => {
+              const m = await loadVaultMeta();
+              setVault(m ? "unlocked" : "off");
+            }}
             settings={settings}
             isLight={isLight}
             onUpdateSettings={handleUpdateSettings}

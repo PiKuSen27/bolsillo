@@ -17,6 +17,10 @@ import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
 import { requestPersistentStorage } from "../platform/pwa";
 import { backupStatus } from "../lib/backupReminder";
 import { DateField } from "../components/DateField";
+import { PasswordPrompt } from "../components/PasswordPrompt";
+import { SecuritySettings } from "./SecuritySettings";
+import { isVaultEnabled, verifyPassword } from "../db/store";
+import { decryptBackup, encryptBackup, isEncryptedBackup, WrongSecretError } from "../lib/vault";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
@@ -35,6 +39,8 @@ interface SettingsPanelProps {
   onUpdateSettings: (s: Partial<Settings>) => void;
   onRefreshData: () => void;
   onOpenWorkDays?: () => void;
+  onLockNow: () => void;
+  onVaultChanged: () => void;
 }
 
 export function SettingsPanel({
@@ -43,6 +49,8 @@ export function SettingsPanel({
   onUpdateSettings,
   onRefreshData,
   onOpenWorkDays,
+  onLockNow,
+  onVaultChanged,
 }: SettingsPanelProps) {
   const [incomeMode, setIncomeMode] = useState<IncomeMode>(settings.incomeMode || "salary");
   const [fixedSalary, setFixedSalary] = useState(
@@ -140,10 +148,23 @@ export function SettingsPanel({
 
   const [exportMessage, setExportMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Con cifrado activo el backup también va cifrado: primero se pide la contraseña y se prepara el archivo;
+  // después un toque en "Guardar" lo comparte (iPhone exige que compartir salga directo de un toque).
+  const [askExportPw, setAskExportPw] = useState(false);
+  const [preparedFile, setPreparedFile] = useState<{ name: string; contents: string } | null>(null);
+
   const handleExportJSON = async () => {
+    if (isVaultEnabled()) {
+      setAskExportPw(true);
+      return;
+    }
+    await saveFile(`bolsillo-backup-${formatLocalDate(new Date())}.json`, await exportAllData());
+  };
+
+  const saveFile = async (name: string, contents: string) => {
     try {
-      const json = await exportAllData();
-      const res = await saveBackupFile(`bolsillo-backup-${formatLocalDate(new Date())}.json`, json);
+      const res = await saveBackupFile(name, contents);
+      setPreparedFile(null);
       setExportMessage({
         ok: true,
         text: res.kind === "path" ? `Guardado en ${res.path}` : res.kind === "shared" ? "Copia lista: guardala en Archivos o donde elegiste" : "Descarga iniciada",
@@ -159,6 +180,16 @@ export function SettingsPanel({
   const [pendingImport, setPendingImport] = useState<{ data: ValidBackup; summary: string } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
+  const [encryptedImport, setEncryptedImport] = useState<string | null>(null);
+  const acceptBackupJson = (content: string) => {
+    const result = validateBackup(content);
+    if (!result.ok) {
+      setImportError(result.error);
+      return;
+    }
+    setPendingImport({ data: result.data, summary: summarizeBackup(result.data) });
+  };
+
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -169,12 +200,8 @@ export function SettingsPanel({
     const reader = new FileReader();
     reader.onload = (evt) => {
       const content = typeof evt.target?.result === "string" ? evt.target.result : "";
-      const result = validateBackup(content);
-      if (!result.ok) {
-        setImportError(result.error);
-        return;
-      }
-      setPendingImport({ data: result.data, summary: summarizeBackup(result.data) });
+      if (isEncryptedBackup(content)) setEncryptedImport(content);
+      else acceptBackupJson(content);
     };
     reader.onerror = () => setImportError("No se pudo leer el archivo");
     reader.readAsText(file);
@@ -195,6 +222,7 @@ export function SettingsPanel({
     await resetAllData();
     setShowResetConfirm(false);
     setResetDone(true);
+    onVaultChanged(); // borrar todo también apaga el cifrado
     onRefreshData();
   };
 
@@ -677,6 +705,44 @@ export function SettingsPanel({
         </div>
       </div>
 
+      <SecuritySettings isLight={isLight} theme={settings.theme} onLockNow={onLockNow} onChanged={onVaultChanged} />
+
+      {askExportPw && (
+        <PasswordPrompt
+          title="Backup cifrado"
+          detail="Escribí tu contraseña de Bolsillo. El archivo va a quedar cifrado con ella: para importarlo vas a necesitarla."
+          confirmLabel="Preparar backup"
+          isLight={isLight}
+          onCancel={() => setAskExportPw(false)}
+          onSubmit={async (pw) => {
+            if (!(await verifyPassword(pw))) return "Contraseña incorrecta";
+            const contents = await encryptBackup(await exportAllData(), pw);
+            setAskExportPw(false);
+            setPreparedFile({ name: `bolsillo-backup-cifrado-${formatLocalDate(new Date())}.json`, contents });
+            return null;
+          }}
+        />
+      )}
+      {encryptedImport && (
+        <PasswordPrompt
+          title="Este backup está cifrado"
+          detail="Escribí la contraseña que tenía Bolsillo cuando se exportó."
+          confirmLabel="Abrir backup"
+          isLight={isLight}
+          onCancel={() => setEncryptedImport(null)}
+          onSubmit={async (pw) => {
+            try {
+              const json = await decryptBackup(encryptedImport, pw);
+              setEncryptedImport(null);
+              acceptBackupJson(json);
+              return null;
+            } catch (e) {
+              return e instanceof WrongSecretError ? "Contraseña incorrecta" : e instanceof Error ? e.message : String(e);
+            }
+          }}
+        />
+      )}
+
       {/* Backup Section */}
       <div
         className={`p-3.5 rounded-2xl border flex flex-col gap-2 ${
@@ -749,6 +815,19 @@ export function SettingsPanel({
             className="hidden"
           />
         </div>
+
+        {preparedFile && (
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-[11px] font-bold ${isLight ? "bg-zinc-50 border-zinc-300" : "bg-black border-zinc-700"}`}>
+            <span>Backup cifrado listo.</span>
+            <button
+              type="button"
+              onClick={() => saveFile(preparedFile.name, preparedFile.contents)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer ${isLight ? "bg-black text-white" : "bg-white text-black"}`}
+            >
+              Guardar archivo
+            </button>
+          </div>
+        )}
 
         {exportMessage && (
           <div
