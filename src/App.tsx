@@ -904,7 +904,7 @@ export default function App() {
             role="status"
             className="absolute left-1/2 -translate-x-1/2 top-[calc(0.5rem+var(--safe-top))] z-[70] px-3.5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] text-white shadow-2xl flex items-center gap-3 text-xs select-none max-w-[92%]"
           >
-            <span className="font-extrabold">Hay una versión nueva</span>
+            <span className="font-extrabold whitespace-nowrap">Hay una versión nueva</span>
             <button
               type="button"
               onClick={() => applyPwaUpdate()}

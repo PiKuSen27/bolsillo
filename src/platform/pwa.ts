@@ -29,6 +29,8 @@ export function startPwaUpdates(onUpdateReady: () => void): void {
 
 /** Activa la versión nueva y recarga la página. */
 export async function applyPwaUpdate(): Promise<void> {
+  // Si por algo el navegador no recarga solo (p. ej. primera sesión), recargamos igual
+  setTimeout(() => window.location.reload(), 3000);
   if (updateSW) await updateSW(true);
   else window.location.reload();
 }
