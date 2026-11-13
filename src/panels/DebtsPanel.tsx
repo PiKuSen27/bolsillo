@@ -1,59 +1,192 @@
 import React, { useState } from "react";
-import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight, ChevronDown, Users } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Debt, DebtKind } from "../types";
-import { formatCurrency, formatShortDate, formatAmountInput } from "../lib/format";
+import { formatCurrency, formatShortDate, formatAmountInput, formatNumberWithDots } from "../lib/format";
+import { groupDebtsByPerson, PersonGroup, suggestPersonNames } from "../lib/debts";
 import { DateField } from "../components/DateField";
+
+type DebtFields = Omit<Debt, "id" | "settled" | "createdAt" | "settledAt">;
 
 interface DebtsPanelProps {
   debts: Debt[];
   isLight?: boolean;
-  onAddDebt: (d: Omit<Debt, "id" | "settled" | "createdAt">) => void;
+  onAddDebt: (d: DebtFields) => void;
   onSettleDebt: (debt: Debt, addToMovement: boolean) => void;
   onDeleteDebt: (id: string) => void;
 }
 
-export function DebtsPanel({
-  debts,
+/** "Rocio te debe $ X" / "Le debés $ X" / "Están a mano" */
+function netLabel(g: PersonGroup) {
+  if (g.net > 0) return `${g.name} te debe ${formatCurrency(g.net)}`;
+  if (g.net < 0) return `Le debés ${formatCurrency(-g.net)}`;
+  return "Están a mano";
+}
+
+/** Formulario de deuda: sirve para crear y para editar. */
+function DebtForm({
+  title,
+  initial,
+  lockedKind,
+  allDebts,
   isLight,
-  onAddDebt,
-  onSettleDebt,
-  onDeleteDebt,
-}: DebtsPanelProps) {
-  const [filter, setFilter] = useState<"all" | DebtKind>("all");
-  const [showAddForm, setShowAddForm] = useState(false);
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  title: string;
+  initial?: Partial<DebtFields>;
+  lockedKind?: DebtKind; // parado en "Debo plata" / "Me deben": no se pregunta
+  allDebts: Debt[];
+  isLight?: boolean;
+  submitLabel: string;
+  onSubmit: (d: DebtFields) => void;
+  onCancel?: () => void;
+}) {
+  const [person, setPerson] = useState(initial?.person ?? "");
+  const [amount, setAmount] = useState(initial?.amount ? formatNumberWithDots(initial.amount) : "");
+  const [kind, setKind] = useState<DebtKind>(initial?.kind ?? "i_owe");
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
+  const [note, setNote] = useState(initial?.note ?? "");
+  const finalKind = lockedKind ?? kind;
+  const suggestions = suggestPersonNames(allDebts, person);
 
-  // Form state
-  const [person, setPerson] = useState("");
-  const [amount, setAmount] = useState("");
-  const [kind, setKind] = useState<DebtKind>("i_owe");
-  // Parado en "Debo plata" o "Me deben", la deuda nueva toma ese tipo sin preguntar
-  const formKind: DebtKind = filter === "all" ? kind : filter;
-  const [dueDate, setDueDate] = useState("");
-  const [note, setNote] = useState("");
-
-  // Modal to settle debt asking whether to add to movements
-  const [settlingDebt, setSettlingDebt] = useState<Debt | null>(null);
+  const input = `text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none ${
+    isLight ? "bg-zinc-100 border-zinc-300 text-black" : "bg-zinc-900 border-zinc-700 text-white"
+  }`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanAmount = parseInt(amount.replace(/\./g, ""), 10);
     if (!person.trim() || isNaN(cleanAmount) || cleanAmount <= 0) return;
-
-    onAddDebt({
-      person: person.trim(),
+    onSubmit({
+      person: person.trim().replace(/\s+/g, " "),
       amount: cleanAmount,
-      kind: formKind,
+      kind: finalKind,
       dueDate: dueDate || undefined,
       note: note.trim() || undefined,
     });
-
-    setPerson("");
-    setAmount("");
-    setDueDate("");
-    setNote("");
-    setShowAddForm(false);
   };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className={`p-3 rounded-2xl border flex flex-col gap-2 ${
+        isLight ? "bg-white border-zinc-300" : "bg-[#000000] border-[#262626]"
+      }`}
+    >
+      <span className="text-xs font-extrabold">{title}</span>
+
+      {!lockedKind && (
+        <div className="grid grid-cols-2 gap-2">
+          {(["i_owe", "they_owe"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKind(k)}
+              className={`py-1.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                kind === k
+                  ? k === "i_owe"
+                    ? "bg-red-500/20 border-red-500 text-red-500 font-black"
+                    : "bg-emerald-500/20 border-emerald-500 text-emerald-600 font-black"
+                  : isLight
+                  ? "bg-zinc-100 border-zinc-200 text-zinc-600"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-400"
+              }`}
+            >
+              {k === "i_owe" ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
+              <span>{k === "i_owe" ? "Debo plata" : "Me deben plata"}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          type="text"
+          placeholder="Persona o motivo"
+          aria-label="Persona o motivo"
+          value={person}
+          onChange={(e) => setPerson(e.target.value)}
+          className={input}
+          required
+        />
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="Monto ($ ARS)"
+          aria-label="Monto"
+          value={amount}
+          onChange={(e) => setAmount(formatAmountInput(e.target.value))}
+          className={input}
+          required
+        />
+      </div>
+
+      {/* Nombres ya usados: tocá uno para no crear "Rocio" y "Rocío" por separado */}
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold opacity-75">¿Es</span>
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setPerson(s)}
+              className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold border cursor-pointer ${
+                isLight ? "bg-zinc-100 border-zinc-300 hover:bg-zinc-200" : "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+          <span className="text-[10px] font-bold opacity-75">?</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold block mb-0.5 opacity-75">Fecha límite (opcional)</label>
+          <DateField ariaLabel="Fecha límite" value={dueDate} onChange={setDueDate} isLight={isLight} />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold block mb-0.5 opacity-75">Nota adicional (opcional)</label>
+          <input
+            type="text"
+            placeholder="Ej. Cena, prestado..."
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className={`w-full ${input}`}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end items-center gap-2 pt-1">
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-xl text-xs font-bold opacity-75 hover:opacity-100 cursor-pointer">
+            Cancelar
+          </button>
+        )}
+        <button
+          type="submit"
+          className={`px-4 py-1.5 rounded-xl font-extrabold text-xs transition-colors cursor-pointer ${
+            isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+          }`}
+        >
+          {submitLabel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt }: DebtsPanelProps) {
+  const [filter, setFilter] = useState<"all" | DebtKind>("all");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [grouped, setGrouped] = useState(true);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Modal para saldar (pregunta si se registra el movimiento)
+  const [settlingDebt, setSettlingDebt] = useState<Debt | null>(null);
 
   const handleConfirmSettle = (addToMovement: boolean) => {
     if (!settlingDebt) return;
@@ -66,23 +199,76 @@ export function DebtsPanel({
     setSettlingDebt(null);
   };
 
-  const filteredDebts = debts.filter((d) => {
-    if (filter === "all") return true;
-    return d.kind === filter;
-  });
-
+  const filteredDebts = debts.filter((d) => filter === "all" || d.kind === filter);
   const pendingDebts = filteredDebts.filter((d) => !d.settled);
   const settledDebts = filteredDebts.filter((d) => d.settled);
+  const groups = groupDebtsByPerson(pendingDebts);
+
+  const card = isLight ? "bg-white border-zinc-200" : "bg-[#0E0E10] border-[#222224]";
+
+  const debtRow = (d: Debt, showPerson: boolean) => (
+    <div key={d.id} className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${card}`}>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div
+          className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+            d.kind === "i_owe" ? "bg-red-500/15 text-[#EF4444]" : "bg-emerald-500/15 text-[#16A34A]"
+          }`}
+        >
+          {d.kind === "i_owe" ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs font-extrabold truncate">{showPerson ? d.person : d.note || "Sin nota"}</span>
+            <span
+              className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
+                d.kind === "i_owe"
+                  ? isLight ? "bg-red-100 text-red-700" : "bg-red-500/20 text-red-400"
+                  : isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/20 text-emerald-400"
+              }`}
+            >
+              {d.kind === "i_owe" ? "Debo" : "Me debe"}
+            </span>
+          </div>
+          {showPerson && d.note && (
+            <span className={`text-[10px] font-semibold truncate ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>{d.note}</span>
+          )}
+          {d.dueDate && (
+            <span className="text-[9px] text-amber-600 font-bold">Vence: {formatShortDate(d.dueDate)}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className={`text-sm font-extrabold tabular-numbers ${d.kind === "i_owe" ? "text-[#EF4444]" : "text-[#16A34A]"}`}>
+          {formatCurrency(d.amount)}
+        </span>
+        <button
+          type="button"
+          onClick={() => setSettlingDebt(d)}
+          className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+            isLight ? "bg-zinc-200 hover:bg-zinc-300 text-black" : "bg-zinc-800 hover:bg-zinc-700 text-white"
+          }`}
+        >
+          Saldar
+        </button>
+        <button
+          type="button"
+          aria-label="Borrar deuda"
+          title="Borrar"
+          onClick={() => onDeleteDebt(d.id)}
+          className={`p-1 rounded-md hover:text-red-500 cursor-pointer ${isLight ? "text-zinc-500" : "text-zinc-400"}`}
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-3 select-none">
-      {/* Header controls */}
-      <div className="flex items-center justify-between">
-        <div
-          className={`flex items-center gap-1 p-0.5 rounded-xl border ${
-            isLight ? "bg-zinc-200 border-zinc-300" : "bg-black border-[#262626]"
-          }`}
-        >
+      {/* Pestañas y "+ Nueva" */}
+      <div className="flex items-center justify-between gap-2">
+        <div className={`flex items-center gap-1 p-0.5 rounded-xl border ${isLight ? "bg-zinc-200 border-zinc-300" : "bg-black border-[#262626]"}`}>
           {(["all", "i_owe", "they_owe"] as const).map((k) => (
             <button
               key={k}
@@ -90,12 +276,8 @@ export function DebtsPanel({
               onClick={() => setFilter(k)}
               className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                 filter === k
-                  ? isLight
-                    ? "bg-white text-black shadow-xs"
-                    : "bg-zinc-800 text-white"
-                  : isLight
-                  ? "text-zinc-600 hover:text-black"
-                  : "text-zinc-400 hover:text-white"
+                  ? isLight ? "bg-white text-black shadow-xs" : "bg-zinc-800 text-white"
+                  : isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
               }`}
             >
               {k === "all" ? "Todas" : k === "i_owe" ? "Debo plata" : "Me deben"}
@@ -106,7 +288,7 @@ export function DebtsPanel({
         <button
           type="button"
           onClick={() => setShowAddForm(!showAddForm)}
-          className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1 transition-all cursor-pointer ${
+          className={`px-3 py-1.5 rounded-xl font-extrabold text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
             isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
           }`}
         >
@@ -115,223 +297,98 @@ export function DebtsPanel({
         </button>
       </div>
 
-      {/* Add Debt Form */}
       {showAddForm && (
-        <form
-          onSubmit={handleSubmit}
-          className={`p-3 rounded-2xl border flex flex-col gap-2 ${
-            isLight ? "bg-white border-zinc-300" : "bg-[#000000] border-[#262626]"
-          }`}
-        >
-          <span className="text-xs font-extrabold">
-            {formKind === "i_owe" ? "Registrar deuda (debo plata)" : "Registrar deuda (me deben plata)"}
-          </span>
-
-          {filter === "all" && (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setKind("i_owe")}
-              className={`py-1.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
-                kind === "i_owe"
-                  ? "bg-red-500/20 border-red-500 text-red-500 font-black"
-                  : isLight
-                  ? "bg-zinc-100 border-zinc-200 text-zinc-600"
-                  : "bg-zinc-900 border-zinc-800 text-zinc-400"
-              }`}
-            >
-              <ArrowDownLeft size={14} />
-              <span>Debo plata</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setKind("they_owe")}
-              className={`py-1.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
-                kind === "they_owe"
-                  ? "bg-emerald-500/20 border-emerald-500 text-emerald-500 font-black"
-                  : isLight
-                  ? "bg-zinc-100 border-zinc-200 text-zinc-600"
-                  : "bg-zinc-900 border-zinc-800 text-zinc-400"
-              }`}
-            >
-              <ArrowUpRight size={14} />
-              <span>Me deben plata</span>
-            </button>
-          </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              placeholder="Persona o motivo"
-              value={person}
-              onChange={(e) => setPerson(e.target.value)}
-              className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none ${
-                isLight
-                  ? "bg-zinc-100 border-zinc-300 text-black"
-                  : "bg-zinc-900 border-zinc-700 text-white"
-              }`}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Monto ($ ARS)"
-              value={amount}
-              onChange={(e) => {
-                setAmount(formatAmountInput(e.target.value));
-              }}
-              className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none ${
-                isLight
-                  ? "bg-zinc-100 border-zinc-300 text-black"
-                  : "bg-zinc-900 border-zinc-700 text-white"
-              }`}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-bold block mb-0.5 opacity-75">
-                Fecha límite (opcional)
-              </label>
-              <DateField ariaLabel="Fecha límite" value={dueDate} onChange={setDueDate} isLight={isLight} />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold block mb-0.5 opacity-75">
-                Nota adicional (opcional)
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Cena, prestado..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className={`w-full text-xs font-bold px-2 py-1 rounded-lg border focus:outline-none ${
-                  isLight
-                    ? "bg-zinc-100 border-zinc-300 text-black"
-                    : "bg-zinc-900 border-zinc-700 text-white"
-                }`}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-1">
-            <button
-              type="submit"
-              className={`px-4 py-1.5 rounded-xl font-extrabold text-xs transition-colors cursor-pointer ${
-                isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
-              }`}
-            >
-              Guardar deuda
-            </button>
-          </div>
-        </form>
+        <DebtForm
+          key={filter}
+          title={filter === "i_owe" ? "Registrar deuda (debo plata)" : filter === "they_owe" ? "Registrar deuda (me deben plata)" : "Registrar deuda"}
+          lockedKind={filter === "all" ? undefined : filter}
+          allDebts={debts}
+          isLight={isLight}
+          submitLabel="Guardar deuda"
+          onSubmit={(d) => {
+            onAddDebt(d);
+            setShowAddForm(false);
+          }}
+        />
       )}
 
-      {/* Pending debts list */}
+      {/* Pendientes */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-extrabold uppercase opacity-75">
-          Pendientes ({pendingDebts.length})
-        </span>
-
-        {pendingDebts.length === 0 ? (
-          <div
-            className={`text-center py-6 text-xs font-bold ${
-              isLight ? "text-zinc-400" : "text-zinc-600"
-            }`}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase opacity-75">Pendientes ({pendingDebts.length})</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={grouped}
+            onClick={() => setGrouped(!grouped)}
+            className="flex items-center gap-1.5 text-[11px] font-extrabold cursor-pointer"
           >
-            No tenés deudas pendientes
-          </div>
-        ) : (
-          pendingDebts.map((d) => (
-            <div
-              key={d.id}
-              className={`p-3 rounded-2xl border flex items-center justify-between ${
-                isLight ? "bg-white border-zinc-200" : "bg-[#0E0E10] border-[#222224]"
+            <Users size={12} className="opacity-75" />
+            <span>Agrupar por persona</span>
+            <span
+              className={`w-7 h-4 rounded-full p-0.5 flex transition-colors ${
+                grouped ? (isLight ? "bg-[#16A34A] justify-end" : "bg-[#22C55E] justify-end") : isLight ? "bg-zinc-300" : "bg-zinc-700"
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                    d.kind === "i_owe"
-                      ? "bg-red-500/15 text-[#EF4444]"
-                      : "bg-emerald-500/15 text-[#22C55E]"
+              <span className="w-3 h-3 rounded-full bg-white shadow-xs" />
+            </span>
+          </button>
+        </div>
+
+        {pendingDebts.length === 0 ? (
+          <div className="text-center py-6 text-xs font-bold text-zinc-500">No tenés deudas pendientes</div>
+        ) : grouped ? (
+          groups.map((g) => {
+            const open = !!openGroups[g.key];
+            return (
+              <div key={g.key} className={`rounded-2xl border overflow-hidden ${card}`}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => setOpenGroups((s) => ({ ...s, [g.key]: !open }))}
+                  className={`w-full p-3 flex items-center justify-between gap-2 text-left cursor-pointer ${
+                    isLight ? "hover:bg-zinc-50" : "hover:bg-[#151518]"
                   }`}
                 >
-                  {d.kind === "i_owe" ? (
-                    <ArrowDownLeft size={16} />
-                  ) : (
-                    <ArrowUpRight size={16} />
-                  )}
-                </div>
-
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-extrabold">{d.person}</span>
-                    <span
-                      className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                        d.kind === "i_owe"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-emerald-500/20 text-emerald-400"
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-black ${
+                        isLight ? "bg-zinc-200 text-black" : "bg-zinc-800 text-white"
                       }`}
                     >
-                      {d.kind === "i_owe" ? "Debo" : "Me debe"}
-                    </span>
+                      {g.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-extrabold truncate">{g.name}</span>
+                      <span className={`text-[10px] font-bold ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
+                        {g.count} {g.count === 1 ? "deuda" : "deudas"}
+                      </span>
+                    </div>
                   </div>
-                  {d.note && (
-                    <span className="text-[10px] text-zinc-400 font-semibold">
-                      {d.note}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`text-xs font-extrabold tabular-numbers text-right ${
+                        g.net > 0 ? "text-[#16A34A]" : g.net < 0 ? "text-[#EF4444]" : isLight ? "text-zinc-600" : "text-zinc-400"
+                      }`}
+                    >
+                      {netLabel(g)}
                     </span>
-                  )}
-                  {d.dueDate && (
-                    <span className="text-[9px] text-amber-500 font-bold">
-                      Vence: {formatShortDate(d.dueDate)}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-sm font-extrabold tabular-numbers ${
-                    d.kind === "i_owe" ? "text-[#EF4444]" : "text-[#22C55E]"
-                  }`}
-                >
-                  {formatCurrency(d.amount)}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => setSettlingDebt(d)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
-                    isLight
-                      ? "bg-zinc-200 hover:bg-zinc-300 text-black"
-                      : "bg-zinc-800 hover:bg-zinc-700 text-white"
-                  }`}
-                >
-                  Saldar
+                    <ChevronDown size={14} className={`opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
+                  </div>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => onDeleteDebt(d.id)}
-                  className="p-1 text-zinc-500 hover:text-red-500"
-                >
-                  <Trash2 size={13} />
-                </button>
+                {open && <div className="p-2 pt-0 flex flex-col gap-1.5">{g.debts.map((d) => debtRow(d, false))}</div>}
               </div>
-            </div>
-          ))
+            );
+          })
+        ) : (
+          pendingDebts.map((d) => debtRow(d, true))
         )}
       </div>
 
-      {/* Settled debts history */}
+      {/* Saldadas */}
       {settledDebts.length > 0 && (
-        <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
-          <span className="text-[11px] font-extrabold uppercase opacity-75">
-            Saldadas ({settledDebts.length})
-          </span>
-
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-500/10">
+          <span className="text-[11px] font-extrabold uppercase opacity-60">Saldadas ({settledDebts.length})</span>
           {settledDebts.map((d) => (
             <div
               key={d.id}
@@ -339,18 +396,17 @@ export function DebtsPanel({
                 isLight ? "bg-zinc-100 border-zinc-200" : "bg-[#09090A] border-[#1C1C1E]"
               }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold line-through">
-                <span>{d.person}</span>
-                <span>({d.kind === "i_owe" ? "pagado" : "cobrado"})</span>
+              <div className="flex items-center gap-1.5 text-xs font-bold line-through min-w-0">
+                <span className="truncate">{d.person}</span>
+                <span className="shrink-0">({d.kind === "i_owe" ? "pagado" : "cobrado"})</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold line-through tabular-numbers">
-                  {formatCurrency(d.amount)}
-                </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold line-through tabular-numbers">{formatCurrency(d.amount)}</span>
                 <button
                   type="button"
+                  aria-label="Borrar deuda"
                   onClick={() => onDeleteDebt(d.id)}
-                  className="text-zinc-500 hover:text-red-500"
+                  className={`hover:text-red-500 cursor-pointer ${isLight ? "text-zinc-500" : "text-zinc-400"}`}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -360,14 +416,10 @@ export function DebtsPanel({
         </div>
       )}
 
-      {/* Settle Debt Confirmation Modal */}
+      {/* Confirmación para saldar */}
       {settlingDebt && (
         <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            onClick={() => setSettlingDebt(null)}
-            className="absolute inset-0 bg-black/70 backdrop-blur-xs"
-          />
-
+          <div onClick={() => setSettlingDebt(null)} className="absolute inset-0 bg-black/70 backdrop-blur-xs" />
           <div
             className={`relative w-full max-w-xs rounded-2xl border p-4 flex flex-col gap-3 shadow-2xl ${
               isLight ? "bg-white border-zinc-300 text-black" : "bg-black border-[#262626] text-white"
@@ -377,16 +429,11 @@ export function DebtsPanel({
               <CheckCircle2 size={18} className="text-[#10B981]" />
               <h4 className="text-sm font-extrabold">Saldar Deuda</h4>
             </div>
-
             <p className="text-xs font-semibold">
               Vas a marcar la deuda de <strong>{formatCurrency(settlingDebt.amount)}</strong> con{" "}
               <strong>{settlingDebt.person}</strong> como saldada.
             </p>
-
-            <p className="text-[11px] opacity-70">
-              ¿Querés registrar automáticamente el movimiento en tu saldo disponible?
-            </p>
-
+            <p className="text-[11px] opacity-75">¿Querés registrar automáticamente el movimiento en tu saldo disponible?</p>
             <div className="flex flex-col gap-1.5 pt-1">
               <button
                 type="button"
@@ -397,7 +444,6 @@ export function DebtsPanel({
               >
                 Sí, {settlingDebt.kind === "i_owe" ? "descontar de mi saldo" : "sumar a mi saldo"}
               </button>
-
               <button
                 type="button"
                 onClick={() => handleConfirmSettle(false)}
@@ -407,11 +453,10 @@ export function DebtsPanel({
               >
                 Solo saldar deuda (sin mover saldo)
               </button>
-
               <button
                 type="button"
                 onClick={() => setSettlingDebt(null)}
-                className="text-[10px] font-bold opacity-75 hover:opacity-100 text-center pt-1"
+                className="text-[10px] font-bold opacity-75 hover:opacity-100 text-center pt-1 cursor-pointer"
               >
                 Cancelar
               </button>
