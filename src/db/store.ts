@@ -68,6 +68,39 @@ export const isUnlocked = () => !meta || !!keys;
 export const getVaultPrefs = (): VaultPrefs | null => meta?.prefs ?? null;
 export const getLockState = () => ({ failedAttempts: meta?.failedAttempts ?? 0, lockoutUntil: meta?.lockoutUntil ?? 0 });
 
+// ---------- candado interno ----------
+// Activar, desactivar o borrar todo ("exclusivo") espera a que terminen las lecturas/escrituras en curso
+// ("compartidas"), y las nuevas esperan a que termine. Así nada se escribe con el estado viejo a mitad de camino.
+let inflight = 0;
+let drained: (() => void) | null = null;
+let exclusiveRun: Promise<unknown> | null = null;
+
+async function shared<T>(fn: () => Promise<T>): Promise<T> {
+  while (exclusiveRun) await exclusiveRun.catch(() => {});
+  inflight++;
+  try {
+    return await fn();
+  } finally {
+    inflight--;
+    if (inflight === 0 && drained) drained();
+  }
+}
+
+async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
+  while (exclusiveRun) await exclusiveRun.catch(() => {});
+  const run = (async () => {
+    while (inflight > 0) await new Promise<void>((r) => (drained = r));
+    drained = null;
+    return fn();
+  })();
+  exclusiveRun = run;
+  try {
+    return await run;
+  } finally {
+    if (exclusiveRun === run) exclusiveRun = null;
+  }
+}
+
 async function ready(): Promise<VaultKeys | null> {
   if (!metaLoaded) await loadVaultMeta();
   if (!meta) return null;
@@ -90,6 +123,13 @@ async function decodeWith<T>(k: VaultKeys | null, table: TableName, row: Row): P
   return decryptRecord<T>(k, table, String(row[PK[table]]), row.enc);
 }
 
+/** Con el cifrado activo, un registro sin cifrar no lo escribió la app: se ignora (no se muestra ni se cuenta). */
+async function decodeTrusted<T>(k: VaultKeys | null, table: TableName, row: Row | undefined): Promise<T | undefined> {
+  if (!row) return undefined;
+  if (k && typeof row.enc !== "string") return undefined;
+  return decodeWith<T>(k, table, row);
+}
+
 async function keyWith(k: VaultKeys | null, table: TableName, realKey: string): Promise<string> {
   return k ? storedKeyFor(k, table, realKey) : realKey;
 }
@@ -99,32 +139,44 @@ class SecureTable<T> {
   private get raw() {
     return db.table(this.name);
   }
-  async toArray(): Promise<T[]> {
-    const k = await ready();
-    const rows = await this.raw.toArray();
-    return Promise.all(rows.map((r) => decodeWith<T>(k, this.name, r)));
+  toArray(): Promise<T[]> {
+    return shared(async () => {
+      const k = await ready();
+      const rows = await this.raw.toArray();
+      const out = await Promise.all(rows.map((r) => decodeTrusted<T>(k, this.name, r)));
+      return out.filter((x): x is Awaited<T> => x !== undefined) as T[];
+    });
   }
-  async get(key: string): Promise<T | undefined> {
-    const k = await ready();
-    const row = await this.raw.get(await keyWith(k, this.name, key));
-    return row ? decodeWith<T>(k, this.name, row) : undefined;
+  get(key: string): Promise<T | undefined> {
+    return shared(async () => {
+      const k = await ready();
+      return decodeTrusted<T>(k, this.name, await this.raw.get(await keyWith(k, this.name, key)));
+    });
   }
-  async bulkGet(keys: string[]): Promise<(T | undefined)[]> {
-    const k = await ready();
-    const rows = await this.raw.bulkGet(await Promise.all(keys.map((x) => keyWith(k, this.name, x))));
-    return Promise.all(rows.map((r) => (r ? decodeWith<T>(k, this.name, r) : undefined)));
+  bulkGet(keys: string[]): Promise<(T | undefined)[]> {
+    return shared(async () => {
+      const k = await ready();
+      const rows = await this.raw.bulkGet(await Promise.all(keys.map((x) => keyWith(k, this.name, x))));
+      return Promise.all(rows.map((r) => decodeTrusted<T>(k, this.name, r)));
+    });
   }
-  async put(rec: T): Promise<void> {
-    const k = await ready();
-    await this.raw.put(await encodeWith(k, this.name, rec as Row));
+  put(rec: T): Promise<void> {
+    return shared(async () => {
+      const k = await ready();
+      await this.raw.put(await encodeWith(k, this.name, rec as Row));
+    });
   }
-  async bulkPut(recs: T[]): Promise<void> {
-    const k = await ready();
-    await this.raw.bulkPut(await Promise.all(recs.map((r) => encodeWith(k, this.name, r as Row))));
+  bulkPut(recs: T[]): Promise<void> {
+    return shared(async () => {
+      const k = await ready();
+      await this.raw.bulkPut(await Promise.all(recs.map((r) => encodeWith(k, this.name, r as Row))));
+    });
   }
-  async delete(key: string): Promise<void> {
-    const k = await ready();
-    await this.raw.delete(await keyWith(k, this.name, key));
+  delete(key: string): Promise<void> {
+    return shared(async () => {
+      const k = await ready();
+      await this.raw.delete(await keyWith(k, this.name, key));
+    });
   }
 }
 
@@ -145,7 +197,11 @@ export type Op =
   | { type: "clear"; table: TableName };
 
 /** Aplica varias escrituras de una vez: primero cifra todo, después una sola transacción (todo o nada). */
-export async function applyAtomically(ops: Op[]): Promise<void> {
+export function applyAtomically(ops: Op[]): Promise<void> {
+  return shared(() => applyAtomicallyNow(ops));
+}
+
+async function applyAtomicallyNow(ops: Op[]): Promise<void> {
   const k = await ready();
   const encoded = await Promise.all(
     ops.map(async (op) =>
@@ -189,7 +245,11 @@ const sameData = (a: Record<TableName, Row[]>, b: Record<TableName, Row[]>) =>
  * (no se escriben a disco para no dejar una copia sin cifrar). Todo se cifra antes; se escribe en una
  * transacción; después se relee y se compara. Si algo no coincide, se restaura la copia y no se pierde nada.
  */
-export async function enableEncryption(password: string, recoveryCode: string, prefs: VaultPrefs): Promise<void> {
+export function enableEncryption(password: string, recoveryCode: string, prefs: VaultPrefs): Promise<void> {
+  return exclusive(() => enableNow(password, recoveryCode, prefs));
+}
+
+async function enableNow(password: string, recoveryCode: string, prefs: VaultPrefs): Promise<void> {
   if (await loadVaultMeta()) throw new Error("El cifrado ya está activo");
   const plain = await readAllRaw();
   const created = await createVault(password, recoveryCode, prefs);
@@ -224,7 +284,11 @@ export async function enableEncryption(password: string, recoveryCode: string, p
 }
 
 /** Desactiva el cifrado: pide la contraseña, descifra todo y lo guarda en claro (todo o nada). */
-export async function disableEncryption(password: string): Promise<void> {
+export function disableEncryption(password: string): Promise<void> {
+  return exclusive(() => disableNow(password));
+}
+
+async function disableNow(password: string): Promise<void> {
   if (!meta) return;
   const k = await unlockWithPassword(meta, password);
   const plain = await decodeAll(k, await readAllRaw());
@@ -254,33 +318,44 @@ async function saveMeta(next: VaultMeta) {
   meta = next;
 }
 
-/** Cuenta un intento fallido (se guarda: no se reinicia cerrando la app) y borra todo si corresponde. */
-async function registerFailure(): Promise<UnlockResult> {
-  const m = meta!;
-  const failedAttempts = m.failedAttempts + 1;
-  if (m.prefs.wipeAfter10 && failedAttempts >= WIPE_AFTER_ATTEMPTS) {
-    await wipeEverything();
-    return { ok: false, reason: "wrong", failedAttempts, lockoutUntil: 0, wiped: true };
-  }
-  const delay = lockoutDelayMs(failedAttempts);
-  const lockoutUntil = delay ? Date.now() + delay : 0;
-  await saveMeta({ ...m, failedAttempts, lockoutUntil });
-  return { ok: false, reason: "wrong", failedAttempts, lockoutUntil, wiped: false };
+let attemptChain: Promise<unknown> = Promise.resolve();
+
+/**
+ * Un intento por vez. El intento se cuenta ANTES de probar la clave (si la app se cierra a mitad de
+ * camino, igual cuenta); si sale bien, el contador vuelve a cero. La espera se guarda en la base.
+ */
+function attempt(fn: (m: VaultMeta) => Promise<{ keys: VaultKeys; meta?: VaultMeta }>): Promise<UnlockResult> {
+  const run = attemptChain.catch(() => {}).then(() => attemptNow(fn));
+  attemptChain = run;
+  return run;
 }
 
-async function attempt(fn: (m: VaultMeta) => Promise<{ keys: VaultKeys; meta?: VaultMeta }>): Promise<UnlockResult> {
-  const m = meta ?? (await loadVaultMeta());
+async function attemptNow(fn: (m: VaultMeta) => Promise<{ keys: VaultKeys; meta?: VaultMeta }>): Promise<UnlockResult> {
+  const m = await loadVaultMeta();
   if (!m) return { ok: true };
   if (m.lockoutUntil > Date.now()) return { ok: false, reason: "lockout", lockoutUntil: m.lockoutUntil };
+  const failedAttempts = m.failedAttempts + 1;
+  await saveMeta({ ...m, failedAttempts });
+  let r: { keys: VaultKeys; meta?: VaultMeta };
   try {
-    const r = await fn(m);
-    await saveMeta({ ...(r.meta ?? m), failedAttempts: 0, lockoutUntil: 0 });
-    keys = r.keys;
-    return { ok: true };
+    r = await fn(m);
   } catch (e) {
-    if (e instanceof WrongSecretError) return registerFailure();
-    throw e;
+    if (!(e instanceof WrongSecretError)) {
+      await saveMeta({ ...m }); // no fue la contraseña (p. ej. error del sistema): no cuenta
+      throw e;
+    }
+    if (m.prefs.wipeAfter10 && failedAttempts >= WIPE_AFTER_ATTEMPTS) {
+      await wipeNow();
+      return { ok: false, reason: "wrong", failedAttempts, lockoutUntil: 0, wiped: true };
+    }
+    const delay = lockoutDelayMs(failedAttempts);
+    const lockoutUntil = delay ? Date.now() + delay : 0;
+    await saveMeta({ ...meta!, failedAttempts, lockoutUntil });
+    return { ok: false, reason: "wrong", failedAttempts, lockoutUntil, wiped: false };
   }
+  await saveMeta({ ...(r.meta ?? m), failedAttempts: 0, lockoutUntil: 0 });
+  keys = r.keys;
+  return { ok: true };
 }
 
 export const unlock = (password: string) => attempt(async (m) => ({ keys: await unlockWithPassword(m, password) }));
@@ -311,7 +386,11 @@ export async function updateVaultPrefs(partial: Partial<VaultPrefs>): Promise<vo
 }
 
 /** Borra absolutamente todo (datos y caja fuerte). La app vuelve a empezar desde la bienvenida. */
-export async function wipeEverything(): Promise<void> {
+export function wipeEverything(): Promise<void> {
+  return exclusive(wipeNow);
+}
+
+async function wipeNow(): Promise<void> {
   await db.transaction("rw", [...DATA_TABLES.map((t) => db.table(t)), db.vault], async () => {
     for (const t of DATA_TABLES) await db.table(t).clear();
     await db.vault.clear();

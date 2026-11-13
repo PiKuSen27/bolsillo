@@ -177,6 +177,51 @@ describe("Cifrado de la base (store.ts)", () => {
     expect(await rawDump()).not.toContain("PizzaSecreta");
   });
 
+  it("Revisión #1: lo que se guarda MIENTRAS se activa el cifrado queda cifrado y no se pierde", async () => {
+    const enabling = enableEncryption(PW, generateRecoveryCode(), prefs);
+    const writing = store.movements.put({ id: "durante", date: "2026-11-12", amount: 555777, kind: "expense", categoryId: "comida", note: "EscritoDurante", source: "manual", createdAt: "2026-11-12T10:00:00.000Z" });
+    await Promise.all([enabling, writing]);
+    expect(await rawDump()).not.toContain("EscritoDurante");
+    expect((await store.movements.get("durante"))?.amount).toBe(555777);
+  });
+
+  it("Revisión #1: lo que se guarda MIENTRAS se desactiva queda legible y la app no se traba", async () => {
+    await enableEncryption(PW, generateRecoveryCode(), prefs);
+    const disabling = disableEncryption(PW);
+    const writing = store.debts.put({ id: "d9", kind: "i_owe", person: "Durante", amount: 1, settled: false, createdAt: "2026-11-12T10:00:00.000Z" });
+    await Promise.all([disabling, writing]);
+    expect((await store.debts.toArray()).map((d) => d.id).sort()).toEqual(["d1", "d9"]);
+  });
+
+  it("Revisión #2: con cifrado activo, un registro sin cifrar metido por afuera se ignora", async () => {
+    await enableEncryption(PW, generateRecoveryCode(), prefs);
+    await db.movements.put({ id: "falso", date: "2026-11-12", amount: 1, kind: "income", categoryId: "income", source: "manual", createdAt: "x" });
+    expect((await store.movements.toArray()).some((m) => m.id === "falso")).toBe(false);
+    expect(await store.movements.get("falso")).toBeUndefined();
+  });
+
+  it("Revisión: si la verificación después de escribir falla, se restaura todo como estaba", async () => {
+    const before = await rawDump();
+    const original = globalThis.crypto.subtle.decrypt.bind(globalThis.crypto.subtle);
+    const spy = vi.spyOn(globalThis.crypto.subtle, "decrypt").mockImplementation(() => Promise.reject(new Error("falla al verificar")));
+    try {
+      await expect(enableEncryption(PW, generateRecoveryCode(), prefs)).rejects.toThrow(/quedaron como estaban/);
+    } finally {
+      spy.mockRestore();
+    }
+    void original;
+    expect(await loadVaultMeta()).toBeNull();
+    expect(await rawDump()).toBe(before);
+  });
+
+  it("Revisión #7: dos intentos al mismo tiempo cuentan como dos", async () => {
+    await enableEncryption(PW, generateRecoveryCode(), prefs);
+    lock();
+    await Promise.all([unlock("mal1"), unlock("mal2")]);
+    __resetMemoryForTests();
+    expect((await loadVaultMeta())?.failedAttempts).toBe(2);
+  });
+
   it("Las preferencias de la pantalla de bloqueo quedan fuera del cifrado y los ajustes se completan al leer", async () => {
     await enableEncryption(PW, generateRecoveryCode(), prefs);
     await updateVaultPrefs({ lockAfterMs: 0, theme: "dark" });
