@@ -100,6 +100,19 @@ export class BolsilloDatabase extends Dexie {
     // OJO futuras migraciones: si el cifrado está activo los registros son { clave, enc } y no se pueden
     // modificar acá; los valores por defecto nuevos los completa getSettings() al leer.
     this.version(7).stores({ vault: "id" });
+
+    // v8: tutorial. Quien ya usaba la app no lo ve solo (lo puede abrir desde Ajustes).
+    this.version(8)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table("settings")
+          .toCollection()
+          .modify((s: Record<string, unknown>) => {
+            if (typeof s.enc === "string") return; // registro cifrado: no se puede tocar
+            if (typeof s.tutorialDone !== "boolean") s.tutorialDone = true;
+          });
+      });
   }
 }
 

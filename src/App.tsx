@@ -36,6 +36,7 @@ import {
 } from "./types";
 import { getVaultPrefs, isVaultEnabled, loadVaultMeta, lock as lockStore, store, updateVaultPrefs } from "./db/store";
 import { LockScreen } from "./components/LockScreen";
+import { Tour, TourStep } from "./components/Tour";
 import { flushSync } from "react-dom";
 import {
   addDebt,
@@ -187,6 +188,12 @@ export default function App() {
     setAmountsHiddenState(null);
     setVault("locked");
   }, []);
+
+  // Tutorial: aparece solo después de la bienvenida (y desde Ajustes → "Ver tutorial")
+  const [tourOpen, setTourOpen] = useState(false);
+  useEffect(() => {
+    if (settings?.onboardingDone && !settings.tutorialDone) setTourOpen(true);
+  }, [settings?.onboardingDone, settings?.tutorialDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // La pantalla de bloqueo se dibuja con el tema elegido, sin descifrar nada: se copia afuera
   useEffect(() => {
@@ -839,6 +846,7 @@ export default function App() {
               </button>
 
               <button
+                data-tour="movements"
                 type="button"
                 onClick={() => setActiveSheet("movements")}
                 className={`flex flex-col items-center gap-0.5 text-[9px] font-black cursor-pointer transition-colors ${
@@ -869,6 +877,7 @@ export default function App() {
               </button>
 
               <button
+                data-tour="debts"
                 type="button"
                 onClick={() => setActiveSheet("debts")}
                 className={`flex flex-col items-center gap-0.5 text-[9px] font-black cursor-pointer transition-colors ${
@@ -884,6 +893,7 @@ export default function App() {
               </button>
 
               <button
+                data-tour="settings"
                 type="button"
                 onClick={() => setActiveSheet("settings")}
                 className={`flex flex-col items-center gap-0.5 text-[9px] font-black cursor-pointer transition-colors ${
@@ -978,6 +988,28 @@ export default function App() {
 
         {/* ============================================================== */}
         {/* FLOATING UNDO (DESHACER) TOAST                                 */}
+        {tourOpen && !activeSheet && (
+          <Tour
+            isLight={isLight}
+            steps={[
+              { target: "hero", title: "Tu plata disponible", text: "Es lo que te queda hasta el próximo cobro y cuánto podés gastar por día. El ojo tapa los montos." },
+              { target: "days", title: "Tus días", text: "Tocá un día para ver o corregir lo que anotaste. El signo ! marca los días que te faltan anotar." },
+              { target: "calc", title: "Anotá en segundos", text: "Escribí el monto, elegí la categoría y tocá − Gasto o + Ingreso." },
+              settings.incomeMode === "daily"
+                ? { target: "workdays", title: "Días trabajados", text: "De lunes a sábado cada día suma tu tarifa. Tocá acá para marcar un día libre o cambiar un monto." }
+                : { target: "settings", title: "Tu sueldo", text: "El sueldo y el día de cobro se cambian en Ajustes, igual que el tema y la contraseña." },
+              isMobileLayout
+                ? { target: "movements", title: "Movimientos y buscador", text: "Ahí está todo lo del período, por categoría, y podés buscar por nota, categoría o monto." }
+                : { target: "hero", title: "Movimientos y buscador", text: "Tocá la tarjeta de Disponible para ver todo lo del período y buscar por nota, categoría o monto." },
+              { target: "debts", title: "Deudas", text: "Anotá lo que debés y lo que te deben, y marcalo como saldado cuando se pague." },
+            ] satisfies TourStep[]}
+            onClose={() => {
+              setTourOpen(false);
+              if (!settings.tutorialDone) handleUpdateSettings({ tutorialDone: true });
+            }}
+          />
+        )}
+
         {/* Tapa todo al salir de la app (así el selector de apps no muestra montos) */}
         {covered && isVaultEnabled() && (
           <div aria-hidden="true" className={`fixed inset-0 z-[300] flex items-center justify-center ${isLight ? "bg-white" : "bg-black"}`}>
@@ -1151,6 +1183,10 @@ export default function App() {
           isLight={isLight}
         >
           <SettingsPanel
+            onShowTutorial={() => {
+              setActiveSheet(null);
+              setTourOpen(true);
+            }}
             onLockNow={lockApp}
             onVaultChanged={async () => {
               const m = await loadVaultMeta();

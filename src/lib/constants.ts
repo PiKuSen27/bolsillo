@@ -36,5 +36,6 @@ export const DEFAULT_SETTINGS: Settings = {
   windowZoom: "auto",
   hideAmounts: false,
   startHidden: false,
+  tutorialDone: false,
   createdAt: new Date().toISOString(),
 };

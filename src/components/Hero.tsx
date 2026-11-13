@@ -20,6 +20,7 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
 
   return (
     <div
+      data-tour="hero"
       role="button"
       tabIndex={0}
       onClick={onOpenMovements}
@@ -165,6 +166,7 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
 
       {summary.incomeMode === "daily" && onOpenWorkDays && (
         <button
+          data-tour="workdays"
           type="button"
           onClick={(e) => {
             e.stopPropagation();

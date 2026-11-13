@@ -62,7 +62,7 @@ export function MobileDayStrip({
 
   return (
     <>
-      <div className="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 px-0.5 select-none shrink-0">
+      <div data-tour="days" className="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 px-0.5 select-none shrink-0">
         {mainDays.map((item) => {
           const isSelected = item.dateStr === selectedDateStr;
 

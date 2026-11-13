@@ -48,6 +48,7 @@ export interface Settings {
   windowZoom: WindowZoom; // Tamaño de ventana (solo escritorio)
   hideAmounts: boolean; // el ojo de "Disponible": montos tapados con $ ••••••
   startHidden: boolean; // "Abrir siempre con los montos ocultos"
+  tutorialDone: boolean; // ya vio (o salteó) el recorrido de después de la bienvenida
   lastBackupAt?: string; // ISO: última vez que se exportó un backup (para el recordatorio)
   createdAt: string;
 }

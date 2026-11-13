@@ -41,6 +41,7 @@ interface SettingsPanelProps {
   onOpenWorkDays?: () => void;
   onLockNow: () => void;
   onVaultChanged: () => void;
+  onShowTutorial: () => void;
 }
 
 export function SettingsPanel({
@@ -51,6 +52,7 @@ export function SettingsPanel({
   onOpenWorkDays,
   onLockNow,
   onVaultChanged,
+  onShowTutorial,
 }: SettingsPanelProps) {
   const [incomeMode, setIncomeMode] = useState<IncomeMode>(settings.incomeMode || "salary");
   const [fixedSalary, setFixedSalary] = useState(
@@ -269,6 +271,17 @@ export function SettingsPanel({
           )}
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={onShowTutorial}
+        className={`p-3.5 rounded-2xl border text-left text-sm font-black cursor-pointer ${
+          isLight ? "bg-white border-zinc-300 hover:bg-zinc-50" : "bg-[#0A0A0C] border-[#222224] hover:bg-[#111113]"
+        }`}
+      >
+        Ver tutorial
+        <span className="block text-[11px] font-bold opacity-75">Un recorrido corto por cada parte de la app.</span>
+      </button>
 
       {/* Privacidad: montos ocultos al abrir */}
       <div

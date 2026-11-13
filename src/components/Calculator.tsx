@@ -185,6 +185,7 @@ export function Calculator({
 
   return (
     <div
+      data-tour="calc"
       className={`flex-1 h-full rounded-2xl p-2 flex flex-col overflow-hidden select-none border ${
         fill ? "gap-2" : "justify-between"
       } ${

@@ -26,6 +26,7 @@ export function RightColumnWidget({
 
   return (
     <div
+      data-tour="debts"
       className={`w-36 h-full rounded-2xl p-2 flex flex-col justify-between overflow-hidden select-none border shrink-0 ${
         isLight
           ? "bg-[#F4F4F5] border-[#E4E4E7] text-black"

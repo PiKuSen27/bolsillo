@@ -97,6 +97,7 @@ export function DayStrip({
   return (
     <>
       <div
+        data-tour="days"
         className={`w-28 h-full rounded-2xl p-2 flex flex-col items-center justify-between select-none border shrink-0 ${
           isLight
             ? "bg-[#F4F4F5] border-[#E4E4E7] text-black"
@@ -108,6 +109,7 @@ export function DayStrip({
           <button
             type="button"
             onClick={onOpenSettings}
+            data-tour="settings"
             title="Ajustes de la app"
             className={`w-[42px] h-[42px] rounded-[11px] border flex items-center justify-center transition-all duration-200 cursor-pointer group active:scale-95 ${
               isLight
