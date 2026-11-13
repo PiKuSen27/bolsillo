@@ -253,6 +253,8 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-xs font-extrabold truncate">{showPerson ? d.person : d.note || "Sin nota"}</span>
+            {/* En la tarjeta de la persona la flecha de color ya dice el sentido; el cartel ocupa lugar */}
+            {showPerson && (
             <span
               className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
                 d.kind === "i_owe"
@@ -262,6 +264,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
             >
               {d.kind === "i_owe" ? "Debo" : "Me debe"}
             </span>
+            )}
           </div>
           {showPerson && d.note && (
             <span className={`text-[10px] font-semibold truncate ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>{d.note}</span>
