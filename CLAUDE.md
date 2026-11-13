@@ -129,7 +129,7 @@ Bolsillo/
 7. **Sin `whileHover`/`whileTap` con escala en tarjetas grandes** (Hero): en WebKitGTK el transform deja el texto borroso.
 
 ### B. Temas y colores
-1. Solo dos temas: **Blanco** (`#FFFFFF`, tarjetas `#F4F4F5`) y **Negro** (`#000000`, tarjetas `#0A0A0C`/`#0D0D0E`). El manifest de la PWA usa `#000000`.
+1. Solo dos temas: **Blanco** (`#FFFFFF`, tarjetas `#F4F4F5`; **es el de por defecto** para usuarios nuevos y después de borrar todo) y **Negro** (`#000000`, tarjetas `#0A0A0C`/`#0D0D0E`). El manifest de la PWA usa `#000000`.
 2. Sin colores neón. Verde `#16A34A`/`#22C55E` para ingresos, rojo `#DC2626`/`#EF4444` para gastos, ámbar `#D97706` solo para "monto distinto a la tarifa", barras de avance y avisos suaves (bandeja, backup atrasado).
 3. Bordes de 1 px, tipografía gruesa (`font-bold`/`font-extrabold`), radios 16 px en tarjetas.
 4. Se respeta "reducir movimiento" del sistema (`MotionConfig reducedMotion="user"` + media query en `index.css`).

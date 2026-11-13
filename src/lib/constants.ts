@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reminderTime: "21:00",
   reminderEnabled: true,
   dueAlertDays: 3,
-  theme: "dark",
+  theme: "light", // Blanco por defecto para usuarios nuevos y después de "Borrar todos los datos"
   categories: DEFAULT_CATEGORIES,
   onboardingDone: false,
   closeToTray: true,

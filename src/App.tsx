@@ -670,6 +670,7 @@ export default function App() {
       {/* Onboarding Overlay */}
       {!settings.onboardingDone && (
         <OnboardingPanel
+          isLight={isLight}
           onComplete={async (updates) => {
             await handleUpdateSettings(updates);
             await loadData();
