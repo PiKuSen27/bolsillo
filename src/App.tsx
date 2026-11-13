@@ -207,23 +207,39 @@ export default function App() {
     if (settings && isVaultEnabled()) updateVaultPrefs({ theme: settings.theme }).catch(() => {});
   }, [settings?.theme, vault]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Al salir de la app: tapar la pantalla (selector de apps) y bloquear según "Bloquear al salir de la app"
+  // Al salir de la app: tapar la pantalla (selector de apps) y bloquear según "Bloquear al salir de la app".
+  // Avisos: visibilitychange y pagehide (celular) y "app-hidden"/"app-shown" que manda Rust al esconder en la bandeja.
   useEffect(() => {
     if (vault !== "unlocked") return;
     let hiddenAt = 0;
-    const onVisibility = () => {
-      const delay = getVaultPrefs()?.lockAfterMs ?? 5000;
-      if (document.visibilityState === "hidden") {
-        hiddenAt = Date.now();
-        flushSync(() => setCovered(true));
-        if (delay === 0) lockApp();
-      } else {
-        if (Date.now() - hiddenAt >= delay) lockApp();
-        setCovered(false);
-      }
+    const onHidden = () => {
+      if (hiddenAt) return;
+      hiddenAt = Date.now();
+      flushSync(() => setCovered(true));
+      if ((getVaultPrefs()?.lockAfterMs ?? 5000) === 0) lockApp();
     };
+    const onShown = () => {
+      if (hiddenAt && Date.now() - hiddenAt >= (getVaultPrefs()?.lockAfterMs ?? 5000)) lockApp();
+      hiddenAt = 0;
+      setCovered(false);
+    };
+    const onVisibility = () => (document.visibilityState === "hidden" ? onHidden() : onShown());
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHidden);
+    window.addEventListener("pageshow", onShown);
+    const unlisten: (() => void)[] = [];
+    if (isTauri()) {
+      import("@tauri-apps/api/event").then(({ listen }) => {
+        listen("app-hidden", onHidden).then((u) => unlisten.push(u));
+        listen("app-shown", onShown).then((u) => unlisten.push(u));
+      });
+    }
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onHidden);
+      window.removeEventListener("pageshow", onShown);
+      unlisten.forEach((u) => u());
+    };
   }, [vault, lockApp]);
 
   // Rust necesita saber si "cerrar" esconde al tray o cierra de verdad (bug #10)

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, LogicalSize, Manager, WebviewWindow, WindowEvent,
+    AppHandle, Emitter, LogicalSize, Manager, WebviewWindow, WindowEvent,
 };
 
 /// La interfaz está diseñada a 540×600 px lógicos; la ventana se escala con el zoom del webview.
@@ -52,6 +52,7 @@ fn minimize_window(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.minimize();
         let _ = w.hide();
+        let _ = app.emit("app-hidden", ()); // la app tapa y bloquea según "Bloquear al salir"
     }
     Ok(())
 }
@@ -143,6 +144,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.show();
+                let _ = app.emit("app-shown", ());
                 let _ = w.set_focus();
             }
         }))
@@ -171,6 +173,7 @@ pub fn run() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
+                            let _ = window.emit("app-shown", ());
                             let _ = window.set_focus();
                         }
                     }
@@ -187,8 +190,10 @@ pub fn run() {
                         if let Some(window) = app.get_webview_window("main") {
                             if window.is_visible().unwrap_or(false) {
                                 let _ = window.hide();
+                                let _ = window.emit("app-hidden", ());
                             } else {
                                 let _ = window.show();
+                                let _ = window.emit("app-shown", ());
                                 let _ = window.set_focus();
                             }
                         }
@@ -210,6 +215,7 @@ pub fn run() {
                 // Sin bandeja en la barra, esconder = app fantasma: mejor cerrar de verdad
                 if hide && tray_host_registered() {
                     let _ = window.hide();
+                    let _ = window.emit("app-hidden", ());
                     api.prevent_close();
                 } else {
                     window.app_handle().exit(0);
