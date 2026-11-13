@@ -722,7 +722,13 @@ export function SettingsPanel({
         </div>
       </div>
 
-      <SecuritySettings isLight={isLight} theme={settings.theme} onLockNow={onLockNow} onChanged={onVaultChanged} />
+      <SecuritySettings
+        isLight={isLight}
+        theme={settings.theme}
+        onLockNow={onLockNow}
+        onChanged={onVaultChanged}
+        onBackupSaved={() => onUpdateSettings({ lastBackupAt: new Date().toISOString() })}
+      />
 
       {askExportPw && (
         <PasswordPrompt

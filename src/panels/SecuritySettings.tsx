@@ -12,7 +12,10 @@ import {
   isVaultEnabled,
   updateVaultPrefs,
 } from "../db/store";
-import { generateRecoveryCode, normalizeRecoveryCode, passwordStrength, WrongSecretError } from "../lib/vault";
+import { encryptBackup, generateRecoveryCode, normalizeRecoveryCode, passwordStrength, WrongSecretError } from "../lib/vault";
+import { exportAllData } from "../db/repo";
+import { saveBackupFile } from "../platform";
+import { formatLocalDate } from "../lib/format";
 
 const LOCK_OPTIONS = [
   { value: "0", label: "Al instante" },
@@ -27,16 +30,21 @@ export function SecuritySettings({
   theme,
   onLockNow,
   onChanged,
+  onBackupSaved,
 }: {
   isLight?: boolean;
   theme: "light" | "dark";
   onLockNow: () => void;
   onChanged: () => void; // el cifrado se activó o desactivó
+  onBackupSaved?: () => void;
 }) {
   const enabled = isVaultEnabled();
   const prefs = getVaultPrefs();
   const [, refresh] = useState(0);
-  const [step, setStep] = useState<"idle" | "password" | "code" | "verify">("idle");
+  const [step, setStep] = useState<"idle" | "password" | "backup" | "code" | "verify">("idle");
+  // Copia previa cifrada con la contraseña nueva (se prepara antes para que "Guardar" salga directo del toque)
+  const [backupFile, setBackupFile] = useState<{ name: string; contents: string } | null>(null);
+  const [backupSaved, setBackupSaved] = useState<string | null>(null);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [code, setCode] = useState("");
@@ -64,6 +72,8 @@ export function SecuritySettings({
     setPw2("");
     setCode("");
     setCodeCheck("");
+    setBackupFile(null);
+    setBackupSaved(null);
   };
 
   const activate = async () => {
@@ -126,8 +136,7 @@ export function SecuritySettings({
       {!enabled && step === "password" && (
         <>
           <p className={`text-[11px] font-bold ${muted}`}>
-            Paso 1 de 3 · Elegí una contraseña de al menos 8 caracteres. Mejor una frase larga. Antes, te conviene exportar un
-            backup (más abajo).
+            Paso 1 de 4 · Elegí una contraseña de al menos 8 caracteres. Mejor una frase larga, de 3 o 4 palabras.
           </p>
           <PasswordField label="Contraseña" value={pw} onChange={setPw} isLight={isLight} showStrength autoFocus autoComplete="new-password" />
           <PasswordField label="Repetila" value={pw2} onChange={setPw2} isLight={isLight} autoComplete="new-password" />
@@ -140,6 +149,68 @@ export function SecuritySettings({
               type="button"
               className={primary}
               disabled={!newPwOk}
+              onClick={async () => {
+                setStep("backup");
+                setBackupFile({
+                  name: `bolsillo-backup-cifrado-${formatLocalDate(new Date())}.json`,
+                  contents: await encryptBackup(await exportAllData(), pw),
+                });
+              }}
+            >
+              Siguiente
+            </button>
+          </div>
+        </>
+      )}
+
+      {!enabled && step === "backup" && (
+        <>
+          <p className={`text-[11px] font-bold ${muted}`}>
+            Paso 2 de 4 · Antes de cifrar, guardá una copia de seguridad. Va cifrada con la contraseña que elegiste: para
+            abrirla vas a necesitar esa contraseña.
+          </p>
+          {backupSaved ? (
+            <p className="text-[11px] font-bold text-[#16A34A] break-all">{backupSaved}</p>
+          ) : (
+            <button
+              type="button"
+              className={`${primary} self-start`}
+              disabled={!backupFile}
+              onClick={async () => {
+                if (!backupFile) return;
+                try {
+                  const r = await saveBackupFile(backupFile.name, backupFile.contents);
+                  setBackupSaved(r.kind === "path" ? `Copia guardada en ${r.path}` : "Copia guardada.");
+                  onBackupSaved?.();
+                } catch (e) {
+                  if (e instanceof DOMException && e.name === "AbortError") return;
+                  setMessage({ ok: false, text: `No se pudo guardar la copia: ${e instanceof Error ? e.message : e}` });
+                }
+              }}
+            >
+              {backupFile ? "Guardar copia de seguridad" : "Preparando copia…"}
+            </button>
+          )}
+          <div className="flex gap-2 justify-end items-center">
+            {!backupSaved && (
+              <button
+                type="button"
+                className="text-[11px] font-bold opacity-70 hover:opacity-100 underline cursor-pointer mr-auto"
+                onClick={() => {
+                  setCode(generateRecoveryCode());
+                  setStep("code");
+                }}
+              >
+                Seguir sin copia (no recomendado)
+              </button>
+            )}
+            <button type="button" className={secondary} onClick={resetWizard}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={primary}
+              disabled={!backupSaved}
               onClick={() => {
                 setCode(generateRecoveryCode());
                 setStep("code");
@@ -154,7 +225,7 @@ export function SecuritySettings({
       {!enabled && step === "code" && (
         <>
           <p className={`text-[11px] font-bold ${muted}`}>
-            Paso 2 de 3 · Este es tu <strong>código de recuperación</strong>. Sirve para entrar si olvidás la contraseña.
+            Paso 3 de 4 · Este es tu <strong>código de recuperación</strong>. Sirve para entrar si olvidás la contraseña.
             Anotalo en un papel y guardalo en un lugar seguro: no se vuelve a mostrar.
           </p>
           <div
@@ -183,7 +254,7 @@ export function SecuritySettings({
 
       {!enabled && step === "verify" && (
         <>
-          <p className={`text-[11px] font-bold ${muted}`}>Paso 3 de 3 · Escribí el código que anotaste, para confirmar que está bien copiado.</p>
+          <p className={`text-[11px] font-bold ${muted}`}>Paso 4 de 4 · Escribí el código que anotaste, para confirmar que está bien copiado.</p>
           <input
             value={codeCheck}
             onChange={(e) => setCodeCheck(e.target.value)}
