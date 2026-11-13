@@ -129,8 +129,13 @@ export default function App() {
   // Ojo de "Disponible": tapa todos los montos. Arranca oculto si quedó así o si se pidió "Abrir siempre…"
   const [amountsHidden, setAmountsHiddenState] = useState<boolean | null>(null);
 
+  // Sube cada vez que se bloquea: una carga que empezó antes no puede volver a llenar la pantalla después
+  const lockGen = useRef(0);
+
   const loadData = useCallback(async () => {
+    const gen = lockGen.current;
     const s = await getSettings();
+    if (gen !== lockGen.current) return;
     setSettings(s);
     setAmountsHiddenState((cur) => (cur === null ? s.startHidden || s.hideAmounts : cur));
 
@@ -151,6 +156,7 @@ export default function App() {
       }
     }
 
+    if (gen !== lockGen.current) return;
     setMovements(allM);
     setRecurrings(allR);
     setInstallments(allI);
@@ -174,6 +180,7 @@ export default function App() {
 
   /** Bloquea: borra las claves de memoria y desmonta toda la interfaz con datos. */
   const lockApp = useCallback(() => {
+    lockGen.current++;
     lockStore();
     setSettings(null);
     setMovements([]);
@@ -336,7 +343,9 @@ export default function App() {
       });
 
       for (const alert of alerts) {
-        await sendAppNotification(alert.title, alert.body);
+        // Con contraseña, el aviso del sistema no muestra nombres ni montos (queda en el historial y en la pantalla bloqueada)
+        if (isVaultEnabled()) await sendAppNotification("Bolsillo", "Tenés un vencimiento cerca. Abrí Bolsillo para verlo.");
+        else await sendAppNotification(alert.title, alert.body);
         await store.remindersSent.put({
           key: alert.key,
           sentAt: now.toISOString(),

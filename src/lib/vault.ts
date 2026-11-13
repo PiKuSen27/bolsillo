@@ -164,11 +164,20 @@ export async function createVault(
   }
 }
 
+/** Lo guardado en la base podría estar manipulado: no aceptar menos iteraciones que las de fábrica. */
+function checkIterations(meta: VaultMeta) {
+  if (!Number.isInteger(meta.iterations) || meta.iterations < PBKDF2_ITERATIONS || meta.iterations > 10_000_000) {
+    throw new Error("Los datos de seguridad de Bolsillo están dañados");
+  }
+}
+
 async function masterFromPassword(meta: VaultMeta, password: string): Promise<Bytes> {
+  checkIterations(meta);
   return open(await deriveKek(password, fromB64(meta.pwSalt), meta.iterations), meta.pwWrapped, AAD_PW);
 }
 
 async function masterFromRecovery(meta: VaultMeta, code: string): Promise<Bytes> {
+  checkIterations(meta);
   return open(await deriveKek(normalizeRecoveryCode(code), fromB64(meta.rcSalt), meta.iterations), meta.rcWrapped, AAD_RC);
 }
 
@@ -267,8 +276,8 @@ const COMMON = new Set([
 /** Fuerza de la contraseña: ok = se puede usar; score 0..4 para el indicador. */
 export function passwordStrength(pw: string): { ok: boolean; score: 0 | 1 | 2 | 3 | 4; label: string; hint?: string } {
   if (pw.length < 8) return { ok: false, score: 0, label: "Muy corta", hint: "Usá al menos 8 caracteres." };
-  if (/^\d+$/.test(pw) && pw.length < 12) {
-    return { ok: false, score: 0, label: "PIN muy fácil", hint: "Un número corto se adivina rápido: sumá letras o usá 12 números o más." };
+  if (/^\d+$/.test(pw) && pw.length < 14) {
+    return { ok: false, score: 0, label: "PIN muy fácil", hint: "Un número se adivina rápido: sumá letras o usá 14 números o más." };
   }
   if (COMMON.has(pw.toLowerCase()) || /^(.)\1+$/.test(pw)) {
     return { ok: false, score: 0, label: "Muy común", hint: "Esa contraseña es de las primeras que se prueban." };
@@ -279,7 +288,8 @@ export function passwordStrength(pw: string): { ok: boolean; score: 0 | 1 | 2 | 
   if (/\d/.test(pw)) pool += 10;
   if (/[^a-zA-Z0-9]/.test(pw)) pool += 33;
   const bits = pw.length * Math.log2(pool || 1);
-  if (bits < 45) return { ok: true, score: 1, label: "Débil", hint: "Más larga es mejor: probá con una frase de 3 o 4 palabras." };
+  // Débil no se acepta: con los archivos copiados, una clave así se adivina en minutos aunque haya PBKDF2
+  if (bits < 45) return { ok: false, score: 1, label: "Débil", hint: "Hacela más larga: probá con una frase de 3 o 4 palabras." };
   if (bits < 60) return { ok: true, score: 2, label: "Aceptable" };
   if (bits < 80) return { ok: true, score: 3, label: "Buena" };
   return { ok: true, score: 4, label: "Muy buena" };

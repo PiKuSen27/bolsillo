@@ -19,7 +19,7 @@ import {
 } from "./vault";
 
 const prefs = { lockAfterMs: 5000, wipeAfter10: false, theme: "light" as const };
-const FAST = 1000; // iteraciones bajas solo para que los tests corran rápido
+const FAST = PBKDF2_ITERATIONS; // menos iteraciones se rechazan (ver test de manipulación)
 
 describe("vault.ts - Cifrado de datos", () => {
   it("Por defecto usa PBKDF2 con al menos 600.000 iteraciones y sales distintas", async () => {
@@ -111,11 +111,17 @@ describe("vault.ts - Cifrado de datos", () => {
   it("Fuerza de contraseña: mínimo 8, sin PIN corto, sin contraseñas comunes", () => {
     expect(passwordStrength("abc").ok).toBe(false);
     expect(passwordStrength("12345679").ok).toBe(false); // PIN de 8 números
-    expect(passwordStrength("123456789012").ok).toBe(true); // 12 números sí
+    expect(passwordStrength("123456789012").ok).toBe(false); // 12 números todavía es poco
+    expect(passwordStrength("31415926535897").ok).toBe(true); // 14 números sí
     expect(passwordStrength("password").ok).toBe(false);
     expect(passwordStrength("aaaaaaaaaa").ok).toBe(false);
-    expect(passwordStrength("gatito22").score).toBe(1);
+    expect(passwordStrength("gatito22")).toMatchObject({ ok: false, score: 1 }); // débil: no alcanza
     expect(passwordStrength("caballo bateria grapa correcta").score).toBe(4);
+  });
+
+  it("Revisión #9: si alguien baja las iteraciones guardadas, se rechaza", async () => {
+    const { meta } = await createVault("caballo bateria grapa", generateRecoveryCode(), prefs);
+    await expect(unlockWithPassword({ ...meta, iterations: 1 }, "caballo bateria grapa")).rejects.toThrow(/dañados/);
   });
 
   it("Intentos fallidos: libres hasta 4; después 30 s, 1 min, 5 min, 15 min y 1 h como máximo", () => {

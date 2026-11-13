@@ -96,6 +96,10 @@ export function SecuritySettings({
         mucho más segura que una palabra con números. La espera después de los intentos fallidos solo frena a quien prueba a
         mano en la app, no a quien copió los archivos.
       </p>
+      <p>
+        Los backups que exportaste <strong>antes</strong> de activar la contraseña no están cifrados: borralos de Descargas,
+        Archivos o donde los hayas guardado. Además, el sistema puede tardar en borrar del disco la copia vieja sin cifrar.
+      </p>
       <p>Si olvidás la contraseña y perdés el código de recuperación, nadie puede recuperar los datos (ni nosotros).</p>
     </div>
   );

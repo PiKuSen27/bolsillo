@@ -196,6 +196,10 @@ export function SettingsPanel({
     const file = e.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setImportError("El archivo es demasiado grande (máximo 10 MB)");
+      return;
+    }
     setImportError(null);
     setPendingImport(null);
 
@@ -723,7 +727,7 @@ export function SettingsPanel({
       {askExportPw && (
         <PasswordPrompt
           title="Backup cifrado"
-          detail="Escribí tu contraseña de Bolsillo. El archivo va a quedar cifrado con ella: para importarlo vas a necesitarla."
+          detail="Escribí tu contraseña de Bolsillo. El archivo queda cifrado con ella y solo se abre con esa contraseña (el código de recuperación no sirve para backups)."
           confirmLabel="Preparar backup"
           isLight={isLight}
           onCancel={() => setAskExportPw(false)}
