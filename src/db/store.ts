@@ -86,6 +86,7 @@ async function shared<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+// OJO: dentro de un exclusive() no llamar a store.* (esperaría a sí mismo); usar db directo.
 async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
   while (exclusiveRun) await exclusiveRun.catch(() => {});
   const run = (async () => {
@@ -232,7 +233,10 @@ async function readAllRaw(): Promise<Record<TableName, Row[]>> {
 
 async function decodeAll(k: VaultKeys | null, raw: Record<TableName, Row[]>): Promise<Record<TableName, Row[]>> {
   const out = {} as Record<TableName, Row[]>;
-  for (const t of DATA_TABLES) out[t] = await Promise.all(raw[t].map((r) => decodeWith<Row>(k, t, r)));
+  for (const t of DATA_TABLES) {
+    const rows = await Promise.all(raw[t].map((r) => decodeTrusted<Row>(k, t, r)));
+    out[t] = rows.filter((r): r is Row => r !== undefined); // con cifrado, filas en claro metidas por afuera no se copian
+  }
   return out;
 }
 

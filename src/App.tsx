@@ -228,13 +228,16 @@ export default function App() {
     window.addEventListener("pagehide", onHidden);
     window.addEventListener("pageshow", onShown);
     const unlisten: (() => void)[] = [];
+    let cancelled = false; // listen() responde tarde: si ya se limpió, se suelta enseguida
+    const keep = (u: () => void) => (cancelled ? u() : unlisten.push(u));
     if (isTauri()) {
       import("@tauri-apps/api/event").then(({ listen }) => {
-        listen("app-hidden", onHidden).then((u) => unlisten.push(u));
-        listen("app-shown", onShown).then((u) => unlisten.push(u));
+        listen("app-hidden", onHidden).then(keep);
+        listen("app-shown", onShown).then(keep);
       });
     }
     return () => {
+      cancelled = true;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onHidden);
       window.removeEventListener("pageshow", onShown);

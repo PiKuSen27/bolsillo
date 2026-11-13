@@ -151,10 +151,15 @@ export function SecuritySettings({
               disabled={!newPwOk}
               onClick={async () => {
                 setStep("backup");
-                setBackupFile({
-                  name: `bolsillo-backup-cifrado-${formatLocalDate(new Date())}.json`,
-                  contents: await encryptBackup(await exportAllData(), pw),
-                });
+                try {
+                  setBackupFile({
+                    name: `bolsillo-backup-cifrado-${formatLocalDate(new Date())}.json`,
+                    contents: await encryptBackup(await exportAllData(), pw),
+                  });
+                } catch (e) {
+                  setMessage({ ok: false, text: `No se pudo preparar la copia: ${e instanceof Error ? e.message : e}` });
+                  setStep("password");
+                }
               }}
             >
               Siguiente

@@ -211,7 +211,7 @@ Bolsillo/
   * Las migraciones de Dexie **no pueden** modificar registros cifrados (`{clave, enc}`): saltearlos y completar valores por defecto en `getSettings()`.
   * Intentos: se cuentan antes de probar; espera de 30 s, 1 min, 5 min, 15 min y 1 h desde el quinto; guardado en la fila `vault`. Opción "Borrar todo después de 10 intentos" (apagada). Contraseña: mínimo 8, sin PIN de menos de 14 números, sin contraseñas comunes ni "Débil".
   * Bloqueo: `lockApp` en `App.tsx` borra las claves y todo el estado; se bloquea al salir según `prefs.lockAfterMs` (visibilitychange, pagehide y los eventos `app-hidden`/`app-shown` que emite Rust). Con cifrado, los avisos del sistema no muestran montos.
-  * Backup con cifrado activo: va cifrado con la contraseña (`encryptBackup`); importar uno cifrado la pide. Al activar, el asistente obliga a guardar antes una copia cifrada.
+  * Backup con cifrado activo: va cifrado con la contraseña (`encryptBackup`); importar uno cifrado la pide. Al activar, el asistente pide guardar antes una copia cifrada con esa contraseña (se puede seguir sin copia, marcado "no recomendado", por si el dispositivo no deja guardar archivos).
 * CSP en `tauri.conf.json` (`default-src 'self'`, `worker-src blob:` para el confetti, `connect-src ipc:` para Tauri) y la misma en `public/_headers` para Cloudflare Pages.
 * Permisos de Tauri: solo `core:default`, ventana (minimize, close, hide, always-on-top, start-dragging) y `notification:default`.
 * Nada sale de la máquina: no hay red, analytics ni cuentas.
