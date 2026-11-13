@@ -15,6 +15,7 @@ import { Category, IncomeMode, Settings, WindowZoom } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
 import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
 import { requestPersistentStorage } from "../platform/pwa";
+import { backupStatus } from "../lib/backupReminder";
 import { DateField } from "../components/DateField";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
@@ -142,9 +143,14 @@ export function SettingsPanel({
   const handleExportJSON = async () => {
     try {
       const json = await exportAllData();
-      const path = await saveBackupFile(`bolsillo-backup-${formatLocalDate(new Date())}.json`, json);
-      setExportMessage({ ok: true, text: path ? `Guardado en ${path}` : "Descarga iniciada" });
+      const res = await saveBackupFile(`bolsillo-backup-${formatLocalDate(new Date())}.json`, json);
+      setExportMessage({
+        ok: true,
+        text: res.kind === "path" ? `Guardado en ${res.path}` : res.kind === "shared" ? "Copia lista: guardala en Archivos o donde elegiste" : "Descarga iniciada",
+      });
+      onUpdateSettings({ lastBackupAt: new Date().toISOString() });
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return; // cerró el menú de compartir sin elegir
       setExportMessage({ ok: false, text: `No se pudo exportar: ${e instanceof Error ? e.message : String(e)}` });
     }
   };
@@ -651,6 +657,24 @@ export function SettingsPanel({
         <p className="text-[11px] font-bold opacity-75">
           Guardá tus datos o pasalos a tu celular o computadora.
         </p>
+        {(() => {
+          const status = backupStatus(settings.lastBackupAt, settings.createdAt);
+          return (
+            <div className="flex flex-col gap-1.5">
+              <span className={`text-[11px] font-extrabold ${isLight ? "text-zinc-700" : "text-zinc-200"}`}>{status.label}</span>
+              {status.overdue && (
+                <p
+                  role="status"
+                  className={`text-[11px] font-bold px-2.5 py-2 rounded-xl border ${
+                    isLight ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-[#2A1A00] border-amber-900 text-amber-300"
+                  }`}
+                >
+                  Pasó más de una semana sin una copia. Si el celular borra la app, se pierde todo: tocá "Exportar JSON" y guardala en Archivos o iCloud.
+                </p>
+              )}
+            </div>
+          );
+        })()}
         {persisted !== null && (
           <p className={`text-[11px] font-bold ${persisted ? (isLight ? "text-emerald-700" : "text-emerald-400") : isLight ? "text-amber-700" : "text-amber-400"}`}>
             {persisted

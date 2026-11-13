@@ -46,6 +46,7 @@ export interface Settings {
   closeToTray: boolean;
   autostart: boolean;
   windowZoom: WindowZoom; // Tamaño de ventana (solo escritorio)
+  lastBackupAt?: string; // ISO: última vez que se exportó un backup (para el recordatorio)
   createdAt: string;
 }
 

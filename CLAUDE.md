@@ -44,7 +44,7 @@
 | Fechas | **date-fns 4** | Períodos, meses cortos, formato en español |
 | PWA | **vite-plugin-pwa 2** (Workbox) | Instalable y offline en celular |
 | Íconos | **lucide-react** | Iconos de la UI |
-| Tests | **Vitest 5** | 101 tests (lógica pura + backup y saldado de deudas sobre IndexedDB simulada con `fake-indexeddb`) |
+| Tests | **Vitest 5** | 104 tests (lógica pura + backup y saldado de deudas sobre IndexedDB simulada con `fake-indexeddb`) |
 | Build | **Vite 8**, pnpm | |
 
 ---
@@ -130,7 +130,7 @@ Bolsillo/
 
 ### B. Temas y colores
 1. Solo dos temas: **Blanco** (`#FFFFFF`, tarjetas `#F4F4F5`) y **Negro** (`#000000`, tarjetas `#0A0A0C`/`#0D0D0E`). El manifest de la PWA usa `#000000`.
-2. Sin colores neón. Verde `#16A34A`/`#22C55E` para ingresos, rojo `#DC2626`/`#EF4444` para gastos, ámbar `#D97706` solo para "monto distinto a la tarifa" y barras de avance.
+2. Sin colores neón. Verde `#16A34A`/`#22C55E` para ingresos, rojo `#DC2626`/`#EF4444` para gastos, ámbar `#D97706` solo para "monto distinto a la tarifa", barras de avance y avisos suaves (bandeja, backup atrasado).
 3. Bordes de 1 px, tipografía gruesa (`font-bold`/`font-extrabold`), radios 16 px en tarjetas.
 4. Se respeta "reducir movimiento" del sistema (`MotionConfig reducedMotion="user"` + media query en `index.css`).
 
@@ -196,6 +196,11 @@ Bolsillo/
 * En Ajustes, "Minimizar a la bandeja", "Iniciar con la PC" y "Tamaño de ventana" solo aparecen en escritorio (`isTauri()`).
 * Bienvenida: los montos arrancan vacíos con un `$` de guía (no seleccionable) y "Siguiente" queda bloqueado hasta escribirlos.
 * `vite-plugin-pwa` precachea todo `dist/` (manifest, service worker `sw.js`, fallback a `index.html`). Ícono maskable para Android.
+* **Actualizaciones** (`src/platform/pwa.ts`): `registerType: "prompt"`. La app busca versión nueva al abrir, al volver a primer plano y cada hora; si hay, muestra "Hay una versión nueva" → "Actualizar" (activa el service worker nuevo y recarga; los datos de IndexedDB no se tocan). En escritorio (Tauri) no hay service worker: si quedó uno viejo, se desregistra.
+* `public/_headers`: `/`, `index.html`, `sw.js`, `manifest.webmanifest` y `workbox-*.js` con `Cache-Control: no-cache`; `/assets/*` (nombres con hash) `immutable` por un año. **Nunca** cachear `sw.js`: así el iPhone ve la versión nueva sin reinstalar.
+* **Versión**: publicar siempre con `pnpm release` (sube 1.3.x en los tres archivos con `scripts/bump-version.mjs`). Se ve en Ajustes (título del panel y créditos).
+* Se pide `navigator.storage.persist()` al abrir; Ajustes muestra si los datos quedaron protegidos.
+* Backup: `settings.lastBackupAt` se guarda al exportar; Ajustes muestra "Último backup: hace X días" y, si pasaron más de 7 (o nunca y la app tiene más de 7 días), un aviso y un puntito ámbar en "Ajustes" de la barra de abajo (`lib/backupReminder.ts`). En el celular "Exportar JSON" abre el menú de compartir (Guardar en Archivos / iCloud).
 
 ### K. Seguridad
 * CSP en `tauri.conf.json` (`default-src 'self'`, `worker-src blob:` para el confetti, `connect-src ipc:` para Tauri) y la misma en `public/_headers` para Cloudflare Pages.
@@ -208,7 +213,7 @@ Bolsillo/
 
 | Comando | Qué hace |
 | :--- | :--- |
-| `pnpm test` | Corre los 101 tests (sin abrir ventanas). |
+| `pnpm test` | Corre los 104 tests (sin abrir ventanas). |
 | `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |

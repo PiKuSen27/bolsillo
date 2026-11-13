@@ -51,10 +51,22 @@ export async function setCloseToTray(enable: boolean): Promise<void> {
   }
 }
 
-/** Guarda el backup. En Tauri lo escribe en Descargas y devuelve la ruta; en el navegador lo descarga y devuelve null. */
-export async function saveBackupFile(fileName: string, contents: string): Promise<string | null> {
+/**
+ * Guarda el backup. En Tauri lo escribe en Descargas y devuelve la ruta ("path").
+ * En el celular abre el menú de compartir (Guardar en Archivos, iCloud, WhatsApp…) → "shared".
+ * Si no, lo descarga → "download". Si la persona cancela el menú de compartir, lanza AbortError.
+ */
+export async function saveBackupFile(
+  fileName: string,
+  contents: string
+): Promise<{ kind: "path"; path: string } | { kind: "shared" } | { kind: "download" }> {
   if (isTauri()) {
-    return await invoke<string>("save_backup", { fileName, contents });
+    return { kind: "path", path: await invoke<string>("save_backup", { fileName, contents }) };
+  }
+  const file = new File([contents], fileName, { type: "application/json" });
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: "Backup de Bolsillo" });
+    return { kind: "shared" };
   }
   const blob = new Blob([contents], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -63,7 +75,7 @@ export async function saveBackupFile(fileName: string, contents: string): Promis
   a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
-  return null;
+  return { kind: "download" };
 }
 
 // Window Controls

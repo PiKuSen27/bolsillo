@@ -78,6 +78,7 @@ import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { APP_VERSION } from "./lib/constants";
+import { backupStatus } from "./lib/backupReminder";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
 export default function App() {
@@ -816,7 +817,13 @@ export default function App() {
                     : "opacity-60 hover:opacity-100"
                 }`}
               >
-                <SettingsNavIcon size={16} />
+                <span className="relative">
+                  <SettingsNavIcon size={16} />
+                  {/* Recordatorio suave: hace más de una semana que no se exporta un backup */}
+                  {backupStatus(settings.lastBackupAt, settings.createdAt).overdue && (
+                    <span aria-label="Hace falta un backup" className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-[#D97706]" />
+                  )}
+                </span>
                 <span>Ajustes</span>
               </button>
             </nav>
