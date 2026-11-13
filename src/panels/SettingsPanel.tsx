@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
   Download,
   Upload,
@@ -16,6 +15,7 @@ import { Category, IncomeMode, Settings, WindowZoom } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
 import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
 import { DateField } from "../components/DateField";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
 import { calculateVariableIncome } from "../lib/workdays";
@@ -768,48 +768,16 @@ export function SettingsPanel({
         )}
       </div>
 
-      {showResetConfirm &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="reset-title"
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          >
-            <div onClick={() => setShowResetConfirm(false)} className="absolute inset-0 bg-black/70" />
-            <div
-              className={`relative w-full max-w-xs rounded-2xl border p-4 flex flex-col gap-3 shadow-2xl ${
-                isLight ? "bg-white border-zinc-300 text-black" : "bg-[#0A0A0C] border-[#262626] text-white"
-              }`}
-            >
-              <h4 id="reset-title" className="text-sm font-extrabold">
-                ¿Borrar todos los datos?
-              </h4>
-              <p className={`text-xs font-semibold ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
-                Esta acción no se puede deshacer.
-              </p>
-              <div className="flex flex-col gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={handleResetData}
-                  className="w-full py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-extrabold text-xs cursor-pointer transition-colors"
-                >
-                  Borrar todos los datos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowResetConfirm(false)}
-                  className={`w-full py-2 rounded-xl font-extrabold text-xs border cursor-pointer transition-colors ${
-                    isLight ? "bg-zinc-100 border-zinc-300 text-black hover:bg-zinc-200" : "bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
-                  }`}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      {showResetConfirm && (
+        <ConfirmDialog
+          title="¿Borrar todos los datos?"
+          detail="Esta acción no se puede deshacer."
+          confirmLabel="Borrar todos los datos"
+          isLight={isLight}
+          onConfirm={handleResetData}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
 
       {/* Créditos */}
       <div

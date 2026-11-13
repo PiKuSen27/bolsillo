@@ -76,6 +76,7 @@ import { WorkDaysPanel } from "./panels/WorkDaysPanel";
 import { CalendarPanel } from "./panels/CalendarPanel";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 
 export default function App() {
   const [isPinned, setIsPinned] = useState(false);
@@ -425,9 +426,40 @@ export default function App() {
     await loadData();
   };
 
-  const handleDeleteRecurring = async (id: string) => {
-    await db.recurrings.delete(id);
-    await loadData();
+  // Borrar siempre pide confirmación y después ofrece "Deshacer" (vuelve a guardar lo borrado)
+  const [pendingDelete, setPendingDelete] = useState<{ title: string; detail: string; run: () => Promise<void> } | null>(null);
+  const confirmDelete = <T,>(
+    item: T | undefined,
+    title: string,
+    detail: string,
+    remove: () => Promise<unknown>,
+    restore: (item: T) => Promise<unknown>,
+    doneMessage: string
+  ) => {
+    if (!item) return;
+    setPendingDelete({
+      title,
+      detail,
+      run: async () => {
+        await remove();
+        await loadData();
+        showUndo(doneMessage, async () => {
+          await restore(item);
+        });
+      },
+    });
+  };
+
+  const handleDeleteRecurring = (id: string) => {
+    const r = recurrings.find((x) => x.id === id);
+    confirmDelete(
+      r,
+      "¿Borrar este fijo?",
+      r ? `"${r.name}" · ${formatCurrency(r.amount)} por mes. Los gastos que ya se anotaron quedan.` : "",
+      () => db.recurrings.delete(id),
+      (x) => db.recurrings.put(x),
+      "Fijo borrado"
+    );
   };
 
   const handleAddInstallment = async (instData: Omit<Installment, "id">) => {
@@ -439,9 +471,18 @@ export default function App() {
     await loadData();
   };
 
-  const handleDeleteInstallment = async (id: string) => {
-    await db.installments.delete(id);
-    await loadData();
+  const handleDeleteInstallment = (id: string) => {
+    const i = installments.find((x) => x.id === id);
+    confirmDelete(
+      i,
+      "¿Borrar esta compra en cuotas?",
+      i
+        ? `"${i.name}" · ${formatCurrency(i.totalAmount)} en ${i.installmentsCount} cuotas (${i.paidCount} pagadas). Las cuotas ya anotadas quedan.`
+        : "",
+      () => db.installments.delete(id),
+      (x) => db.installments.put(x),
+      "Cuotas borradas"
+    );
   };
 
   const handlePayInstallment = async (inst: Installment) => {
@@ -470,9 +511,20 @@ export default function App() {
     await loadData();
   };
 
-  const handleDeleteMovement = async (id: string) => {
-    await db.movements.delete(id);
-    await loadData();
+  const handleDeleteMovement = (id: string) => {
+    const m = movements.find((x) => x.id === id);
+    const cat =
+      m?.kind === "income" ? "Ingreso de plata" : settings?.categories.find((c) => c.id === m?.categoryId)?.name ?? "Otros";
+    confirmDelete(
+      m,
+      "¿Borrar este movimiento?",
+      m
+        ? `${m.kind === "expense" ? "Gasto" : "Ingreso"} de ${formatCurrency(m.amount)} · ${cat}${m.note ? ` · ${m.note}` : ""} · ${formatShortDate(m.date)}`
+        : "",
+      () => db.movements.delete(id),
+      (x) => db.movements.put(x),
+      "Movimiento borrado"
+    );
   };
 
   const handleUpdateMovement = async (m: Movement) => {
@@ -497,9 +549,18 @@ export default function App() {
     );
   };
 
-  const handleDeleteDebtItem = async (id: string) => {
-    await deleteDebt(id);
-    await loadData();
+  const handleDeleteDebtItem = (id: string) => {
+    const d = debts.find((x) => x.id === id);
+    confirmDelete(
+      d,
+      "¿Borrar esta deuda?",
+      d
+        ? `${d.person} · ${formatCurrency(d.amount)} (${d.kind === "i_owe" ? "le debés" : "te debe"})${d.note ? ` · ${d.note}` : ""}${d.settled ? " · ya saldada" : ""}`
+        : "",
+      () => deleteDebt(id),
+      (x) => db.debts.put(x),
+      "Deuda borrada"
+    );
   };
 
   if (!settings) {
@@ -819,6 +880,19 @@ export default function App() {
 
         {/* ============================================================== */}
         {/* FLOATING UNDO (DESHACER) TOAST                                 */}
+        {pendingDelete && (
+          <ConfirmDialog
+            title={pendingDelete.title}
+            detail={pendingDelete.detail}
+            isLight={isLight}
+            onCancel={() => setPendingDelete(null)}
+            onConfirm={() => {
+              const { run } = pendingDelete;
+              setPendingDelete(null);
+              run();
+            }}
+          />
+        )}
         {/* ============================================================== */}
         <AnimatePresence>
           {undoToast && (

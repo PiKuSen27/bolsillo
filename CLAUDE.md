@@ -44,7 +44,7 @@
 | Fechas | **date-fns 4** | Períodos, meses cortos, formato en español |
 | PWA | **vite-plugin-pwa 2** (Workbox) | Instalable y offline en celular |
 | Íconos | **lucide-react** | Iconos de la UI |
-| Tests | **Vitest 5** | 93 tests (lógica pura + backup ida y vuelta sobre IndexedDB simulada con `fake-indexeddb`) |
+| Tests | **Vitest 5** | 101 tests (lógica pura + backup y saldado de deudas sobre IndexedDB simulada con `fake-indexeddb`) |
 | Build | **Vite 8**, pnpm | |
 
 ---
@@ -175,7 +175,8 @@ Bolsillo/
 * Fijos son **siempre mensuales** (`dueDay` 1–31, en meses cortos cae el último día). Tienen `createdAt`: **un fijo creado después de su vencimiento arranca el mes siguiente**. Si la app estuvo cerrada, se cobra una vez por cada mes atrasado con su fecha real. Ids deterministas (`rec_<id>_<fecha>`) evitan duplicados.
 * Cuotas: `installmentAmount = round(total / cuotas)`; **la última cuota absorbe el redondeo** (`getInstallmentAmount`) para que la suma dé el total exacto.
 * Formularios de fijos y cuotas tienen selector de categoría.
-* Deudas: pestañas "Todas / Debo plata / Me deben", cada una muestra solo sus deudas (pendientes y saldadas). Al tocar "+ Nueva" parado en una pestaña, la deuda toma ese tipo sin preguntar; el selector "Debo / Me deben" aparece solo en "Todas". Saldar (opcionalmente creando el movimiento) o borrar.
+* Deudas (`lib/debts.ts`, tests en `debts.test.ts`): **agrupadas por persona** por defecto (interruptor "Agrupar por persona"); el nombre se compara sin mayúsculas, acentos ni espacios de más (`personKey`). La tarjeta muestra nombre, cantidad y el **neto** ("Rocio te debe $ X" / "Le debés $ X"). Al escribir el nombre en "+ Nueva" se sugieren los ya usados (`suggestPersonNames`). Cualquier deuda se puede editar (nombre, monto, nota, fecha y tipo). "Saldar" por deuda y "Saldar todo" por persona, con confirmación; `settleDebts` en `repo.ts` es todo o nada y devuelve la función para deshacer (tests en `db/debts-settle.test.ts`).
+* Pestañas "Todas / Debo plata / Me deben", cada una muestra solo sus deudas (pendientes y saldadas). Al tocar "+ Nueva" parado en una pestaña, la deuda toma ese tipo sin preguntar; el selector "Debo / Me deben" aparece solo en "Todas". Saldar (opcionalmente creando el movimiento) o borrar.
 
 ### H. Recordatorios
 * Recordatorio diario: dispara a `reminderTime` **o en el primer chequeo posterior** del mismo día (si la app estaba cerrada), una sola vez (`remindersSent`). No avisa si ya se anotó algo ese día.
@@ -183,7 +184,8 @@ Bolsillo/
 
 ### I. Backup
 * Exportar genera JSON `version: 2` con todas las tablas menos `remindersSent`. **En Tauri el `<a download>` no hace nada**: se usa el comando Rust `save_backup`, que escribe en la carpeta de Descargas (`~/Descargas`, sin pisar archivos) y la app muestra la ruta. En el navegador/PWA sí se descarga. No hace falta ningún permiso extra.
-* "Borrar todos los datos" abre una confirmación propia (portal sobre `document.body`, `z-[100]`) con título "¿Borrar todos los datos?" y botones "Borrar todos los datos" / "Cancelar".
+* **Borrar nunca es de un solo toque**: movimientos, fijos, cuotas y deudas pasan por `confirmDelete` en `App.tsx`, que abre `ConfirmDialog` ("¿Borrar…?" con el detalle, botones "Borrar" / "Cancelar", portal sobre `document.body`, `z-[100]`) y después muestra el aviso con "Deshacer" (6 s) que vuelve a guardar lo borrado. "Borrar todos los datos" usa el mismo cuadro, sin Deshacer.
+* El aviso "Deshacer" es uno solo para toda la app (`showUndo(mensaje, deshacer)`): guardar un movimiento, saldar deudas y borrar.
 * Importar pasa por `validateBackup` (versión 1 o 2, máximo 10 MB, fechas `AAAA-MM-DD` reales, montos enteros 0..`MAX_AMOUNT`, enums, ids únicos, campos desconocidos descartados, ajustes completados con los valores por defecto). Antes de reemplazar muestra un resumen y pide confirmación; es todo o nada.
 
 ### J. Celular y PWA
@@ -206,7 +208,7 @@ Bolsillo/
 
 | Comando | Qué hace |
 | :--- | :--- |
-| `pnpm test` | Corre los 93 tests (sin abrir ventanas). |
+| `pnpm test` | Corre los 101 tests (sin abrir ventanas). |
 | `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
