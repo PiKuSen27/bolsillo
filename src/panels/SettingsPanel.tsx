@@ -14,6 +14,7 @@ import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings, WindowZoom } from "../types";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
 import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
+import { requestPersistentStorage } from "../platform/pwa";
 import { DateField } from "../components/DateField";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
@@ -62,6 +63,11 @@ export function SettingsPanel({
   const [closeToTray, setCloseToTray] = useState(settings.closeToTray);
   // null = todavía no se consultó; false = la barra no tiene bandeja
   const [trayAvailable, setTrayAvailable] = useState<boolean | null>(null);
+  // PWA: ¿el navegador aceptó no borrar los datos? (null = no se sabe)
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!isTauri()) requestPersistentStorage().then(setPersisted);
+  }, []);
   useEffect(() => {
     if (isTauri()) isTrayAvailable().then(setTrayAvailable);
   }, []);
@@ -645,6 +651,13 @@ export function SettingsPanel({
         <p className="text-[11px] font-bold opacity-75">
           Guardá tus datos o pasalos a tu celular o computadora.
         </p>
+        {persisted !== null && (
+          <p className={`text-[11px] font-bold ${persisted ? (isLight ? "text-emerald-700" : "text-emerald-400") : isLight ? "text-amber-700" : "text-amber-400"}`}>
+            {persisted
+              ? "Datos protegidos: el sistema no los borra aunque falte espacio."
+              : "El sistema no garantiza guardar tus datos para siempre: exportá una copia seguido."}
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-2 pt-1">
           <button

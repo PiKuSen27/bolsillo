@@ -78,7 +78,7 @@ import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { APP_VERSION } from "./lib/constants";
-import { applyPwaUpdate, removeServiceWorkers, startPwaUpdates } from "./platform/pwa";
+import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
 export default function App() {
   const [isPinned, setIsPinned] = useState(false);
@@ -166,7 +166,10 @@ export default function App() {
   const [updateReady, setUpdateReady] = useState(false);
   useEffect(() => {
     if (isTauri()) removeServiceWorkers().catch(() => {});
-    else startPwaUpdates(() => setUpdateReady(true));
+    else {
+      startPwaUpdates(() => setUpdateReady(true));
+      requestPersistentStorage();
+    }
   }, []);
 
   // PWA: la barra de estado del celular y el fondo detrás de la app siguen el tema (en escritorio no se toca)

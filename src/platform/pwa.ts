@@ -39,3 +39,17 @@ export async function removeServiceWorkers(): Promise<void> {
   const regs = await navigator.serviceWorker.getRegistrations();
   await Promise.all(regs.map((r) => r.unregister()));
 }
+
+/**
+ * Pide al navegador que no borre los datos de la app cuando falta espacio (navigator.storage.persist).
+ * Devuelve true si quedaron protegidos, false si el sistema no lo aceptó, null si no se puede saber.
+ */
+export async function requestPersistentStorage(): Promise<boolean | null> {
+  if (!navigator.storage?.persist) return null;
+  try {
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return null;
+  }
+}
