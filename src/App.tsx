@@ -77,6 +77,7 @@ import { CalendarPanel } from "./panels/CalendarPanel";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { applyPwaUpdate, removeServiceWorkers, startPwaUpdates } from "./platform/pwa";
 
 export default function App() {
   const [isPinned, setIsPinned] = useState(false);
@@ -159,6 +160,13 @@ export default function App() {
   useEffect(() => {
     if (settings) setCloseToTray(settings.closeToTray);
   }, [settings?.closeToTray]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // PWA: buscar versión nueva al abrir y al volver a primer plano; en escritorio no hay service worker
+  const [updateReady, setUpdateReady] = useState(false);
+  useEffect(() => {
+    if (isTauri()) removeServiceWorkers().catch(() => {});
+    else startPwaUpdates(() => setUpdateReady(true));
+  }, []);
 
   // PWA: la barra de estado del celular y el fondo detrás de la app siguen el tema (en escritorio no se toca)
   useEffect(() => {
@@ -880,6 +888,21 @@ export default function App() {
 
         {/* ============================================================== */}
         {/* FLOATING UNDO (DESHACER) TOAST                                 */}
+        {updateReady && (
+          <div
+            role="status"
+            className="absolute left-1/2 -translate-x-1/2 top-[calc(0.5rem+var(--safe-top))] z-[70] px-3.5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] text-white shadow-2xl flex items-center gap-3 text-xs select-none max-w-[92%]"
+          >
+            <span className="font-extrabold">Hay una versión nueva</span>
+            <button
+              type="button"
+              onClick={() => applyPwaUpdate()}
+              className="px-2.5 py-0.5 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-black text-[11px] font-black cursor-pointer shrink-0"
+            >
+              Actualizar
+            </button>
+          </div>
+        )}
         {pendingDelete && (
           <ConfirmDialog
             title={pendingDelete.title}

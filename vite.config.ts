@@ -13,8 +13,9 @@ export default defineConfig({
     tailwindcss(),
     react(),
     VitePWA({
-      registerType: "autoUpdate",
-      injectRegister: "auto",
+      // "prompt": la versión nueva espera hasta que el usuario toca "Actualizar" (src/platform/pwa.ts)
+      registerType: "prompt",
+      injectRegister: null,
       includeAssets: [
         "icons/favicon.png",
         "icons/apple-touch-icon.png",
