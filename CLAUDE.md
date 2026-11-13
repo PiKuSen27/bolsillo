@@ -2,7 +2,7 @@
 
 > **El usuario es principiante. Explicá todo en palabras simples, sin dar por sabido ningún término técnico, y decí qué hace cada comando antes de correrlo.**
 
-> **Bolsillo v1.3.1** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
+> **Bolsillo v1.3.2** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
 > **Autor y dueño**: PiKuSen27.
 > **Moneda**: pesos argentinos, números enteros sin centavos, con punto de miles (`$ 20.000`). Toda la interfaz en español rioplatense.
 
@@ -44,7 +44,7 @@
 | Fechas | **date-fns 4** | Períodos, meses cortos, formato en español |
 | PWA | **vite-plugin-pwa 2** (Workbox) | Instalable y offline en celular |
 | Íconos | **lucide-react** | Iconos de la UI |
-| Tests | **Vitest 5** | 104 tests (lógica pura + backup y saldado de deudas sobre IndexedDB simulada con `fake-indexeddb`) |
+| Tests | **Vitest 5** | 131 tests (lógica pura + cifrado, backup y saldado de deudas sobre IndexedDB simulada con `fake-indexeddb`) |
 | Build | **Vite 8**, pnpm | |
 
 ---
@@ -222,7 +222,7 @@ Bolsillo/
 
 | Comando | Qué hace |
 | :--- | :--- |
-| `pnpm test` | Corre los 104 tests (sin abrir ventanas). |
+| `pnpm test` | Corre los 131 tests (sin abrir ventanas). |
 | `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
