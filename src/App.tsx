@@ -61,7 +61,7 @@ import {
   isDayLogged,
   shouldTriggerDailyReminder,
 } from "./lib/reminders";
-import { formatCurrency, formatLocalDate, formatNumberWithDots, formatShortDate } from "./lib/format";
+import { formatCurrency, formatLocalDate, formatNumberWithDots, formatShortDate, setAmountsHidden } from "./lib/format";
 import { Hero } from "./components/Hero";
 import { DayStrip } from "./components/DayStrip";
 import { MobileDayStrip } from "./components/MobileDayStrip";
@@ -123,9 +123,13 @@ export default function App() {
   const isMobileLayout = isNarrowScreen;
 
   // Load all data from Dexie
+  // Ojo de "Disponible": tapa todos los montos. Arranca oculto si quedó así o si se pidió "Abrir siempre…"
+  const [amountsHidden, setAmountsHiddenState] = useState<boolean | null>(null);
+
   const loadData = useCallback(async () => {
     const s = await getSettings();
     setSettings(s);
+    setAmountsHiddenState((cur) => (cur === null ? s.startHidden || s.hideAmounts : cur));
 
     const [allM, allR, allI, allW, allD, allDebts] = await Promise.all([
       db.movements.orderBy("date").reverse().toArray(),
@@ -585,6 +589,13 @@ export default function App() {
   }
 
   const isLight = settings.theme === "light";
+  // Antes de dibujar los hijos: todos los formatCurrency de esta pasada usan el estado del ojo
+  setAmountsHidden(!!amountsHidden);
+  const toggleAmountsHidden = () => {
+    const next = !amountsHidden;
+    setAmountsHiddenState(next);
+    updateSettings({ hideAmounts: next }).then(setSettings);
+  };
 
   return (
     <div
@@ -709,6 +720,8 @@ export default function App() {
                 isLight={isLight}
                 onOpenMovements={() => setActiveSheet("movements")}
                 onOpenWorkDays={() => setActiveSheet("income")}
+                amountsHidden={!!amountsHidden}
+                onToggleHidden={toggleAmountsHidden}
               />
 
               {/* Horizontal Days Strip (Hoy + 3 días + '+ Días') */}
@@ -853,6 +866,8 @@ export default function App() {
               isLight={isLight}
               onOpenMovements={() => setActiveSheet("movements")}
               onOpenWorkDays={() => setActiveSheet("income")}
+              amountsHidden={!!amountsHidden}
+              onToggleHidden={toggleAmountsHidden}
             />
 
             {/* Bottom Layout: 3 Columns (Days Strip, Calculator, Right Widget) */}

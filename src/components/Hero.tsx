@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { TrendingUp, TrendingDown, ChevronRight, CalendarDays } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronRight, CalendarDays, Eye, EyeOff } from "lucide-react";
 import { BalanceSummary } from "../lib/balance";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { formatCurrency } from "../lib/format";
@@ -11,9 +11,11 @@ interface HeroProps {
   isLight?: boolean;
   onOpenMovements: () => void;
   onOpenWorkDays?: () => void; // solo en modo variable
+  amountsHidden?: boolean;
+  onToggleHidden?: () => void; // el ojo: tapa todos los montos de la app
 }
 
-export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays }: HeroProps) {
+export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, amountsHidden, onToggleHidden }: HeroProps) {
   const isPositive = summary.available >= 0;
 
   return (
@@ -33,13 +35,32 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
     >
       {/* Top row: Label & Today delta */}
       <div className="flex items-center justify-between">
-        <span
-          className={`text-[11px] font-extrabold tracking-wider uppercase ${
-            isLight ? "text-zinc-500" : "text-zinc-400"
-          }`}
-        >
-          Disponible
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`text-[11px] font-extrabold tracking-wider uppercase ${
+              isLight ? "text-zinc-500" : "text-zinc-400"
+            }`}
+          >
+            Disponible
+          </span>
+          {onToggleHidden && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHidden();
+              }}
+              aria-label={amountsHidden ? "Mostrar montos" : "Ocultar montos"}
+              aria-pressed={!!amountsHidden}
+              title={amountsHidden ? "Mostrar montos" : "Ocultar montos"}
+              className={`p-1 -m-1 rounded-md cursor-pointer ${
+                isLight ? "text-zinc-500 hover:text-black hover:bg-zinc-200" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
+            >
+              {amountsHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          )}
+        </div>
 
         <div className="flex items-center gap-1 text-xs font-bold tabular-numbers">
           {summary.todayMovementNet > 0 ? (

@@ -7,7 +7,7 @@ import { Category } from "../types";
 import { evaluateCalcExpression } from "../lib/calc";
 import { shouldCalculatorHandleKey } from "../lib/keyboard";
 import { MAX_AMOUNT } from "../lib/constants";
-import { formatCurrency, formatExpressionWithDots } from "../lib/format";
+import { formatCurrencyVisible as formatCurrency, formatExpressionWithDots } from "../lib/format";
 
 interface CalculatorProps {
   categories: Category[];

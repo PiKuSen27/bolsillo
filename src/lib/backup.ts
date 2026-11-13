@@ -240,6 +240,8 @@ function settings(raw: unknown): Settings {
     autostart: bool(o.autostart, "autostart", where, d.autostart),
     windowZoom: pick(o.windowZoom, d.windowZoom, (v) => oneOf(v, ["auto", "small", "medium", "large"] as const, "windowZoom", where)),
     createdAt: str(o.createdAt, "createdAt", where, { optional: true, max: 40 }) ?? d.createdAt,
+    hideAmounts: bool(o.hideAmounts, "hideAmounts", where, d.hideAmounts),
+    startHidden: bool(o.startHidden, "startHidden", where, d.startHidden),
     lastBackupAt: str(o.lastBackupAt, "lastBackupAt", where, { optional: true, max: 40 }),
   };
 }

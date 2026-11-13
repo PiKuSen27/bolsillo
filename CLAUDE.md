@@ -93,7 +93,7 @@ Bolsillo/
 │   │   ├── search.ts               # Buscador de movimientos
 │   │   └── workdays.ts             # Modo variable: tarifa por fecha, valor de cada día, suma del rango
 │   ├── db/
-│   │   ├── db.ts                   # Esquema Dexie (versiones 1→5) y tablas
+│   │   ├── db.ts                   # Esquema Dexie (versiones 1→6) y tablas
 │   │   ├── repo.ts                 # Ajustes, días, deudas, exportar/importar
 │   │   └── backup-roundtrip.test.ts # Exportar → base vacía → importar = idéntica; archivo roto no toca nada
 │   ├── platform/index.ts       # isTauri(), ventana, tray, notificaciones, cerrar-al-tray
@@ -110,7 +110,7 @@ Bolsillo/
 └── package.json · vite.config.ts · vitest.config.ts · tsconfig*.json
 ```
 
-**Tablas de Dexie** (`BolsilloDB`, versión 5): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
+**Tablas de Dexie** (`BolsilloDB`, versión 6): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
 
 ---
 
@@ -157,6 +157,7 @@ Bolsillo/
    * **Rango variable vencido**: si hoy es posterior a `periodEnd`, la ventana se estira hasta hoy (`max(periodEnd, hoy)`) para que los gastos nuevos sigan bajando el Disponible (test `Bug #2`).
 
 ### E. Movimientos
+* **Ocultar montos**: el ojo junto a "Disponible" tapa todos los montos con `$ ••••••`. Funciona con un interruptor dentro de `formatCurrency` (`setAmountsHidden`, lo fija `App.tsx` en cada render), así que **todo monto que se muestre tiene que pasar por `formatCurrency`**. La calculadora usa `formatCurrencyVisible` (siempre muestra lo que se escribe). Se recuerda en `settings.hideAmounts`; `settings.startHidden` = "Abrir siempre con los montos ocultos". Los campos para editar montos (inputs) no se tapan.
 * El encabezado del panel muestra el período como `11 nov – 1 dic` (`formatShortDate`), nunca `2026-11-11`.
 * Desde el detalle de un día (tira de días y calendario del celular) se puede **editar (monto y nota) y borrar** cada movimiento, igual que en el panel.
 * El estado "Registrado" del detalle usa el mismo criterio que la tira (`isDayLogged`): algo anotado a mano o "no gasté nada". Un día con solo cargos automáticos figura "Sin registrar · solo cargos automáticos".

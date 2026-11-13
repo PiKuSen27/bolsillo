@@ -34,5 +34,7 @@ export const DEFAULT_SETTINGS: Settings = {
   closeToTray: true,
   autostart: false,
   windowZoom: "auto",
+  hideAmounts: false,
+  startHidden: false,
   createdAt: new Date().toISOString(),
 };

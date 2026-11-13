@@ -11,10 +11,23 @@ export function formatNumberWithDots(val: number | string): string {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+/** Lo que se ve en lugar de un monto cuando el usuario tocó el ojo ("Ocultar montos"). */
+export const HIDDEN_AMOUNT = "$ ••••••";
+let amountsHidden = false;
+/** App.tsx lo fija en cada render según el ojo; así todos los montos de la app se tapan a la vez. */
+export function setAmountsHidden(hidden: boolean): void {
+  amountsHidden = hidden;
+}
+
 /**
- * Formats an integer amount as ARS currency with dot separator: "$ 20.000"
+ * Monto en pesos: "$ 20.000". Si los montos están ocultos, "$ ••••••".
  */
 export function formatCurrency(amount: number): string {
+  return amountsHidden ? HIDDEN_AMOUNT : formatCurrencyVisible(amount);
+}
+
+/** Igual que formatCurrency pero siempre visible (la calculadora muestra lo que se escribe). */
+export function formatCurrencyVisible(amount: number): string {
   if (isNaN(amount) || !isFinite(amount)) return "$ 0";
   const isNegative = amount < 0;
   const abs = Math.abs(Math.round(amount));

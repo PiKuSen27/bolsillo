@@ -332,7 +332,7 @@ export function DayStrip({
                     <div className="flex items-center gap-2">
                       {dayExpenses > 0 && (
                         <span className={`text-xs font-extrabold ${isLight ? "text-[#DC2626]" : "text-[#EF4444]"}`}>
-                          -$ {dayExpenses.toLocaleString("es-AR")}
+                          -{formatCurrency(dayExpenses)}
                         </span>
                       )}
                       <ChevronRight size={14} className="text-zinc-500" />

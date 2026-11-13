@@ -54,3 +54,19 @@ describe("format.ts - Formato de moneda, fechas y días", () => {
     expect(formatLocalDate(parseLocalDate("2026-11-10T23:59:00.000Z"))).toBe("2026-11-10");
   });
 });
+
+import { setAmountsHidden, formatCurrencyVisible, HIDDEN_AMOUNT } from "./format";
+
+describe("format.ts - Ocultar montos", () => {
+  it("Con montos ocultos, formatCurrency tapa todo y formatCurrencyVisible (calculadora) sigue mostrando", () => {
+    setAmountsHidden(true);
+    try {
+      expect(formatCurrency(20000)).toBe(HIDDEN_AMOUNT);
+      expect(formatCurrency(-5000)).toBe("$ ••••••");
+      expect(formatCurrencyVisible(20000)).toBe("$ 20.000");
+    } finally {
+      setAmountsHidden(false);
+    }
+    expect(formatCurrency(20000)).toBe("$ 20.000");
+  });
+});

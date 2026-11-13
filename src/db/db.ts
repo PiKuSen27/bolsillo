@@ -81,6 +81,19 @@ export class BolsilloDatabase extends Dexie {
             if (!s.windowZoom) s.windowZoom = "auto";
           });
       });
+
+    // v6: ocultar montos (el ojo) y "Abrir siempre con los montos ocultos".
+    this.version(6)
+      .stores({})
+      .upgrade(async (tx) => {
+        await tx
+          .table("settings")
+          .toCollection()
+          .modify((s: Settings) => {
+            if (typeof s.hideAmounts !== "boolean") s.hideAmounts = false;
+            if (typeof s.startHidden !== "boolean") s.startHidden = false;
+          });
+      });
   }
 
   async initDefaults(): Promise<Settings> {

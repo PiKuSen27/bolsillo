@@ -242,6 +242,38 @@ export function SettingsPanel({
         </button>
       </div>
 
+      {/* Privacidad: montos ocultos al abrir */}
+      <div
+        className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs font-black ${
+          isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"
+        }`}
+      >
+        <div className="flex flex-col">
+          <span className="text-sm">Abrir siempre con los montos ocultos</span>
+          <span className="text-[11px] font-bold opacity-75">
+            Los montos se ven como "$ ••••••" hasta que tocás el ojo junto a Disponible.
+          </span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.startHidden}
+          aria-label="Abrir siempre con los montos ocultos"
+          onClick={() => onUpdateSettings({ startHidden: !settings.startHidden })}
+          className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border transition-all cursor-pointer ${
+            settings.startHidden
+              ? isLight
+                ? "bg-[#16A34A] border-[#16A34A] text-white"
+                : "bg-[#22C55E] border-[#22C55E] text-black"
+              : isLight
+              ? "bg-zinc-100 border-zinc-300"
+              : "bg-zinc-900 border-zinc-700"
+          }`}
+        >
+          {settings.startHidden && <Check size={14} strokeWidth={3.5} />}
+        </button>
+      </div>
+
       {/* Tamaño de ventana (solo escritorio) */}
       {isTauri() && (
         <div

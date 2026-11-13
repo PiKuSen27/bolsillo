@@ -46,6 +46,8 @@ export interface Settings {
   closeToTray: boolean;
   autostart: boolean;
   windowZoom: WindowZoom; // Tamaño de ventana (solo escritorio)
+  hideAmounts: boolean; // el ojo de "Disponible": montos tapados con $ ••••••
+  startHidden: boolean; // "Abrir siempre con los montos ocultos"
   lastBackupAt?: string; // ISO: última vez que se exportó un backup (para el recordatorio)
   createdAt: string;
 }
