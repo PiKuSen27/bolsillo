@@ -204,6 +204,14 @@ Bolsillo/
 * Backup: `settings.lastBackupAt` se guarda al exportar; Ajustes muestra "Último backup: hace X días" y, si pasaron más de 7 (o nunca y la app tiene más de 7 días), un aviso y un puntito ámbar en "Ajustes" de la barra de abajo (`lib/backupReminder.ts`). En el celular "Exportar JSON" abre el menú de compartir (Guardar en Archivos / iCloud).
 
 ### K. Seguridad
+* **Contraseña y cifrado** (opcional, apagado por defecto). Lógica en `src/lib/vault.ts` (Web Crypto, sin paquetes), base en `src/db/store.ts`, UI en `LockScreen.tsx` y `panels/SecuritySettings.tsx`. Tests: `lib/vault.test.ts`, `db/encryption.test.ts`.
+  * Clave maestra aleatoria (32 bytes) → HKDF → AES-256-GCM (datos) + HMAC-SHA256 (claves primarias disfrazadas). La maestra se guarda envuelta con PBKDF2-SHA256 de 600.000 iteraciones (contraseña) y con el código de recuperación (24 caracteres Crockford). Cada registro: IV aleatorio + AAD `rec|tabla|clave`.
+  * **Toda lectura/escritura pasa por `store.*` o `applyAtomically`**. Nunca usar `db.<tabla>` directo fuera de `store.ts` (escribiría en claro). El cifrado ocurre fuera de las transacciones de IndexedDB. Activar/desactivar/borrar usan un candado interno (`exclusive`).
+  * Sin cifrar quedan solo: la fila `vault` (sal, maestra envuelta, iteraciones, intentos, espera, preferencias de bloqueo y tema) y, por cada registro, su clave disfrazada (HMAC) y el largo del texto cifrado. Los registros en claro que aparezcan con el cifrado activo se ignoran.
+  * Las migraciones de Dexie **no pueden** modificar registros cifrados (`{clave, enc}`): saltearlos y completar valores por defecto en `getSettings()`.
+  * Intentos: se cuentan antes de probar; espera de 30 s, 1 min, 5 min, 15 min y 1 h desde el quinto; guardado en la fila `vault`. Opción "Borrar todo después de 10 intentos" (apagada). Contraseña: mínimo 8, sin PIN de menos de 14 números, sin contraseñas comunes ni "Débil".
+  * Bloqueo: `lockApp` en `App.tsx` borra las claves y todo el estado; se bloquea al salir según `prefs.lockAfterMs` (visibilitychange, pagehide y los eventos `app-hidden`/`app-shown` que emite Rust). Con cifrado, los avisos del sistema no muestran montos.
+  * Backup con cifrado activo: va cifrado con la contraseña (`encryptBackup`); importar uno cifrado la pide. Al activar, el asistente obliga a guardar antes una copia cifrada.
 * CSP en `tauri.conf.json` (`default-src 'self'`, `worker-src blob:` para el confetti, `connect-src ipc:` para Tauri) y la misma en `public/_headers` para Cloudflare Pages.
 * Permisos de Tauri: solo `core:default`, ventana (minimize, close, hide, always-on-top, start-dragging) y `notification:default`.
 * Nada sale de la máquina: no hay red, analytics ni cuentas.
