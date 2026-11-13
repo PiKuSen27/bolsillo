@@ -2,3 +2,19 @@
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+
+# Archivos que dicen "qué versión hay": el navegador siempre pregunta a Cloudflare si cambiaron
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+/workbox-*.js
+  Cache-Control: no-cache
+
+# Archivos con hash en el nombre (cambian de nombre en cada versión): se guardan para siempre
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
