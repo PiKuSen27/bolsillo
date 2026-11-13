@@ -2,7 +2,7 @@
 
 > **El usuario es principiante. Explicá todo en palabras simples, sin dar por sabido ningún término técnico, y decí qué hace cada comando antes de correrlo.**
 
-> **Bolsillo v1.3.0** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
+> **Bolsillo v1.3.1** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
 > **Autor y dueño**: PiKuSen27.
 > **Moneda**: pesos argentinos, números enteros sin centavos, con punto de miles (`$ 20.000`). Toda la interfaz en español rioplatense.
 
@@ -212,7 +212,9 @@ Bolsillo/
 | `npx tsc --noEmit -p .` | Revisa los tipos de TypeScript sin generar archivos. |
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
-| `pnpm build` | Solo la parte web, a `dist/` (lo que se sube como PWA). |
+| `pnpm build` | Solo la parte web, a `dist/` (para probar; **no** sube la versión). |
+| `pnpm release` | **Para publicar la PWA**: sube la versión (1.3.1 → 1.3.2) en los tres archivos y arma `dist/`. Después se sube `dist/` a Cloudflare. |
+| `pnpm release:desktop` | Igual, pero compila la app de escritorio. |
 | `pnpm preview` | Sirve `dist/` en `http://localhost:4173` para probar la PWA en esta PC. |
 | `pnpm mobile` | Sirve `dist/` en el puerto 5173 **abierto a toda la red local** (hay que correr `pnpm build` antes). Apagarlo al terminar. |
 | `pnpm tauri icon public/icons/bolsillo.svg` | Regenera los íconos de escritorio desde el logo. |

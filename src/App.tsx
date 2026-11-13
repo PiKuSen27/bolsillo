@@ -77,6 +77,7 @@ import { CalendarPanel } from "./panels/CalendarPanel";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { APP_VERSION } from "./lib/constants";
 import { applyPwaUpdate, removeServiceWorkers, startPwaUpdates } from "./platform/pwa";
 
 export default function App() {
@@ -1051,7 +1052,7 @@ export default function App() {
           isOpen={activeSheet === "settings"}
           onClose={() => setActiveSheet(null)}
           title="Ajustes de Bolsillo"
-          subtitle="Configuración general, temas y copia de seguridad"
+          subtitle={`Configuración general, temas y copia de seguridad · v${APP_VERSION}`}
           isLight={isLight}
         >
           <SettingsPanel

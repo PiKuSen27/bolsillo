@@ -796,7 +796,7 @@ export function SettingsPanel({
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-extrabold tracking-tight">Bolsillo</span>
             <span className={`text-[11px] font-bold ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
-              Versión {APP_VERSION}
+              v{APP_VERSION}
             </span>
           </div>
         </div>
