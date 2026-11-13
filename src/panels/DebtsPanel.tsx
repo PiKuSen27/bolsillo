@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight, ChevronDown, Users } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight, ChevronDown, Users, Edit2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Debt, DebtKind } from "../types";
 import { formatCurrency, formatShortDate, formatAmountInput, formatNumberWithDots } from "../lib/format";
@@ -14,6 +14,7 @@ interface DebtsPanelProps {
   onAddDebt: (d: DebtFields) => void;
   onSettleDebt: (debt: Debt, addToMovement: boolean) => void;
   onDeleteDebt: (id: string) => void;
+  onUpdateDebt: (d: Debt) => void;
 }
 
 /** "Rocio te debe $ X" / "Le debés $ X" / "Están a mano" */
@@ -179,7 +180,8 @@ function DebtForm({
   );
 }
 
-export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt }: DebtsPanelProps) {
+export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt, onUpdateDebt }: DebtsPanelProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | DebtKind>("all");
   const [showAddForm, setShowAddForm] = useState(false);
   const [grouped, setGrouped] = useState(true);
@@ -206,7 +208,35 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
 
   const card = isLight ? "bg-white border-zinc-200" : "bg-[#0E0E10] border-[#222224]";
 
-  const debtRow = (d: Debt, showPerson: boolean) => (
+  const editForm = (d: Debt) => (
+    <DebtForm
+      key={d.id}
+      title="Editar deuda"
+      initial={d}
+      allDebts={debts.filter((x) => x.id !== d.id)}
+      isLight={isLight}
+      submitLabel="Guardar cambios"
+      onCancel={() => setEditingId(null)}
+      onSubmit={(fields) => {
+        onUpdateDebt({ ...d, ...fields });
+        setEditingId(null);
+      }}
+    />
+  );
+
+  const editButton = (d: Debt) => (
+    <button
+      type="button"
+      aria-label="Editar deuda"
+      title="Editar"
+      onClick={() => setEditingId(d.id)}
+      className={`p-1 rounded-md cursor-pointer ${isLight ? "text-zinc-500 hover:text-black" : "text-zinc-400 hover:text-white"}`}
+    >
+      <Edit2 size={13} />
+    </button>
+  );
+
+  const debtRow = (d: Debt, showPerson: boolean) => editingId === d.id ? editForm(d) : (
     <div key={d.id} className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${card}`}>
       <div className="flex items-center gap-2.5 min-w-0">
         <div
@@ -251,6 +281,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
         >
           Saldar
         </button>
+        {editButton(d)}
         <button
           type="button"
           aria-label="Borrar deuda"
@@ -389,7 +420,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
       {settledDebts.length > 0 && (
         <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-500/10">
           <span className="text-[11px] font-extrabold uppercase opacity-60">Saldadas ({settledDebts.length})</span>
-          {settledDebts.map((d) => (
+          {settledDebts.map((d) => editingId === d.id ? editForm(d) : (
             <div
               key={d.id}
               className={`p-2 rounded-xl border flex items-center justify-between opacity-75 ${
@@ -402,6 +433,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs font-bold line-through tabular-numbers">{formatCurrency(d.amount)}</span>
+                {editButton(d)}
                 <button
                   type="button"
                   aria-label="Borrar deuda"

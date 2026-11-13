@@ -898,6 +898,10 @@ export default function App() {
             onAddDebt={handleAddDebtItem}
             onSettleDebt={handleSettleDebtItem}
             onDeleteDebt={handleDeleteDebtItem}
+            onUpdateDebt={async (d) => {
+              await db.debts.put(d);
+              await loadData();
+            }}
           />
         </Sheet>
 
