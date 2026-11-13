@@ -12,7 +12,7 @@ interface DebtsPanelProps {
   debts: Debt[];
   isLight?: boolean;
   onAddDebt: (d: DebtFields) => void;
-  onSettleDebt: (debt: Debt, addToMovement: boolean) => void;
+  onSettleDebt: (debts: Debt[], addToMovement: boolean) => void;
   onDeleteDebt: (id: string) => void;
   onUpdateDebt: (d: Debt) => void;
 }
@@ -187,18 +187,22 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
   const [grouped, setGrouped] = useState(true);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  // Modal para saldar (pregunta si se registra el movimiento)
-  const [settlingDebt, setSettlingDebt] = useState<Debt | null>(null);
+  // Confirmación para saldar una deuda o todas las de una persona (pregunta si se registra el movimiento)
+  const [settling, setSettling] = useState<{ debts: Debt[]; name: string; total: number } | null>(null);
+  const askSettle = (list: Debt[], name: string) => {
+    const net = list.reduce((s, d) => s + (d.kind === "they_owe" ? d.amount : -d.amount), 0);
+    setSettling({ debts: list, name, total: Math.abs(net) });
+  };
 
   const handleConfirmSettle = (addToMovement: boolean) => {
-    if (!settlingDebt) return;
+    if (!settling) return;
     try {
       confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
     } catch {
       // ignore
     }
-    onSettleDebt(settlingDebt, addToMovement);
-    setSettlingDebt(null);
+    onSettleDebt(settling.debts, addToMovement);
+    setSettling(null);
   };
 
   const filteredDebts = debts.filter((d) => filter === "all" || d.kind === filter);
@@ -274,7 +278,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
         </span>
         <button
           type="button"
-          onClick={() => setSettlingDebt(d)}
+          onClick={() => askSettle([d], d.person)}
           className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
             isLight ? "bg-zinc-200 hover:bg-zinc-300 text-black" : "bg-zinc-800 hover:bg-zinc-700 text-white"
           }`}
@@ -407,7 +411,22 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
                     <ChevronDown size={14} className={`opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
                   </div>
                 </button>
-                {open && <div className="p-2 pt-0 flex flex-col gap-1.5">{g.debts.map((d) => debtRow(d, false))}</div>}
+                {open && (
+                  <div className="p-2 pt-0 flex flex-col gap-1.5">
+                    {g.debts.map((d) => debtRow(d, false))}
+                    {g.count > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => askSettle(g.debts, g.name)}
+                        className={`self-end px-3 py-1.5 rounded-xl text-[11px] font-extrabold border cursor-pointer ${
+                          isLight ? "bg-zinc-100 border-zinc-300 hover:bg-zinc-200" : "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                        }`}
+                      >
+                        Saldar todo
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
@@ -449,23 +468,25 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
       )}
 
       {/* Confirmación para saldar */}
-      {settlingDebt && (
-        <div role="dialog" aria-modal="true" className="absolute inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setSettlingDebt(null)} className="absolute inset-0 bg-black/70 backdrop-blur-xs" />
+      {settling && (
+        <div role="dialog" aria-modal="true" aria-labelledby="settle-title" className="absolute inset-0 z-50 flex items-center justify-center p-4">
+          <div onClick={() => setSettling(null)} className="absolute inset-0 bg-black/70 backdrop-blur-xs" />
           <div
             className={`relative w-full max-w-xs rounded-2xl border p-4 flex flex-col gap-3 shadow-2xl ${
               isLight ? "bg-white border-zinc-300 text-black" : "bg-black border-[#262626] text-white"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={18} className="text-[#10B981]" />
-              <h4 className="text-sm font-extrabold">Saldar Deuda</h4>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 size={18} className="text-[#10B981] shrink-0 mt-0.5" />
+              <h4 id="settle-title" className="text-sm font-extrabold">
+                {settling.debts.length === 1
+                  ? `¿Marcar como saldada la deuda de ${settling.name} por ${formatCurrency(settling.total)}?`
+                  : `¿Marcar como saldadas las ${settling.debts.length} deudas de ${settling.name} por ${formatCurrency(settling.total)}?`}
+              </h4>
             </div>
-            <p className="text-xs font-semibold">
-              Vas a marcar la deuda de <strong>{formatCurrency(settlingDebt.amount)}</strong> con{" "}
-              <strong>{settlingDebt.person}</strong> como saldada.
+            <p className={`text-[11px] font-semibold ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
+              ¿Querés registrar también el movimiento en tu saldo disponible?
             </p>
-            <p className="text-[11px] opacity-75">¿Querés registrar automáticamente el movimiento en tu saldo disponible?</p>
             <div className="flex flex-col gap-1.5 pt-1">
               <button
                 type="button"
@@ -474,7 +495,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
                   isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
                 }`}
               >
-                Sí, {settlingDebt.kind === "i_owe" ? "descontar de mi saldo" : "sumar a mi saldo"}
+                Sí, saldar y registrar en mi saldo
               </button>
               <button
                 type="button"
@@ -483,12 +504,12 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
                   isLight ? "bg-zinc-100 border-zinc-300 text-black" : "bg-zinc-900 border-zinc-800 text-white"
                 }`}
               >
-                Solo saldar deuda (sin mover saldo)
+                Solo saldar (sin mover saldo)
               </button>
               <button
                 type="button"
-                onClick={() => setSettlingDebt(null)}
-                className="text-[10px] font-bold opacity-75 hover:opacity-100 text-center pt-1 cursor-pointer"
+                onClick={() => setSettling(null)}
+                className="py-1 text-xs font-bold opacity-75 hover:opacity-100 text-center cursor-pointer"
               >
                 Cancelar
               </button>

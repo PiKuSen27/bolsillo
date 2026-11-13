@@ -76,31 +76,47 @@ export async function addDebt(debt: Omit<Debt, "id" | "settled" | "createdAt">):
   return newDebt;
 }
 
-export async function settleDebt(debtId: string, addToMovement: boolean, todayStr: string): Promise<void> {
-  const debt = await db.debts.get(debtId);
-  if (!debt || debt.settled) return;
-
-  const settledAt = new Date().toISOString();
-  await db.debts.put({
-    ...debt,
-    settled: true,
-    settledAt,
+/**
+ * Salda varias deudas de una vez (todo o nada). Si addToMovement, anota un movimiento por cada una.
+ * Devuelve una función para deshacer: las deudas vuelven a como estaban y se borran los movimientos creados.
+ */
+export async function settleDebts(
+  debtIds: string[],
+  addToMovement: boolean,
+  todayStr: string
+): Promise<() => Promise<void>> {
+  const before: Debt[] = [];
+  const createdMovementIds: string[] = [];
+  await db.transaction("rw", db.debts, db.movements, async () => {
+    const settledAt = new Date().toISOString();
+    const found = await db.debts.bulkGet(debtIds);
+    for (const debt of found) {
+      if (!debt || debt.settled) continue;
+      before.push(debt);
+      await db.debts.put({ ...debt, settled: true, settledAt });
+      if (addToMovement) {
+        const movement: Movement = {
+          id: `mov_debt_${debt.id}_${Date.now()}`,
+          date: todayStr,
+          amount: debt.amount,
+          kind: debt.kind === "i_owe" ? "expense" : "income",
+          categoryId: "otros",
+          note: debt.kind === "i_owe" ? `Pago a ${debt.person}` : `Cobro a ${debt.person}`,
+          source: "debt",
+          debtId: debt.id,
+          createdAt: settledAt,
+        };
+        await db.movements.put(movement);
+        createdMovementIds.push(movement.id);
+      }
+    }
   });
-
-  if (addToMovement) {
-    const movement: Movement = {
-      id: `mov_debt_${debt.id}_${Date.now()}`,
-      date: todayStr,
-      amount: debt.amount,
-      kind: debt.kind === "i_owe" ? "expense" : "income",
-      categoryId: "otros",
-      note: debt.kind === "i_owe" ? `Pago a ${debt.person}` : `Cobro a ${debt.person}`,
-      source: "debt",
-      debtId: debt.id,
-      createdAt: settledAt,
-    };
-    await db.movements.put(movement);
-  }
+  return async () => {
+    await db.transaction("rw", db.debts, db.movements, async () => {
+      await db.debts.bulkPut(before);
+      await db.movements.bulkDelete(createdMovementIds);
+    });
+  };
 }
 
 export async function deleteDebt(id: string): Promise<void> {

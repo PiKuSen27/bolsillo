@@ -41,7 +41,7 @@ import {
   getSettings,
   markDayAsLogged,
   markDayAsNoExpenses,
-  settleDebt,
+  settleDebts,
   setWorkDay,
   resetWorkDay,
   updateSettings,
@@ -61,7 +61,7 @@ import {
   isDayLogged,
   shouldTriggerDailyReminder,
 } from "./lib/reminders";
-import { formatLocalDate, formatNumberWithDots, formatShortDate } from "./lib/format";
+import { formatCurrency, formatLocalDate, formatNumberWithDots, formatShortDate } from "./lib/format";
 import { Hero } from "./components/Hero";
 import { DayStrip } from "./components/DayStrip";
 import { MobileDayStrip } from "./components/MobileDayStrip";
@@ -95,9 +95,14 @@ export default function App() {
     null | "movements" | "fixed" | "debts" | "income" | "calendar" | "settings"
   >(null);
 
-  // Undo Toast state
-  const [undoToast, setUndoToast] = useState<{ id: string; message: string } | null>(null);
+  // Aviso con "Deshacer" (guardar, saldar, borrar…): cada acción trae su propia forma de deshacerse
+  const [undoToast, setUndoToast] = useState<{ message: string; undo: () => Promise<void> } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showUndo = (message: string, undo: () => Promise<void>, ms = 6000) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoToast({ message, undo });
+    undoTimerRef.current = setTimeout(() => setUndoToast(null), ms);
+  };
 
   // Celular real (PWA): ancho menor a 480 px
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
@@ -368,24 +373,20 @@ export default function App() {
     const sign = params.kind === "expense" ? "-$" : "+$";
     const msg = `Guardado: ${sign} ${formatNumberWithDots(Math.round(params.amount))} en ${catName}`;
 
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setUndoToast({ id: newMovement.id, message: msg });
-    undoTimerRef.current = setTimeout(() => {
-      setUndoToast(null);
+    showUndo(msg, async () => {
+      await db.movements.delete(newMovement.id);
+      // Si ese día queda sin movimientos y no estaba marcado "no gasté nada", vuelve a "sin anotar"
+      const remaining = await db.movements.where("date").equals(newMovement.date).count();
+      const log = await db.dayLogs.get(newMovement.date);
+      if (remaining === 0 && log && !log.noExpenses) await db.dayLogs.delete(newMovement.date);
     }, 4000);
   };
 
   const handleUndoRecent = async () => {
     if (!undoToast) return;
-    const undone = await db.movements.get(undoToast.id);
-    await db.movements.delete(undoToast.id);
-    // Si ese día queda sin movimientos y no estaba marcado "no gasté nada", vuelve a "sin anotar"
-    if (undone) {
-      const remaining = await db.movements.where("date").equals(undone.date).count();
-      const log = await db.dayLogs.get(undone.date);
-      if (remaining === 0 && log && !log.noExpenses) await db.dayLogs.delete(undone.date);
-    }
+    const { undo } = undoToast;
     setUndoToast(null);
+    await undo();
     await loadData();
   };
 
@@ -484,9 +485,16 @@ export default function App() {
     await loadData();
   };
 
-  const handleSettleDebtItem = async (debt: Debt, addToMovement: boolean) => {
-    await settleDebt(debt.id, addToMovement, todayStr);
+  const handleSettleDebts = async (list: Debt[], addToMovement: boolean) => {
+    const undo = await settleDebts(list.map((d) => d.id), addToMovement, todayStr);
     await loadData();
+    const total = list.reduce((s, d) => s + d.amount, 0);
+    showUndo(
+      list.length === 1
+        ? `Saldada: ${list[0].person} ${formatCurrency(total)}`
+        : `Saldadas ${list.length} deudas de ${list[0].person}`,
+      undo
+    );
   };
 
   const handleDeleteDebtItem = async (id: string) => {
@@ -803,7 +811,7 @@ export default function App() {
                 isLight={isLight}
                 onOpenFixedAndInstallments={() => setActiveSheet("fixed")}
                 onOpenDebts={() => setActiveSheet("debts")}
-                onSettleDebt={(debt) => handleSettleDebtItem(debt, true)}
+                onSettleDebt={(debt) => handleSettleDebts([debt], true)}
               />
             </div>
           </main>
@@ -819,7 +827,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.95 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] text-white shadow-2xl flex items-center gap-3 text-xs select-none max-w-[90%]"
+              className={`absolute ${isMobileLayout && !activeSheet ? "bottom-[calc(4rem+var(--safe-bottom))]" : "bottom-[calc(1rem+var(--safe-bottom))]"} left-1/2 -translate-x-1/2 z-[60] px-3.5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] text-white shadow-2xl flex items-center gap-3 text-xs select-none max-w-[90%]`}
             >
               <span className="font-extrabold truncate max-w-[210px]">
                 {undoToast.message}
@@ -896,7 +904,7 @@ export default function App() {
             debts={debts}
             isLight={isLight}
             onAddDebt={handleAddDebtItem}
-            onSettleDebt={handleSettleDebtItem}
+            onSettleDebt={handleSettleDebts}
             onDeleteDebt={handleDeleteDebtItem}
             onUpdateDebt={async (d) => {
               await db.debts.put(d);
