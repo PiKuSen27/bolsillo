@@ -256,7 +256,9 @@ export function SettingsPanel({
     {
       key: "sueldo",
       label: "Sueldo",
-      summary: settings.incomeMode === "daily" ? `Por día · ${formatCurrency(settings.dailyRate)}` : `Fijo · ${formatCurrency(settings.fixedSalary)}`,
+      summary:
+        (settings.incomeMode === "daily" ? `Por día · ${formatCurrency(settings.dailyRate)}` : `Fijo · ${formatCurrency(settings.fixedSalary)}`) +
+        (settings.savingsValue ? " · ahorro" : ""),
       icon: <Wallet size={16} />,
     },
     { key: "avisos", label: "Avisos", summary: settings.reminderEnabled ? `Recordatorio ${settings.reminderTime}` : "Apagados", icon: <Bell size={16} /> },
@@ -606,6 +608,54 @@ export function SettingsPanel({
         </div>
       </form>
 
+          {/* Quiero ahorrar */}
+          <div className={`p-3.5 rounded-2xl border flex flex-col gap-2.5 ${isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"}`}>
+            <span className="text-xs font-black uppercase opacity-80">Quiero ahorrar</span>
+            <p className="text-[11px] font-bold opacity-75">
+              Se aparta de cada período y el "Podés gastar por día" se calcula con lo que queda.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {[0, 10, 20].map((pct) => {
+                const on = settings.savingsMode === "percent" && settings.savingsValue === pct;
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => onUpdateSettings({ savingsMode: "percent", savingsValue: pct })}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer ${
+                      on ? (isLight ? "bg-black text-white border-black" : "bg-white text-black border-white") : isLight ? "bg-zinc-100 border-zinc-300" : "bg-zinc-900 border-zinc-700"
+                    }`}
+                  >
+                    {pct === 0 ? "No" : `${pct}%`}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-[10px] font-black opacity-90">
+                Otro porcentaje
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ej. 15"
+                  value={settings.savingsMode === "percent" && ![0, 10, 20].includes(settings.savingsValue) ? String(settings.savingsValue) : ""}
+                  onChange={(e) => onUpdateSettings({ savingsMode: "percent", savingsValue: Math.min(100, parseInt(e.target.value.replace(/\D/g, ""), 10) || 0) })}
+                  className={`w-full text-xs font-black px-2.5 py-1.5 rounded-xl border focus:outline-none ${isLight ? "bg-zinc-100 border-zinc-300 text-black" : "bg-zinc-900 border-zinc-700 text-white"}`}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-[10px] font-black opacity-90">
+                O un monto fijo ($)
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ej. 50.000"
+                  value={settings.savingsMode === "amount" && settings.savingsValue ? formatNumberWithDots(settings.savingsValue) : ""}
+                  onChange={(e) => onUpdateSettings({ savingsMode: "amount", savingsValue: parseInt(formatAmountInput(e.target.value).replace(/\./g, ""), 10) || 0 })}
+                  className={`w-full text-xs font-black px-2.5 py-1.5 rounded-xl border focus:outline-none ${isLight ? "bg-zinc-100 border-zinc-300 text-black" : "bg-zinc-900 border-zinc-700 text-white"}`}
+                />
+              </label>
+            </div>
+          </div>
         </>
       )}
 

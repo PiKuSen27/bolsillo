@@ -168,6 +168,12 @@ export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, o
         </div>
       </div>
 
+      {plan.savings > 0 && (
+        <span className={`-mt-1 text-[11px] font-extrabold tabular-numbers ${isLight ? "text-[#15803D]" : "text-[#4ADE80]"}`}>
+          Guardando {formatCurrency(plan.savings)}
+        </span>
+      )}
+
       {summary.incomeMode === "daily" && onOpenWorkDays && (
         <button
           data-tour="workdays"

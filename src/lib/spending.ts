@@ -60,3 +60,10 @@ export function spendingPlan(p: { available: number; commitments: number; saving
     perDay: spendable > 0 ? Math.floor(spendable / Math.max(1, p.daysRemaining)) : 0,
   };
 }
+
+/** "Quiero ahorrar": porcentaje de la plata del período (Plata total) o un monto fijo por período. */
+export function savingsAmount(s: { savingsMode?: "percent" | "amount"; savingsValue?: number }, periodIncome: number): number {
+  const v = Math.max(0, s.savingsValue ?? 0);
+  if (!v) return 0;
+  return s.savingsMode === "amount" ? Math.round(v) : Math.round((Math.max(0, periodIncome) * Math.min(v, 100)) / 100);
+}

@@ -37,5 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hideAmounts: false,
   startHidden: false,
   tutorialDone: false,
+  savingsMode: "percent",
+  savingsValue: 0,
   createdAt: new Date().toISOString(),
 };

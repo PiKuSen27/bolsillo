@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pendingCommitments, spendingPlan } from "./spending";
+import { pendingCommitments, savingsAmount, spendingPlan } from "./spending";
 import { Installment, Recurring } from "../types";
 
 const rec = (id: string, dueDay: number, amount: number, extra: Partial<Recurring> = {}): Recurring => ({
@@ -53,4 +53,10 @@ describe("spending.ts - Podés gastar por día", () => {
     expect(spendingPlan({ available: 100000, commitments: 0, savings: 0, daysRemaining: 0 }).perDay).toBe(100000);
   });
 
+  it("Ahorro: porcentaje de la plata del período o monto fijo; 0 por defecto", () => {
+    expect(savingsAmount({ savingsMode: "percent", savingsValue: 10 }, 700000)).toBe(70000);
+    expect(savingsAmount({ savingsMode: "amount", savingsValue: 50000 }, 700000)).toBe(50000);
+    expect(savingsAmount({}, 700000)).toBe(0);
+    expect(spendingPlan({ available: 700000, commitments: 0, savings: 70000, daysRemaining: 21 }).perDay).toBe(30000);
+  });
 });

@@ -83,7 +83,7 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { APP_VERSION } from "./lib/constants";
 import { backupStatus } from "./lib/backupReminder";
 import { whatsNewToShow } from "./lib/whatsNew";
-import { pendingCommitments, spendingPlan } from "./lib/spending";
+import { pendingCommitments, savingsAmount, spendingPlan } from "./lib/spending";
 import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
@@ -421,8 +421,9 @@ export default function App() {
   // Podés gastar por día: descuenta fijos y cuotas que todavía van a vencer en el período (y el ahorro)
   const plan = useMemo(() => {
     const commitments = pendingCommitments({ recurrings, installments, todayStr, periodEnd: periodInfo.endDate }).total;
-    return spendingPlan({ available: balanceSummary.available, commitments, savings: 0, daysRemaining: periodInfo.daysRemaining });
-  }, [recurrings, installments, todayStr, periodInfo, balanceSummary.available]);
+    const savings = settings ? savingsAmount(settings, balanceSummary.totalIncome) : 0;
+    return spendingPlan({ available: balanceSummary.available, commitments, savings, daysRemaining: periodInfo.daysRemaining });
+  }, [recurrings, installments, todayStr, periodInfo, balanceSummary.available, balanceSummary.totalIncome, settings]);
 
   // Cartel informativo "Empezaste con $X a favor / Cerraste abajo" (no toca el Disponible)
   const previousBalance = useMemo(
