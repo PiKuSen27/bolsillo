@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight, ChevronDown, Users, Edit2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Debt, DebtKind, DollarType } from "../types";
-import { debtArs, fetchQuote, Quote } from "../lib/dollars";
+import { debtArs, debtBalance, debtPaid, fetchQuote, Quote } from "../lib/dollars";
 import { QuoteField } from "../components/QuoteField";
 import { formatCurrency, formatShortDate, formatAmountInput, formatNumberWithDots, formatUsd, formatLocalDate } from "../lib/format";
 import { groupDebtsByPerson, PersonGroup, suggestPersonNames } from "../lib/debts";
@@ -17,6 +17,7 @@ interface DebtsPanelProps {
   onSettleDebt: (debts: Debt[], addToMovement: boolean) => void;
   onDeleteDebt: (id: string) => void;
   onUpdateDebt: (d: Debt) => void;
+  onRegisterPayment: (d: Debt, amount: number, date: string, addToMovement: boolean) => Promise<void>;
   dollars: { enabled: boolean; type: DollarType };
 }
 
@@ -222,7 +223,11 @@ function DebtForm({
   );
 }
 
-export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt, onUpdateDebt, dollars }: DebtsPanelProps) {
+export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt, onUpdateDebt, onRegisterPayment, dollars }: DebtsPanelProps) {
+  const [paying, setPaying] = useState<{ id: string; amount: string; date: string; addToMovement: boolean } | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+  // Monto en la moneda de la deuda
+  const money = (d: Debt, units: number) => (d.currency === "USD" ? formatUsd(units) : formatCurrency(units));
   const [quoteBusy, setQuoteBusy] = useState<string | null>(null);
   const [quoteError, setQuoteError] = useState<{ id: string; text: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -323,7 +328,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
 
       <div className="flex items-center gap-1.5 shrink-0">
         <span className={`flex flex-col items-end text-sm font-extrabold tabular-numbers ${d.kind === "i_owe" ? "text-[#EF4444]" : "text-[#16A34A]"}`}>
-          {d.currency === "USD" ? formatUsd(d.amount) : formatCurrency(d.amount)}
+          {money(d, debtBalance(d))}
         </span>
         <button
           type="button"
@@ -346,12 +351,33 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
         </button>
       </div>
     </div>
-    {d.currency === "USD" && (
-      <div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 pl-9 text-[10px] font-bold tabular-numbers ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
-        <span>
-          ≈ {formatCurrency(debtArs(d))} (a {formatCurrency(d.rate ?? 0)}
-          {d.rateDate ? ` del ${formatShortDate(d.rateDate)}` : ""})
-        </span>
+    {/* Segunda línea: saldo con pagos, equivalencia en pesos y acciones */}
+    <div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 pl-9 text-[10px] font-bold tabular-numbers ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
+      <span className="flex flex-col">
+        {debtPaid(d) > 0 && (
+          <span>
+            Original {money(d, d.amount)} · Pagado {money(d, debtPaid(d))} · Saldo {money(d, debtBalance(d))}
+          </span>
+        )}
+        {d.currency === "USD" && (
+          <span>
+            ≈ {formatCurrency(debtArs(d))} (a {formatCurrency(d.rate ?? 0)}
+            {d.rateDate ? ` del ${formatShortDate(d.rateDate)}` : ""})
+          </span>
+        )}
+      </span>
+      {!d.settled && (
+        <span className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              setPaying({ id: d.id, amount: "", date: formatLocalDate(new Date()), addToMovement: d.currency !== "USD" });
+              setPayError(null);
+            }}
+            className="text-[10px] font-extrabold underline opacity-80 hover:opacity-100 cursor-pointer"
+          >
+            Registrar pago
+          </button>
           {d.currency === "USD" && (
             <button
               type="button"
@@ -373,7 +399,68 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
               {quoteBusy === d.id ? "Buscando…" : "Actualizar cotización"}
             </button>
           )}
-          {quoteError?.id === d.id && <span role="alert" className="text-[10px] font-bold text-[#DC2626]">{quoteError.text}</span>}
+        </span>
+      )}
+      {quoteError?.id === d.id && <span role="alert" className="w-full text-[10px] font-bold text-[#DC2626]">{quoteError.text}</span>}
+    </div>
+
+    {(d.payments?.length ?? 0) > 0 && (
+      <details className={`pl-9 text-[10px] font-bold ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
+        <summary className="cursor-pointer">Pagos ({d.payments!.length})</summary>
+        <ul className="pt-1">
+          {d.payments!.map((p) => (
+            <li key={p.id} className="flex justify-between tabular-numbers">
+              <span>{formatShortDate(p.date)}</span>
+              <span>{money(d, p.amount)}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+    )}
+
+    {paying?.id === d.id && (
+      <div className={`ml-9 p-2.5 rounded-xl border flex flex-col gap-2 ${isLight ? "bg-zinc-50 border-zinc-200" : "bg-black border-zinc-800"}`}>
+        <span className="text-[11px] font-extrabold">Registrar pago · saldo {money(d, debtBalance(d))}</span>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="Monto del pago"
+            placeholder={d.currency === "USD" ? "Monto (USD)" : "Monto ($)"}
+            value={paying.amount}
+            onChange={(e) => setPaying({ ...paying, amount: formatAmountInput(e.target.value) })}
+            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none ${isLight ? "bg-white border-zinc-300 text-black" : "bg-zinc-900 border-zinc-700 text-white"}`}
+          />
+          <DateField ariaLabel="Fecha del pago" value={paying.date} onChange={(v) => setPaying({ ...paying, date: v })} isLight={isLight} />
+        </div>
+        <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
+          <input
+            type="checkbox"
+            checked={paying.addToMovement}
+            onChange={(e) => setPaying({ ...paying, addToMovement: e.target.checked })}
+            className="accent-[#16A34A]"
+          />
+          Anotarlo también en mi saldo{d.currency === "USD" ? " (en pesos, con la cotización de la deuda)" : ""}
+        </label>
+        {payError && <span role="alert" className="text-[11px] font-bold text-[#DC2626]">{payError}</span>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => setPaying(null)} className="px-3 py-1 text-xs font-bold opacity-75 hover:opacity-100 cursor-pointer">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              const units = parseInt(paying.amount.replace(/\./g, ""), 10) || 0;
+              if (units <= 0) return setPayError("Escribí el monto del pago");
+              if (units > debtBalance(d)) return setPayError(`No puede ser mayor que el saldo (${money(d, debtBalance(d))})`);
+              await onRegisterPayment(d, units, paying.date, paying.addToMovement);
+              setPaying(null);
+            }}
+            className={`px-3 py-1 rounded-lg text-xs font-extrabold cursor-pointer ${isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"}`}
+          >
+            Guardar pago
+          </button>
+        </div>
       </div>
     )}
     </div>

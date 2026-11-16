@@ -188,6 +188,7 @@ Bolsillo/
 * Pestañas "Todas / Debo plata / Me deben", cada una muestra solo sus deudas (pendientes y saldadas). Al tocar "+ Nueva" parado en una pestaña, la deuda toma ese tipo sin preguntar; el selector "Debo / Me deben" aparece solo en "Todas". Saldar (opcionalmente creando el movimiento) o borrar.
 
 * **Deudas en dólares** (solo con Ajustes → Dólar → "Usar dólares"): `Debt.currency = "USD"`, `amount` en dólares enteros, `rate` (pesos por dólar), `rateDate`, `rateType`. La cotización queda **fija** en la deuda; "Actualizar cotización" la reemplaza a mano. Totales por persona, "Saldar" y su movimiento van **en pesos** con la cotización guardada (`lib/dollars.ts`: `debtArs`). Pantalla: "USD 300 · ≈ $ 450.000 (a $ 1.500 del 14 nov)".
+* **Pagos parciales** (`Debt.payments[]`, en la moneda de la deuda): "Registrar pago" con monto y fecha (`applyPayment` no deja pagar más que el saldo; con saldo 0 queda saldada) y opción de anotarlo en el saldo en pesos (`registerDebtPayment`, con Deshacer). Todo usa el **saldo** (`debtBalance`): totales por persona, "Saldar" y su movimiento.
 * **Cotización**: única conexión a internet de la app, `https://dolarapi.com/v1/dolares/{oficial|blue|bolsa}` (venta, redondeada a pesos), **solo al tocar el botón** (`fetchQuote`, 8 s de espera máxima, mensaje "escribí la cotización a mano" si falla). Permitida en la CSP (`connect-src`) de `tauri.conf.json` y `public/_headers`. Componente `QuoteField` (manual o "Cotización del día").
 
 ### H. Recordatorios

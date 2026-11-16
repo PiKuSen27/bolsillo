@@ -49,3 +49,38 @@ describe("debts.ts - Agrupar deudas por persona", () => {
     expect(suggestPersonNames(debts, "rocío")).toEqual([]); // ya está escrito completo
   });
 });
+
+import { applyPayment, debtPaid } from "./debts";
+import { debtArs, debtBalance } from "./dollars";
+
+describe("debts.ts - Pagos parciales", () => {
+  const base: Debt = { id: "x", person: "Rocio", kind: "they_owe", amount: 100000, settled: false, createdAt: "2026-11-01T10:00:00Z" };
+
+  it("Un pago parcial baja el saldo y guarda el historial; no se marca saldada", () => {
+    const d = applyPayment(base, 30000, "2026-11-10", "p1");
+    expect(debtPaid(d)).toBe(30000);
+    expect(debtBalance(d)).toBe(70000);
+    expect(d.settled).toBe(false);
+    expect(d.payments).toEqual([{ id: "p1", amount: 30000, date: "2026-11-10" }]);
+  });
+
+  it("Cuando el saldo llega a 0 queda saldada", () => {
+    const d = applyPayment(applyPayment(base, 30000, "2026-11-10", "p1"), 70000, "2026-11-12", "p2");
+    expect(debtBalance(d)).toBe(0);
+    expect(d.settled).toBe(true);
+    expect(d.settledAt).toBeTruthy();
+  });
+
+  it("No se puede pagar más que el saldo ni un monto en cero", () => {
+    expect(() => applyPayment(base, 100001, "2026-11-10", "p1")).toThrow(/saldo/);
+    expect(() => applyPayment(base, 0, "2026-11-10", "p1")).toThrow();
+  });
+
+  it("En dólares el pago se anota en dólares y los totales usan el saldo", () => {
+    const usd: Debt = { ...base, amount: 300, currency: "USD", rate: 1500 };
+    const d = applyPayment(usd, 100, "2026-11-10", "p1");
+    expect(debtBalance(d)).toBe(200);
+    expect(debtArs(d)).toBe(300000);
+    expect(groupDebtsByPerson([d])[0].net).toBe(300000);
+  });
+});

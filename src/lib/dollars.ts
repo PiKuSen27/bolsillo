@@ -45,8 +45,11 @@ export const usdToArs = (usd: number, rate: number) => Math.round(usd * rate);
 export const debtUnitsToArs = (d: Pick<Debt, "currency" | "rate">, units: number) =>
   d.currency === "USD" ? usdToArs(units, d.rate ?? 0) : units;
 
+/** Lo ya pagado de la deuda (en su moneda). */
+export const debtPaid = (d: Debt) => (d.payments ?? []).reduce((s, p) => s + p.amount, 0);
+
 /** Saldo de la deuda en su moneda (lo que falta pagar). */
-export const debtBalance = (d: Debt) => d.amount;
+export const debtBalance = (d: Debt) => Math.max(0, d.amount - debtPaid(d));
 
 /** Saldo de la deuda en pesos. */
 export const debtArs = (d: Debt) => debtUnitsToArs(d, debtBalance(d));

@@ -42,3 +42,31 @@ describe("Saldar varias deudas y deshacer", () => {
     expect((await db.debts.get("b"))!.settled).toBe(false);
   });
 });
+
+import { registerDebtPayment } from "./repo";
+
+describe("Pagos parciales en la base", () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((t) => t.clear()));
+    await db.debts.bulkPut([debt("a", 100000), { ...debt("u", 300, "i_owe"), currency: "USD" as const, rate: 1500 }]);
+  });
+
+  it("Guarda el pago, anota el movimiento en pesos y Deshacer vuelve todo atrás", async () => {
+    const undo = await registerDebtPayment("u", 100, "2026-11-12", true);
+    const d = await db.debts.get("u");
+    expect(d!.payments!.map((p) => p.amount)).toEqual([100]);
+    const [m] = await db.movements.toArray();
+    expect(m).toMatchObject({ kind: "expense", amount: 150000, date: "2026-11-12", source: "debt", debtId: "u" });
+    await undo();
+    expect((await db.debts.get("u"))!.payments).toBeUndefined();
+    expect(await db.movements.count()).toBe(0);
+  });
+
+  it("El último pago la deja saldada; Saldar después usa el saldo", async () => {
+    await registerDebtPayment("a", 40000, "2026-11-12", false);
+    await settleDebts(["a"], true, "2026-11-13");
+    const [m] = await db.movements.toArray();
+    expect(m.amount).toBe(60000);
+    expect((await db.debts.get("a"))!.settled).toBe(true);
+  });
+});

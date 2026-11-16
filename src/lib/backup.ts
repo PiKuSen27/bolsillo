@@ -176,6 +176,13 @@ function debt(o: Obj, i: number): Debt {
     rate: o.rate === undefined || o.rate === null ? undefined : amount(o.rate, "rate", where, { min: 1, max: 10_000_000 }),
     rateDate: dateStr(o.rateDate, "rateDate", where, true),
     rateType: o.rateType === undefined ? undefined : oneOf(o.rateType, ["oficial", "blue", "bolsa"] as const, "rateType", where),
+    payments:
+      o.payments === undefined
+        ? undefined
+        : list(o.payments, `${where}.payments`).map((p, j) => {
+            const w = `${where}, pago #${j + 1}`;
+            return { id: str(p.id, "id", w, { max: 200 })!, amount: amount(p.amount, "amount", w, { min: 1 }), date: dateStr(p.date, "date", w)! };
+          }),
     dueDate: dateStr(o.dueDate, "dueDate", where, true),
     note: str(o.note, "note", where, { optional: true, max: 500 }),
     settled: bool(o.settled, "settled", where, false),

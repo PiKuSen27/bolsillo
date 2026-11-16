@@ -10,7 +10,8 @@ import {
 } from "../types";
 import { DEFAULT_SETTINGS } from "../lib/constants";
 import { validateBackup, ValidBackup } from "../lib/backup";
-import { debtArs } from "../lib/dollars";
+import { debtArs, debtUnitsToArs } from "../lib/dollars";
+import { applyPayment } from "../lib/debts";
 
 export interface DatabaseExport {
   version: number;
@@ -119,6 +120,44 @@ export async function settleDebts(
     await applyAtomically([
       { type: "put", table: "debts", recs: before },
       { type: "delete", table: "movements", keys: created.map((m) => m.id) },
+    ]);
+  };
+}
+
+/**
+ * Pago parcial de una deuda (en su moneda). Si addToMovement, anota el movimiento en pesos
+ * (dólares × cotización guardada). Devuelve la función para deshacer.
+ */
+export async function registerDebtPayment(
+  debtId: string,
+  amount: number,
+  date: string,
+  addToMovement: boolean
+): Promise<() => Promise<void>> {
+  const before = await store.debts.get(debtId);
+  if (!before) throw new Error("No se encontró la deuda");
+  const after = applyPayment(before, Math.round(amount), date, `pay_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+  const movement: Movement | null = addToMovement
+    ? {
+        id: `mov_debtpay_${before.id}_${Date.now()}`,
+        date,
+        amount: debtUnitsToArs(before, Math.round(amount)),
+        kind: before.kind === "i_owe" ? "expense" : "income",
+        categoryId: before.kind === "i_owe" ? "otros" : "income",
+        note: before.kind === "i_owe" ? `Pago parcial a ${before.person}` : `Cobro parcial a ${before.person}`,
+        source: "debt",
+        debtId: before.id,
+        createdAt: new Date().toISOString(),
+      }
+    : null;
+  await applyAtomically([
+    { type: "put", table: "debts", recs: [after] },
+    { type: "put", table: "movements", recs: movement ? [movement] : [] },
+  ]);
+  return async () => {
+    await applyAtomically([
+      { type: "put", table: "debts", recs: [before] },
+      { type: "delete", table: "movements", keys: movement ? [movement.id] : [] },
     ]);
   };
 }

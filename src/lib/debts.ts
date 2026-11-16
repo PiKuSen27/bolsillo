@@ -1,6 +1,7 @@
 import { Debt } from "../types";
 import { normalizeText } from "./search";
-import { debtArs } from "./dollars";
+import { debtArs, debtBalance } from "./dollars";
+export { debtPaid } from "./dollars";
 
 /** Clave para juntar deudas de la misma persona: sin mayúsculas, acentos ni espacios de más. */
 export function personKey(name: string): string {
@@ -51,4 +52,14 @@ export function suggestPersonNames(debts: Debt[], typed: string): string[] {
     .map((g) => g.name)
     .sort((a, b) => a.localeCompare(b))
     .slice(0, 5);
+}
+
+/** Registra un pago parcial (en la moneda de la deuda). Si el saldo llega a 0, la deuda queda saldada. */
+export function applyPayment(d: Debt, amount: number, date: string, id: string): Debt {
+  const balance = debtBalance(d);
+  if (!(amount > 0)) throw new Error("El pago tiene que ser mayor a cero");
+  if (amount > balance) throw new Error("El pago no puede ser mayor que el saldo");
+  const next: Debt = { ...d, payments: [...(d.payments ?? []), { id, amount, date }] };
+  if (debtBalance(next) === 0) return { ...next, settled: true, settledAt: new Date().toISOString() };
+  return next;
 }

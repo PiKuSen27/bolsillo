@@ -45,6 +45,7 @@ import {
   markDayAsLogged,
   markDayAsNoExpenses,
   settleDebts,
+  registerDebtPayment,
   setWorkDay,
   resetWorkDay,
   updateSettings,
@@ -64,7 +65,7 @@ import {
   isDayLogged,
   shouldTriggerDailyReminder,
 } from "./lib/reminders";
-import { formatCurrency, formatLocalDate, formatNumberWithDots, formatShortDate, setAmountsHidden } from "./lib/format";
+import { formatCurrency, formatUsd, formatLocalDate, formatNumberWithDots, formatShortDate, setAmountsHidden } from "./lib/format";
 import { Hero } from "./components/Hero";
 import { DayStrip } from "./components/DayStrip";
 import { MobileDayStrip } from "./components/MobileDayStrip";
@@ -1231,6 +1232,11 @@ export default function App() {
               await loadData();
             }}
             dollars={{ enabled: settings.useDollars, type: settings.dollarType }}
+            onRegisterPayment={async (d, amount, date, addToMovement) => {
+              const undo = await registerDebtPayment(d.id, amount, date, addToMovement);
+              await loadData();
+              showUndo(`Pago registrado: ${d.person} ${d.currency === "USD" ? formatUsd(amount) : formatCurrency(amount)}`, undo);
+            }}
           />
         </Sheet>
 

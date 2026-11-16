@@ -141,6 +141,12 @@ export interface UpcomingItem {
 /** oficial, blue o MEP ("bolsa" en dolarapi) */
 export type DollarType = "oficial" | "blue" | "bolsa";
 
+export interface DebtPayment {
+  id: string;
+  amount: number;
+  date: string; // YYYY-MM-DD
+}
+
 export type DebtKind = "i_owe" | "they_owe";
 
 export interface Debt {
@@ -152,6 +158,7 @@ export interface Debt {
   rate?: number; // dólares: pesos por dólar fijados en esta deuda
   rateDate?: string; // YYYY-MM-DD de esa cotización
   rateType?: DollarType;
+  payments?: DebtPayment[]; // pagos parciales, en la moneda de la deuda
   dueDate?: string; // YYYY-MM-DD
   note?: string;
   settled: boolean;
