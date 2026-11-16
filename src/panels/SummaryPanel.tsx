@@ -4,6 +4,7 @@ import { Category, Movement, Settings, WorkDay } from "../types";
 import { compareSpending, periodAtOffset, summarizePeriod } from "../lib/summary";
 import { calculateVariableIncome } from "../lib/workdays";
 import { formatCurrency, formatShortDate } from "../lib/format";
+import { limitStatus } from "../lib/limits";
 
 /** Resumen del período: gastos por categoría, ingresos y comparación con el período anterior. */
 export function SummaryPanel({
@@ -35,6 +36,13 @@ export function SummaryPanel({
   const cur = useMemo(() => build(offset), [offset, movements, categories, settings, workDays, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
   const prev = useMemo(() => build(offset + 1), [offset, movements, categories, settings, workDays, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
   const cmp = compareSpending(cur.totalExpenses, prev.totalExpenses);
+  // Categorías con tope aparecen aunque todavía no tengan gastos
+  const rows = [
+    ...cur.byCategory,
+    ...categories
+      .filter((c) => c.limit && !cur.byCategory.some((x) => x.categoryId === c.id))
+      .map((c) => ({ categoryId: c.id, name: c.name, color: c.color, amount: 0, pct: 0, movements: [] as Movement[] })),
+  ];
 
   const card = `p-3.5 rounded-2xl border ${isLight ? "bg-white border-zinc-200" : "bg-[#0A0A0C] border-[#222224]"}`;
   const muted = isLight ? "text-zinc-600" : "text-zinc-400";
@@ -79,9 +87,12 @@ export function SummaryPanel({
 
       <div className={`${card} flex flex-col gap-1`}>
         <span className={`text-[11px] font-extrabold uppercase mb-1 ${muted}`}>Gastos por categoría</span>
-        {cur.byCategory.length === 0 && <p className={`py-4 text-center text-xs font-bold ${muted}`}>No hay gastos en este período</p>}
-        {cur.byCategory.map((c) => {
+        {rows.length === 0 && <p className={`py-4 text-center text-xs font-bold ${muted}`}>No hay gastos en este período</p>}
+        {rows.map((c) => {
           const isOpen = open === c.categoryId;
+          const limit = categories.find((x) => x.id === c.categoryId)?.limit;
+          const st = limitStatus(c.amount, limit);
+          const barColor = st?.level === "over" ? "#DC2626" : st?.level === "near" ? "#D97706" : c.color;
           return (
             <div key={c.categoryId} className="flex flex-col">
               <button
@@ -102,8 +113,18 @@ export function SummaryPanel({
                   </span>
                 </div>
                 <div className={`h-2 rounded-full overflow-hidden ${isLight ? "bg-zinc-100" : "bg-zinc-800"}`}>
-                  <div className="h-full rounded-full" style={{ width: `${Math.max(2, c.pct)}%`, backgroundColor: c.color }} />
+                  <div className="h-full rounded-full" style={{ width: `${Math.max(2, st ? st.pct : c.pct)}%`, backgroundColor: barColor }} />
                 </div>
+                {st && limit && (
+                  <span
+                    className={`text-[10px] font-extrabold tabular-numbers ${
+                      st.level === "over" ? "text-[#DC2626]" : st.level === "near" ? "text-[#B45309]" : muted
+                    }`}
+                  >
+                    {formatCurrency(c.amount)} de {formatCurrency(limit)} · {st.pct}%
+                    {st.level === "over" ? " · Te pasaste del tope" : st.level === "near" ? " · Llegaste al 80%" : ""}
+                  </span>
+                )}
               </button>
               {isOpen && (
                 <ul className={`flex flex-col pb-1.5 pl-4 text-[11px] font-semibold ${muted}`}>

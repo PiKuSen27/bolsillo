@@ -13,6 +13,7 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+  limit?: number; // tope de gasto por período (opcional)
 }
 
 export type IncomeMode = "salary" | "daily";

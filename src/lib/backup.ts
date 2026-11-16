@@ -189,6 +189,7 @@ function category(o: Obj, i: number): Category {
     name: str(o.name, "name", where, { max: 60 })!,
     icon: str(o.icon, "icon", where, { optional: true, max: 60 }) ?? "Tag",
     color,
+    limit: o.limit === undefined || o.limit === null || o.limit === 0 ? undefined : amount(o.limit, "limit", where),
   };
 }
 

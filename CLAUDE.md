@@ -171,6 +171,8 @@ Bolsillo/
 ### E2. Resumen
 * Se abre con la pastilla "Resumen" del Hero. `periodAtOffset` da el período actual (0) y los anteriores: en sueldo fijo de cobro a cobro; en sueldo por día, el anterior es `dailyPreviousRange` y más atrás tramos del mismo largo. Ingresos del período = sueldo (fijo, o suma de días del rango) + ingresos anotados. Todo monto pasa por `formatCurrency` (respeta "ocultar montos").
 
+* **Topes por categoría** (`Category.limit`, opcional, Ajustes → Categorías): `lib/limits.ts`. El Resumen muestra "$X de $Y · %" (ámbar desde el 80%, rojo al pasarse). Al anotar un gasto del período que cruza el 80% o queda pasado, el aviso de "Deshacer" suma la advertencia; **se guarda igual**.
+
 ### F. Calculadora
 * Máximo 12 dígitos por número y resultado ≤ `MAX_AMOUNT` (1e12); si se pasa o divide por cero, muestra el aviso en rojo y no guarda.
 * Operadores colgantes se descartan (`20000 +` → 20.000). La coma es el decimal y se redondea a pesos enteros.

@@ -85,6 +85,7 @@ import { APP_VERSION } from "./lib/constants";
 import { backupStatus } from "./lib/backupReminder";
 import { whatsNewToShow } from "./lib/whatsNew";
 import { pendingCommitments, savingsAmount, spendingPlan } from "./lib/spending";
+import { limitWarning } from "./lib/limits";
 import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
@@ -107,11 +108,11 @@ export default function App() {
   >(null);
 
   // Aviso con "Deshacer" (guardar, saldar, borrar…): cada acción trae su propia forma de deshacerse
-  const [undoToast, setUndoToast] = useState<{ message: string; undo: () => Promise<void> } | null>(null);
+  const [undoToast, setUndoToast] = useState<{ message: string; undo: () => Promise<void>; warning?: string } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showUndo = (message: string, undo: () => Promise<void>, ms = 6000) => {
+  const showUndo = (message: string, undo: () => Promise<void>, ms = 6000, warning?: string) => {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setUndoToast({ message, undo });
+    setUndoToast({ message, undo, warning });
     undoTimerRef.current = setTimeout(() => setUndoToast(null), ms);
   };
 
@@ -477,6 +478,16 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
+    // Tope de la categoría: avisar al cruzar el 80% o al pasarse (se guarda igual)
+    const cat = settings?.categories.find((c) => c.id === newMovement.categoryId);
+    let warning: string | undefined;
+    if (cat?.limit && newMovement.kind === "expense" && newMovement.date >= periodInfo.startDate && newMovement.date <= periodInfo.endDate) {
+      const before = movements
+        .filter((m) => m.kind === "expense" && m.categoryId === cat.id && m.date >= periodInfo.startDate && m.date <= periodInfo.endDate)
+        .reduce((s, m) => s + m.amount, 0);
+      warning = limitWarning(before, before + newMovement.amount, cat.limit, cat.name) ?? undefined;
+    }
+
     await store.movements.put(newMovement);
     await markDayAsLogged(params.date);
     await loadData();
@@ -495,7 +506,7 @@ export default function App() {
       const remaining = (await store.movements.toArray()).filter((x) => x.date === newMovement.date).length;
       const log = await store.dayLogs.get(newMovement.date);
       if (remaining === 0 && log && !log.noExpenses) await store.dayLogs.delete(newMovement.date);
-    }, 4000);
+    }, warning ? 7000 : 4000, warning);
   };
 
   const handleUndoRecent = async () => {
@@ -1133,8 +1144,13 @@ export default function App() {
               transition={{ duration: 0.18, ease: "easeOut" }}
               className={`absolute ${isMobileLayout && !activeSheet ? "bottom-[calc(4rem+var(--safe-bottom))]" : "bottom-[calc(1rem+var(--safe-bottom))]"} left-1/2 -translate-x-1/2 z-[60] px-3.5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] text-white shadow-2xl flex items-center gap-3 text-xs select-none max-w-[90%]`}
             >
-              <span className="font-extrabold truncate max-w-[210px]">
-                {undoToast.message}
+              <span className="flex flex-col min-w-0">
+                <span className="font-extrabold truncate max-w-[230px]">{undoToast.message}</span>
+                {undoToast.warning && (
+                  <span role="alert" className="text-[11px] font-bold text-[#FBBF24]">
+                    ⚠ {undoToast.warning}
+                  </span>
+                )}
               </span>
               <button
                 type="button"

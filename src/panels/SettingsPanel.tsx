@@ -262,7 +262,7 @@ export function SettingsPanel({
       icon: <Wallet size={16} />,
     },
     { key: "avisos", label: "Avisos", summary: settings.reminderEnabled ? `Recordatorio ${settings.reminderTime}` : "Apagados", icon: <Bell size={16} /> },
-    { key: "categorias", label: "Categorías", summary: `${settings.categories.length} categorías`, icon: <Tags size={16} /> },
+    { key: "categorias", label: "Categorías", summary: `${settings.categories.length} categorías${settings.categories.some((c) => c.limit) ? " · con topes" : ""}`, icon: <Tags size={16} /> },
     { key: "seguridad", label: "Seguridad", summary: { none: "Sin bloqueo", pin: "Simple (PIN)", encrypted: "Cifrada" }[lockMode()], icon: <Lock size={16} /> },
     { key: "backup", label: "Backup", summary: settings.lastBackupAt ? backupStatus(settings.lastBackupAt, settings.createdAt).label.replace(/^Último backup: /, "") : "Nunca", icon: <Download size={16} /> },
     { key: "acerca", label: "Acerca de", summary: `v${APP_VERSION}`, icon: <Info size={16} /> },
@@ -809,28 +809,38 @@ export function SettingsPanel({
           isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"
         }`}
       >
-        <span className="text-xs font-black uppercase opacity-80">Categorías de Gastos</span>
+        <span className="text-xs font-black uppercase opacity-80">Categorías y topes</span>
 
-        <div className="flex flex-wrap gap-1.5">
+        <p className="text-[11px] font-bold opacity-75">
+          Tope por período (opcional): avisa al llegar al 80% y al pasarte, y se ve en el Resumen.
+        </p>
+        <div className="flex flex-col gap-1.5">
           {settings.categories.map((c) => (
-            <div
-              key={c.id}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-black border flex items-center gap-1.5 ${
-                isLight
-                  ? "bg-zinc-100 border-zinc-200 text-black"
-                  : "bg-zinc-900 border-zinc-800 text-white"
-              }`}
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: c.color }}
+            <div key={c.id} className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+              <span className="flex-1 min-w-0 truncate text-xs font-black">{c.name}</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                aria-label={`Tope de ${c.name}`}
+                placeholder="Sin tope"
+                value={c.limit ? formatNumberWithDots(c.limit) : ""}
+                onChange={(e) => {
+                  const v = parseInt(formatAmountInput(e.target.value).replace(/\./g, ""), 10) || 0;
+                  onUpdateSettings({
+                    categories: settings.categories.map((x) => (x.id === c.id ? { ...x, limit: v || undefined } : x)),
+                  });
+                }}
+                className={`w-28 text-xs font-black px-2.5 py-1 rounded-lg border text-right focus:outline-none ${
+                  isLight ? "bg-zinc-100 border-zinc-300 text-black" : "bg-zinc-900 border-zinc-700 text-white"
+                }`}
               />
-              <span>{c.name}</span>
               {settings.categories.length > 1 && (
                 <button
                   type="button"
                   onClick={() => handleDeleteCategory(c.id)}
-                  className="ml-1 text-zinc-400 hover:text-red-500 text-xs font-black cursor-pointer"
+                  aria-label={`Eliminar ${c.name}`}
+                  className="w-6 text-zinc-400 hover:text-red-500 text-sm font-black cursor-pointer"
                   title="Eliminar categoría"
                 >
                   ×
