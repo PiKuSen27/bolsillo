@@ -82,6 +82,8 @@ import { OnboardingPanel } from "./panels/OnboardingPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { APP_VERSION } from "./lib/constants";
 import { backupStatus } from "./lib/backupReminder";
+import { whatsNewToShow } from "./lib/whatsNew";
+import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
 export default function App() {
@@ -707,7 +709,7 @@ export default function App() {
         <OnboardingPanel
           isLight={isLight}
           onComplete={async (updates) => {
-            await handleUpdateSettings(updates);
+            await handleUpdateSettings({ ...updates, lastSeenVersion: APP_VERSION });
             await loadData();
           }}
         />
@@ -1016,6 +1018,37 @@ export default function App() {
 
         {/* ============================================================== */}
         {/* FLOATING UNDO (DESHACER) TOAST                                 */}
+        {/* Novedades: una sola vez después de actualizar (no encima del tutorial) */}
+        {!tourOpen &&
+          (() => {
+            const notes = whatsNewToShow(settings, APP_VERSION, NOVEDADES);
+            if (!notes) return null;
+            return (
+              <div
+                role="status"
+                className={`absolute left-1/2 -translate-x-1/2 bottom-[calc(1rem+var(--safe-bottom))] z-[65] w-[min(92%,340px)] p-3.5 rounded-2xl border flex flex-col gap-2 text-xs select-none ${
+                  isLight ? "bg-white border-zinc-300 text-black" : "bg-[#141416] border-[#2A2A2E] text-white"
+                }`}
+              >
+                <span className="text-sm font-extrabold">Se actualizó a v{notes.version}</span>
+                <ul className={`flex flex-col gap-1 font-semibold ${isLight ? "text-zinc-700" : "text-zinc-300"}`}>
+                  {notes.items.map((t) => (
+                    <li key={t}>· {t}</li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateSettings({ lastSeenVersion: APP_VERSION })}
+                  className={`self-end px-3 py-1 rounded-lg text-[11px] font-black cursor-pointer ${
+                    isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+                  }`}
+                >
+                  Entendido
+                </button>
+              </div>
+            );
+          })()}
+
         {tourOpen && !activeSheet && (
           <Tour
             isLight={isLight}

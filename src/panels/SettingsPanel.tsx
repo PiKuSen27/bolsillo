@@ -24,6 +24,7 @@ import { decryptBackup, encryptBackup, isEncryptedBackup, WrongSecretError } fro
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION } from "../lib/constants";
+import { NOVEDADES } from "../novedades";
 import { calculateVariableIncome } from "../lib/workdays";
 import { shouldStorePreviousRange } from "../lib/carryover";
 import {
@@ -971,6 +972,22 @@ export function SettingsPanel({
             </span>
           </div>
         </div>
+
+        <details className="text-[11px] font-semibold">
+          <summary className="cursor-pointer font-extrabold">Novedades de cada versión</summary>
+          <div className="flex flex-col gap-2 pt-2">
+            {NOVEDADES.map((r) => (
+              <div key={r.version}>
+                <span className="font-extrabold">v{r.version}</span>
+                <ul className={isLight ? "text-zinc-600" : "text-zinc-300"}>
+                  {r.items.map((t) => (
+                    <li key={t}>· {t}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </details>
 
         <p className={`text-[11px] font-semibold leading-relaxed ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
           Una app chiquita para saber, cada día, cuánta plata te queda. Sin cuentas en la nube,

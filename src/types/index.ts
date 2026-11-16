@@ -49,6 +49,7 @@ export interface Settings {
   hideAmounts: boolean; // el ojo de "Disponible": montos tapados con $ ••••••
   startHidden: boolean; // "Abrir siempre con los montos ocultos"
   tutorialDone: boolean; // ya vio (o salteó) el recorrido de después de la bienvenida
+  lastSeenVersion?: string; // última versión cuyas novedades ya vio
   lastBackupAt?: string; // ISO: última vez que se exportó un backup (para el recordatorio)
   createdAt: string;
 }

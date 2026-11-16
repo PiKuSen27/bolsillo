@@ -243,6 +243,7 @@ function settings(raw: unknown): Settings {
     hideAmounts: bool(o.hideAmounts, "hideAmounts", where, d.hideAmounts),
     startHidden: bool(o.startHidden, "startHidden", where, d.startHidden),
     tutorialDone: bool(o.tutorialDone, "tutorialDone", where, true),
+    lastSeenVersion: str(o.lastSeenVersion, "lastSeenVersion", where, { optional: true, max: 20 }),
     lastBackupAt: str(o.lastBackupAt, "lastBackupAt", where, { optional: true, max: 40 }),
   };
 }
