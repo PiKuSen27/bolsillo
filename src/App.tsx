@@ -34,7 +34,7 @@ import {
   WINDOW_ZOOM_VALUES,
   WorkDay,
 } from "./types";
-import { getVaultPrefs, isVaultEnabled, loadVaultMeta, lock as lockStore, store, updateVaultPrefs } from "./db/store";
+import { getVaultPrefs, loadVaultMeta, lock as lockStore, lockMode, store, updateVaultPrefs } from "./db/store";
 import { LockScreen } from "./components/LockScreen";
 import { Tour, TourStep } from "./components/Tour";
 import { flushSync } from "react-dom";
@@ -171,7 +171,7 @@ export default function App() {
   const [vault, setVault] = useState<"checking" | "off" | "locked" | "unlocked">("checking");
   const [covered, setCovered] = useState(false); // tapa la app en el selector de apps
   useEffect(() => {
-    loadVaultMeta().then((m) => setVault(m ? "locked" : "off"));
+    loadVaultMeta().then(() => setVault(lockMode() !== "none" ? "locked" : "off"));
     isWindowAlwaysOnTop().then(setIsPinned);
     requestAppNotificationPermission();
   }, []);
@@ -206,7 +206,7 @@ export default function App() {
 
   // La pantalla de bloqueo se dibuja con el tema elegido, sin descifrar nada: se copia afuera
   useEffect(() => {
-    if (settings && isVaultEnabled()) updateVaultPrefs({ theme: settings.theme }).catch(() => {});
+    if (settings && lockMode() !== "none") updateVaultPrefs({ theme: settings.theme }).catch(() => {});
   }, [settings?.theme, vault]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Al salir de la app: tapar la pantalla (selector de apps) y bloquear según "Bloquear al salir de la app".
@@ -289,7 +289,7 @@ export default function App() {
         setSelectedDateStr((sel) => (sel === todayStr ? curToday : sel));
       }
 
-      if (!settings || (isVaultEnabled() && vault !== "unlocked")) return;
+      if (!settings || (lockMode() !== "none" && vault !== "unlocked")) return;
 
       // 1. Process Auto-Add for recurring and installments
       const [currentRecs, currentInsts, currentMovements] = await Promise.all([
@@ -365,7 +365,7 @@ export default function App() {
 
       for (const alert of alerts) {
         // Con contraseña, el aviso del sistema no muestra nombres ni montos (queda en el historial y en la pantalla bloqueada)
-        if (isVaultEnabled()) await sendAppNotification("Bolsillo", "Tenés un vencimiento cerca. Abrí Bolsillo para verlo.");
+        if (lockMode() !== "none") await sendAppNotification("Bolsillo", "Tenés un vencimiento cerca. Abrí Bolsillo para verlo.");
         else await sendAppNotification(alert.title, alert.body);
         await store.remindersSent.put({
           key: alert.key,
@@ -1072,7 +1072,7 @@ export default function App() {
         )}
 
         {/* Tapa todo al salir de la app (así el selector de apps no muestra montos) */}
-        {covered && isVaultEnabled() && (
+        {covered && lockMode() !== "none" && (
           <div aria-hidden="true" className={`fixed inset-0 z-[300] flex items-center justify-center ${isLight ? "bg-white" : "bg-black"}`}>
             <img src="/icons/bolsillo.svg" alt="" width={64} height={64} className="w-16 h-16 rounded-2xl" />
           </div>
@@ -1255,8 +1255,8 @@ export default function App() {
             }}
             onLockNow={lockApp}
             onVaultChanged={async () => {
-              const m = await loadVaultMeta();
-              setVault(m ? "unlocked" : "off");
+              await loadVaultMeta();
+              setVault(lockMode() !== "none" ? "unlocked" : "off");
             }}
             settings={settings}
             isLight={isLight}

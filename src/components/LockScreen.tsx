@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { PasswordField } from "./PasswordField";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { getLockState, getVaultPrefs, recover, unlock, wipeEverything, UnlockResult } from "../db/store";
+import { getLockState, getVaultPrefs, lockMode, recover, unlock, unlockPin, wipeEverything, UnlockResult } from "../db/store";
 import { WIPE_AFTER_ATTEMPTS, passwordStrength } from "../lib/vault";
 
 const waitText = (ms: number) => {
@@ -13,6 +13,8 @@ const waitText = (ms: number) => {
 /** Pantalla de bloqueo: no muestra ningún dato hasta que la contraseña (o el código) abre la caja. */
 export function LockScreen({ onUnlocked, onWiped }: { onUnlocked: () => void; onWiped: () => void }) {
   const prefs = getVaultPrefs();
+  const isPin = lockMode() === "pin";
+  const tryUnlock = () => (isPin ? unlockPin(password) : unlock(password));
   const isLight = (prefs?.theme ?? "light") === "light";
   const [mode, setMode] = useState<"password" | "recover">("password");
   const [password, setPassword] = useState("");
@@ -48,7 +50,7 @@ export function LockScreen({ onUnlocked, onWiped }: { onUnlocked: () => void; on
       if (r.wiped) return onWiped();
       setLockState({ failedAttempts: r.failedAttempts, lockoutUntil: r.lockoutUntil });
       setNow(Date.now());
-      setError(mode === "password" ? "Contraseña incorrecta" : "Código de recuperación incorrecto");
+      setError(mode === "recover" ? "Código de recuperación incorrecto" : isPin ? "PIN incorrecto" : "Contraseña incorrecta");
       setPassword("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo abrir");
@@ -81,11 +83,19 @@ export function LockScreen({ onUnlocked, onWiped }: { onUnlocked: () => void; on
           </p>
         ) : mode === "password" ? (
           <>
-            <PasswordField label="Contraseña" value={password} onChange={setPassword} isLight={isLight} autoFocus onEnter={() => password && !busy && handle(() => unlock(password))} />
+            <PasswordField
+              label={isPin ? "PIN" : "Contraseña"}
+              numeric={isPin}
+              value={password}
+              onChange={(v) => setPassword(isPin ? v.replace(/\D/g, "").slice(0, 6) : v)}
+              isLight={isLight}
+              autoFocus
+              onEnter={() => password && !busy && handle(tryUnlock)}
+            />
             <button
               type="button"
               disabled={!password || busy}
-              onClick={() => handle(() => unlock(password))}
+              onClick={() => handle(tryUnlock)}
               className={`py-2.5 rounded-xl font-extrabold text-sm cursor-pointer disabled:opacity-50 ${primary}`}
             >
               {busy ? "Abriendo…" : "Desbloquear"}
@@ -135,12 +145,14 @@ export function LockScreen({ onUnlocked, onWiped }: { onUnlocked: () => void; on
           <button
             type="button"
             onClick={() => {
+              // Con PIN no hay código de recuperación: la única salida es borrar los datos
+              if (isPin) return setWipeStep(1);
               setMode(mode === "password" ? "recover" : "password");
               setError(null);
             }}
             className="text-xs font-bold underline opacity-80 hover:opacity-100 cursor-pointer"
           >
-            {mode === "password" ? "Olvidé mi contraseña" : "Volver a la contraseña"}
+            {isPin ? "Olvidé mi PIN" : mode === "password" ? "Olvidé mi contraseña" : "Volver a la contraseña"}
           </button>
           {mode === "recover" && (
             <button type="button" onClick={() => setWipeStep(1)} className="text-[11px] font-bold opacity-70 hover:opacity-100 cursor-pointer">
@@ -153,7 +165,7 @@ export function LockScreen({ onUnlocked, onWiped }: { onUnlocked: () => void; on
       {wipeStep === 1 && (
         <ConfirmDialog
           title="¿Borrar todos los datos?"
-          detail="Sin la contraseña ni el código de recuperación no hay forma de abrir tus datos. La única opción es borrarlos y empezar de cero."
+          detail={isPin ? "Sin el PIN la única forma de entrar es borrar los datos y empezar de cero (podés importar un backup después)." : "Sin la contraseña ni el código de recuperación no hay forma de abrir tus datos. La única opción es borrarlos y empezar de cero."}
           confirmLabel="Sí, quiero borrar todo"
           isLight={isLight}
           onCancel={() => setWipeStep(0)}

@@ -16,6 +16,9 @@ import {
   recoverWithCode,
   storedKeyFor,
   unlockWithPassword,
+  createPin,
+  pinFormatOk,
+  verifyPin,
 } from "./vault";
 
 const prefs = { lockAfterMs: 5000, wipeAfter10: false, theme: "light" as const };
@@ -127,5 +130,14 @@ describe("vault.ts - Cifrado de datos", () => {
   it("Intentos fallidos: libres hasta 4; después 30 s, 1 min, 5 min, 15 min y 1 h como máximo", () => {
     expect([0, 4].map(lockoutDelayMs)).toEqual([0, 0]);
     expect([5, 6, 7, 8, 9, 20].map(lockoutDelayMs)).toEqual([30_000, 60_000, 300_000, 900_000, 3_600_000, 3_600_000]);
+  });
+
+  it("PIN simple: 4 a 6 números; se guarda solo un hash y se verifica", async () => {
+    expect(["1234", "123456"].every(pinFormatOk)).toBe(true);
+    expect(["123", "1234567", "12a4", "", "12 34"].some(pinFormatOk)).toBe(false);
+    const meta = await createPin("4826", prefs);
+    expect(JSON.stringify(meta)).not.toContain("4826");
+    expect(await verifyPin(meta, "4826")).toBe(true);
+    expect(await verifyPin(meta, "4827")).toBe(false);
   });
 });

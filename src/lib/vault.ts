@@ -305,3 +305,54 @@ export function lockoutDelayMs(failedAttempts: number): number {
   if (failedAttempts < FREE_ATTEMPTS) return 0;
   return DELAYS[Math.min(failedAttempts - FREE_ATTEMPTS, DELAYS.length - 1)];
 }
+
+// ---------- bloqueo simple (PIN) ----------
+/**
+ * Modo "Simple": un PIN de 4 a 6 números solo traba la entrada a la app. Los datos NO se cifran
+ * (un PIN corto se adivina rápido con los archivos copiados, por eso no sirve como clave de cifrado).
+ * Se guarda solo un hash con sal, nunca el PIN.
+ */
+export const PIN_ITERATIONS = 200_000;
+
+export interface PinMeta {
+  id: "pin";
+  v: 1;
+  iterations: number;
+  salt: string;
+  hash: string;
+  failedAttempts: number;
+  lockoutUntil: number;
+  prefs: VaultPrefs;
+}
+
+export const pinFormatOk = (pin: string) => /^\d{4,6}$/.test(pin);
+
+async function pinHash(pin: string, salt: Bytes, iterations: number): Promise<Bytes> {
+  const base = await subtle.importKey("raw", te.encode(pin), "PBKDF2", false, ["deriveBits"]);
+  return new Uint8Array(await subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, base, 256));
+}
+
+export async function createPin(pin: string, prefs: VaultPrefs): Promise<PinMeta> {
+  if (!pinFormatOk(pin)) throw new Error("El PIN tiene que tener de 4 a 6 números");
+  const salt = randomBytes(16);
+  return {
+    id: "pin",
+    v: 1,
+    iterations: PIN_ITERATIONS,
+    salt: toB64(salt),
+    hash: toB64(await pinHash(pin, salt, PIN_ITERATIONS)),
+    failedAttempts: 0,
+    lockoutUntil: 0,
+    prefs,
+  };
+}
+
+export async function verifyPin(meta: PinMeta, pin: string): Promise<boolean> {
+  if (!pinFormatOk(pin)) return false;
+  const a = await pinHash(pin, fromB64(meta.salt), Math.max(meta.iterations, PIN_ITERATIONS));
+  const b = fromB64(meta.hash);
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]; // comparación sin cortar antes (no filtra por tiempo)
+  return diff === 0;
+}

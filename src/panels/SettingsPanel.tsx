@@ -26,7 +26,7 @@ import { backupStatus } from "../lib/backupReminder";
 import { DateField } from "../components/DateField";
 import { PasswordPrompt } from "../components/PasswordPrompt";
 import { SecuritySettings } from "./SecuritySettings";
-import { isVaultEnabled, verifyPassword } from "../db/store";
+import { isVaultEnabled, lockMode, verifyPassword } from "../db/store";
 import { decryptBackup, encryptBackup, isEncryptedBackup, WrongSecretError } from "../lib/vault";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
@@ -261,7 +261,7 @@ export function SettingsPanel({
     },
     { key: "avisos", label: "Avisos", summary: settings.reminderEnabled ? `Recordatorio ${settings.reminderTime}` : "Apagados", icon: <Bell size={16} /> },
     { key: "categorias", label: "Categorías", summary: `${settings.categories.length} categorías`, icon: <Tags size={16} /> },
-    { key: "seguridad", label: "Seguridad", summary: isVaultEnabled() ? "Cifrada" : "Sin bloqueo", icon: <Lock size={16} /> },
+    { key: "seguridad", label: "Seguridad", summary: { none: "Sin bloqueo", pin: "Simple (PIN)", encrypted: "Cifrada" }[lockMode()], icon: <Lock size={16} /> },
     { key: "backup", label: "Backup", summary: settings.lastBackupAt ? backupStatus(settings.lastBackupAt, settings.createdAt).label.replace(/^Último backup: /, "") : "Nunca", icon: <Download size={16} /> },
     { key: "acerca", label: "Acerca de", summary: `v${APP_VERSION}`, icon: <Info size={16} /> },
   ];

@@ -12,6 +12,7 @@ export function PasswordField({
   autoFocus,
   autoComplete = "current-password",
   onEnter,
+  numeric,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -21,6 +22,7 @@ export function PasswordField({
   autoFocus?: boolean;
   autoComplete?: string;
   onEnter?: () => void;
+  numeric?: boolean; // PIN: teclado numérico en el celular
 }) {
   const [visible, setVisible] = useState(false);
   const s = passwordStrength(value);
@@ -42,6 +44,7 @@ export function PasswordField({
             if (e.key === "Enter" && onEnter) onEnter();
           }}
           aria-label={label}
+          inputMode={numeric ? "numeric" : undefined}
           autoFocus={autoFocus}
           autoComplete={autoComplete}
           autoCapitalize="off"

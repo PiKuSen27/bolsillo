@@ -13,6 +13,8 @@ export function PasswordPrompt({
   isLight,
   onSubmit,
   onCancel,
+  label = "Contraseña",
+  numeric,
 }: {
   title: string;
   detail?: string;
@@ -20,6 +22,8 @@ export function PasswordPrompt({
   isLight?: boolean;
   onSubmit: (password: string) => Promise<string | null>;
   onCancel: () => void;
+  label?: string;
+  numeric?: boolean;
 }) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,7 +64,7 @@ export function PasswordPrompt({
           {title}
         </h4>
         {detail && <p className={`text-xs font-semibold ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>{detail}</p>}
-        <PasswordField label="Contraseña" value={pw} onChange={setPw} isLight={isLight} autoFocus onEnter={submit} />
+        <PasswordField label={label} numeric={numeric} value={pw} onChange={setPw} isLight={isLight} autoFocus onEnter={submit} />
         {error && (
           <p role="alert" className="text-[11px] font-bold text-[#DC2626]">
             {error}

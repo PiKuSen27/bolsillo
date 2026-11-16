@@ -9,10 +9,15 @@ import {
   disableEncryption,
   enableEncryption,
   getVaultPrefs,
-  isVaultEnabled,
+  lockMode,
   updateVaultPrefs,
+  enablePin,
+  disablePin,
+  changePin,
+  switchToPin,
+  verifyCurrentPin,
 } from "../db/store";
-import { encryptBackup, generateRecoveryCode, normalizeRecoveryCode, passwordStrength, WrongSecretError } from "../lib/vault";
+import { encryptBackup, generateRecoveryCode, normalizeRecoveryCode, passwordStrength, pinFormatOk, WrongSecretError } from "../lib/vault";
 import { exportAllData } from "../db/repo";
 import { saveBackupFile } from "../platform";
 import { formatLocalDate } from "../lib/format";
@@ -38,10 +43,15 @@ export function SecuritySettings({
   onChanged: () => void; // el cifrado se activó o desactivó
   onBackupSaved?: () => void;
 }) {
-  const enabled = isVaultEnabled();
+  const mode = lockMode();
+  const enabled = mode === "encrypted";
   const prefs = getVaultPrefs();
   const [, refresh] = useState(0);
-  const [step, setStep] = useState<"idle" | "password" | "backup" | "code" | "verify">("idle");
+  const [step, setStep] = useState<"idle" | "pin" | "toPin" | "password" | "backup" | "code" | "verify">("idle");
+  const [pinA, setPinA] = useState("");
+  const [pinB, setPinB] = useState("");
+  const [oldPin, setOldPin] = useState("");
+  const [askPin, setAskPin] = useState<null | "change" | "toEncrypted" | "disable">(null);
   // Copia previa cifrada con la contraseña nueva (se prepara antes para que "Guardar" salga directo del toque)
   const [backupFile, setBackupFile] = useState<{ name: string; contents: string } | null>(null);
   const [backupSaved, setBackupSaved] = useState<string | null>(null);
@@ -91,6 +101,60 @@ export function SecuritySettings({
     }
   };
 
+  const lockOptions = prefs && (
+    <>
+          <button type="button" className={`${secondary} self-start flex items-center gap-1.5`} onClick={onLockNow}>
+            <Lock size={13} /> Bloquear ahora
+          </button>
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-black">Bloquear al salir de la app</span>
+            <Select
+              ariaLabel="Bloquear al salir de la app"
+              value={String(prefs.lockAfterMs)}
+              options={LOCK_OPTIONS}
+              isLight={isLight}
+              className="w-40"
+              onChange={async (v) => {
+                await updateVaultPrefs({ lockAfterMs: Number(v) });
+                refresh((x) => x + 1);
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-black">Borrar todos los datos después de 10 intentos fallidos</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={prefs.wipeAfter10}
+              aria-label="Borrar todos los datos después de 10 intentos fallidos"
+              onClick={async () => {
+                if (prefs.wipeAfter10) {
+                  await updateVaultPrefs({ wipeAfter10: false });
+                  refresh((x) => x + 1);
+                } else setAskWipe(true);
+              }}
+              className={`w-9 h-5 rounded-full p-0.5 flex shrink-0 cursor-pointer transition-colors ${
+                prefs.wipeAfter10 ? "bg-[#DC2626] justify-end" : isLight ? "bg-zinc-300" : "bg-zinc-700"
+              }`}
+            >
+              <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
+            </button>
+          </div>
+
+    </>
+  );
+
+  const pinOk = pinFormatOk(pinA) && pinA === pinB;
+  const pinFields = (
+    <>
+      <PasswordField label="PIN (4 a 6 números)" value={pinA} onChange={(v) => setPinA(v.replace(/\D/g, "").slice(0, 6))} isLight={isLight} autoComplete="new-password" numeric />
+      <PasswordField label="Repetí el PIN" value={pinB} onChange={(v) => setPinB(v.replace(/\D/g, "").slice(0, 6))} isLight={isLight} autoComplete="new-password" numeric />
+      {pinB && pinA !== pinB && <span className="text-[11px] font-bold text-[#DC2626]">Los PIN no coinciden</span>}
+    </>
+  );
+
   const explanation = (
     <div className={`text-[11px] font-semibold leading-relaxed flex flex-col gap-1.5 ${muted}`}>
       <p>
@@ -118,18 +182,109 @@ export function SecuritySettings({
     <div className={card}>
       <div className="flex items-center gap-1.5 text-xs font-black uppercase opacity-80">
         <ShieldCheck size={14} />
-        <span>Contraseña y cifrado</span>
+        <span>Bloqueo y cifrado</span>
       </div>
 
-      {!enabled && step === "idle" && (
+      {mode === "none" && step === "idle" && (
         <>
-          <p className="text-[11px] font-bold opacity-75">
-            Apagado. Con contraseña, Bolsillo pide clave al abrirse y guarda todos tus datos cifrados.
+          <p className="text-[11px] font-bold opacity-75">Apagado. Elegí cómo querés proteger Bolsillo:</p>
+          <div className="grid gap-2">
+            <button type="button" onClick={() => setStep("pin")} className={`text-left p-3 rounded-xl border cursor-pointer ${isLight ? "bg-zinc-50 border-zinc-300 hover:bg-zinc-100" : "bg-black border-zinc-700 hover:bg-zinc-900"}`}>
+              <span className="text-sm font-extrabold">Simple · PIN</span>
+              <span className={`block text-[11px] font-semibold ${muted}`}>
+                Un PIN de 4 a 6 números para entrar, rápido de escribir. Solo traba la entrada: si alguien copia los archivos de la
+                app, puede leer tus datos. Sirve para que nadie mire si agarra el celular un rato.
+              </span>
+            </button>
+            <button type="button" onClick={() => setStep("password")} className={`text-left p-3 rounded-xl border cursor-pointer ${isLight ? "bg-zinc-50 border-zinc-300 hover:bg-zinc-100" : "bg-black border-zinc-700 hover:bg-zinc-900"}`}>
+              <span className="text-sm font-extrabold">Cifrada · Contraseña</span>
+              <span className={`block text-[11px] font-semibold ${muted}`}>
+                Una contraseña de 8 o más caracteres y tus datos se guardan cifrados: sin la contraseña nadie puede leerlos, ni
+                copiando los archivos. Tenés un código de recuperación por si la olvidás. Es la más segura.
+              </span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {mode !== "encrypted" && step === "pin" && (
+        <>
+          <p className={`text-[11px] font-bold ${muted}`}>Elegí un PIN de 4 a 6 números. Si lo olvidás, la única forma de entrar es borrar los datos: hacé backups.</p>
+          {pinFields}
+          <div className="flex gap-2 justify-end">
+            <button type="button" className={secondary} onClick={() => { setStep("idle"); setPinA(""); setPinB(""); }}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={primary}
+              disabled={!pinOk || busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  if (mode === "pin") await changePin(oldPin, pinA);
+                  else await enablePin(pinA, { lockAfterMs: 5000, wipeAfter10: false, theme });
+                  setMessage({ ok: true, text: mode === "pin" ? "PIN cambiado." : "Listo: Bolsillo va a pedir el PIN al abrirse." });
+                  setStep("idle"); setPinA(""); setPinB(""); setOldPin("");
+                  onChanged();
+                } catch (e) {
+                  setMessage({ ok: false, text: e instanceof WrongSecretError ? "El PIN actual no es correcto" : e instanceof Error ? e.message : String(e) });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {mode === "pin" ? "Guardar PIN nuevo" : "Activar PIN"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {mode === "pin" && step === "idle" && prefs && (
+        <>
+          <p className="text-[11px] font-bold text-[#16A34A]">Bloqueo simple con PIN activado. Tus datos no están cifrados.</p>
+          {lockOptions}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={secondary} onClick={() => setAskPin("change")}>Cambiar PIN</button>
+            <button type="button" className={secondary} onClick={() => setAskPin("toEncrypted")}>Pasar a Cifrada</button>
+            <button type="button" className={secondary} onClick={() => setAskPin("disable")}>Quitar PIN</button>
+          </div>
+        </>
+      )}
+
+      {mode === "encrypted" && step === "toPin" && (
+        <>
+          <p className={`text-[11px] font-bold ${muted}`}>
+            Pasar a Simple: tus datos se van a guardar <strong>sin cifrar</strong> y la app va a pedir un PIN. Escribí tu contraseña
+            actual y el PIN nuevo.
           </p>
-          {explanation}
-          <button type="button" className={`${primary} self-start`} onClick={() => setStep("password")}>
-            Activar contraseña
-          </button>
+          <PasswordField label="Contraseña actual" value={oldPw} onChange={setOldPw} isLight={isLight} autoFocus />
+          {pinFields}
+          <div className="flex gap-2 justify-end">
+            <button type="button" className={secondary} onClick={() => { setStep("idle"); setPinA(""); setPinB(""); setOldPw(""); }}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={primary}
+              disabled={!oldPw || !pinOk || busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await switchToPin(oldPw, pinA, prefs ?? { lockAfterMs: 5000, wipeAfter10: false, theme });
+                  setMessage({ ok: true, text: "Listo: ahora Bolsillo usa PIN y tus datos ya no están cifrados." });
+                  setStep("idle"); setPinA(""); setPinB(""); setOldPw("");
+                  onChanged();
+                } catch (e) {
+                  setMessage({ ok: false, text: e instanceof WrongSecretError ? "La contraseña no es correcta" : e instanceof Error ? e.message : String(e) });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? "Un momento…" : "Pasar a PIN"}
+            </button>
+          </div>
         </>
       )}
 
@@ -291,53 +446,18 @@ export function SecuritySettings({
         </>
       )}
 
-      {enabled && prefs && (
+      {mode === "encrypted" && step === "idle" && prefs && (
         <>
           <p className="text-[11px] font-bold text-[#16A34A]">Activado: tus datos están cifrados.</p>
-          <button type="button" className={`${secondary} self-start flex items-center gap-1.5`} onClick={onLockNow}>
-            <Lock size={13} /> Bloquear ahora
-          </button>
-
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-black">Bloquear al salir de la app</span>
-            <Select
-              ariaLabel="Bloquear al salir de la app"
-              value={String(prefs.lockAfterMs)}
-              options={LOCK_OPTIONS}
-              isLight={isLight}
-              className="w-40"
-              onChange={async (v) => {
-                await updateVaultPrefs({ lockAfterMs: Number(v) });
-                refresh((x) => x + 1);
-              }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-black">Borrar todos los datos después de 10 intentos fallidos</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={prefs.wipeAfter10}
-              aria-label="Borrar todos los datos después de 10 intentos fallidos"
-              onClick={async () => {
-                if (prefs.wipeAfter10) {
-                  await updateVaultPrefs({ wipeAfter10: false });
-                  refresh((x) => x + 1);
-                } else setAskWipe(true);
-              }}
-              className={`w-9 h-5 rounded-full p-0.5 flex shrink-0 cursor-pointer transition-colors ${
-                prefs.wipeAfter10 ? "bg-[#DC2626] justify-end" : isLight ? "bg-zinc-300" : "bg-zinc-700"
-              }`}
-            >
-              <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
-            </button>
-          </div>
+          {lockOptions}
 
           {!changing ? (
             <div className="flex flex-wrap gap-2">
               <button type="button" className={secondary} onClick={() => setChanging(true)}>
                 Cambiar contraseña
+              </button>
+              <button type="button" className={secondary} onClick={() => setStep("toPin")}>
+                Pasar a Simple (PIN)
               </button>
               <button type="button" className={secondary} onClick={() => setAskDisable(true)}>
                 Desactivar cifrado
@@ -410,6 +530,37 @@ export function SecuritySettings({
             setAskDisable(false);
             setMessage({ ok: true, text: "Cifrado desactivado." });
             onChanged();
+            return null;
+          }}
+        />
+      )}
+      {askPin && (
+        <PasswordPrompt
+          title={askPin === "change" ? "Cambiar PIN" : askPin === "toEncrypted" ? "Pasar a Cifrada" : "¿Quitar el PIN?"}
+          detail={
+            askPin === "disable"
+              ? "Bolsillo va a abrir sin pedir nada."
+              : askPin === "toEncrypted"
+              ? "Escribí tu PIN actual. Después elegís una contraseña y tus datos quedan cifrados."
+              : "Escribí tu PIN actual."
+          }
+          label="PIN actual"
+          numeric
+          confirmLabel="Seguir"
+          isLight={isLight}
+          onCancel={() => setAskPin(null)}
+          onSubmit={async (p) => {
+            if (!(await verifyCurrentPin(p))) return "PIN incorrecto";
+            const what = askPin;
+            setAskPin(null);
+            if (what === "disable") {
+              await disablePin(p);
+              setMessage({ ok: true, text: "PIN quitado." });
+              onChanged();
+            } else if (what === "change") {
+              setOldPin(p);
+              setStep("pin");
+            } else setStep("password");
             return null;
           }}
         />

@@ -16,6 +16,11 @@ import {
   unlock,
   updateVaultPrefs,
   verifyPassword,
+  disablePin,
+  enablePin,
+  lockMode,
+  switchToPin,
+  unlockPin,
 } from "./store";
 import { exportAllData, getSettings, importAllData, updateSettings } from "./repo";
 import { decryptBackup, encryptBackup, generateRecoveryCode } from "../lib/vault";
@@ -229,5 +234,40 @@ describe("Cifrado de la base (store.ts)", () => {
     expect((await loadVaultMeta())?.prefs).toEqual({ lockAfterMs: 0, wipeAfter10: false, theme: "dark" });
     expect((await unlock(PW)).ok).toBe(true);
     expect((await getSettings()).fixedSalary).toBe(1234567);
+  });
+
+  it("Bloqueo simple (PIN): traba la entrada pero los datos quedan sin cifrar", async () => {
+    await enablePin("4826", prefs);
+    expect(lockMode()).toBe("pin");
+    expect(await rawDump()).toContain("PizzaSecreta");
+    lock();
+    expect(isUnlocked()).toBe(false);
+    expect(await unlockPin("0000")).toMatchObject({ ok: false, reason: "wrong", failedAttempts: 1 });
+    expect(await unlockPin("4826")).toEqual({ ok: true });
+    expect(isUnlocked()).toBe(true);
+    __resetMemoryForTests();
+    await loadVaultMeta();
+    expect(lockMode()).toBe("pin"); // se recuerda al reabrir
+  });
+
+  it("El PIN también tiene espera después de 5 intentos", async () => {
+    await enablePin("4826", prefs);
+    lock();
+    for (let i = 0; i < 5; i++) await unlockPin("0000");
+    expect(await unlockPin("4826")).toMatchObject({ ok: false, reason: "lockout" });
+  });
+
+  it("Pasar de PIN a Cifrada y de Cifrada a PIN", async () => {
+    await enablePin("4826", prefs);
+    await enableEncryption(PW, generateRecoveryCode(), prefs);
+    expect(lockMode()).toBe("encrypted");
+    expect(await rawDump()).not.toContain("PizzaSecreta");
+    await expect(switchToPin("mal", "1111", prefs)).rejects.toThrow();
+    await switchToPin(PW, "1111", prefs);
+    expect(lockMode()).toBe("pin");
+    expect(await rawDump()).toContain("PizzaSecreta");
+    await expect(disablePin("0000")).rejects.toThrow();
+    await disablePin("1111");
+    expect(lockMode()).toBe("none");
   });
 });

@@ -204,7 +204,10 @@ Bolsillo/
 * Backup: `settings.lastBackupAt` se guarda al exportar; Ajustes muestra "Último backup: hace X días" y, si pasaron más de 7 (o nunca y la app tiene más de 7 días), un aviso y un puntito ámbar en "Ajustes" de la barra de abajo (`lib/backupReminder.ts`). En el celular "Exportar JSON" abre el menú de compartir (Guardar en Archivos / iCloud).
 
 ### K. Seguridad
-* **Contraseña y cifrado** (opcional, apagado por defecto). Lógica en `src/lib/vault.ts` (Web Crypto, sin paquetes), base en `src/db/store.ts`, UI en `LockScreen.tsx` y `panels/SecuritySettings.tsx`. Tests: `lib/vault.test.ts`, `db/encryption.test.ts`.
+* **Dos modos de bloqueo** (Ajustes → Seguridad, apagado por defecto; `lockMode()` = `none` | `pin` | `encrypted`):
+  * **Simple (PIN)**: 4 a 6 números, fila `vault` con id `"pin"` (hash PBKDF2-SHA256 200.000 iteraciones + sal, nunca el PIN). **Solo traba la entrada: los datos no se cifran.** Misma espera por intentos que la contraseña. Sin código de recuperación: olvidar el PIN = borrar todo.
+  * Se pasa de un modo al otro pidiendo la clave actual: PIN → Cifrada (`enableEncryption` borra la fila `pin` en la misma transacción) y Cifrada → PIN (`switchToPin` descifra todo y guarda el PIN).
+* **Contraseña y cifrado** (modo Cifrada). Lógica en `src/lib/vault.ts` (Web Crypto, sin paquetes), base en `src/db/store.ts`, UI en `LockScreen.tsx` y `panels/SecuritySettings.tsx`. Tests: `lib/vault.test.ts`, `db/encryption.test.ts`.
   * Clave maestra aleatoria (32 bytes) → HKDF → AES-256-GCM (datos) + HMAC-SHA256 (claves primarias disfrazadas). La maestra se guarda envuelta con PBKDF2-SHA256 de 600.000 iteraciones (contraseña) y con el código de recuperación (24 caracteres Crockford). Cada registro: IV aleatorio + AAD `rec|tabla|clave`.
   * **Toda lectura/escritura pasa por `store.*` o `applyAtomically`**. Nunca usar `db.<tabla>` directo fuera de `store.ts` (escribiría en claro). El cifrado ocurre fuera de las transacciones de IndexedDB. Activar/desactivar/borrar usan un candado interno (`exclusive`).
   * Sin cifrar quedan solo: la fila `vault` (sal, maestra envuelta, iteraciones, intentos, espera, preferencias de bloqueo y tema) y, por cada registro, su clave disfrazada (HMAC) y el largo del texto cifrado. Los registros en claro que aparezcan con el cifrado activo se ignoran.

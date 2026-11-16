@@ -12,6 +12,9 @@ import {
   encryptRecord,
   lockoutDelayMs,
   recoverWithCode,
+  createPin,
+  verifyPin,
+  PinMeta,
   storedKeyFor,
   unlockWithPassword,
 } from "../lib/vault";
@@ -58,15 +61,25 @@ const PK: Record<TableName, string> = {
 export const DATA_TABLES = Object.keys(PK) as TableName[];
 
 // ---------- estado de la caja fuerte ----------
+// Modo "Simple": PIN que solo traba la entrada (los datos no se cifran)
+let pinMeta: PinMeta | null = null;
+let pinUnlocked = false;
+
 export async function loadVaultMeta(): Promise<VaultMeta | null> {
   meta = (await db.vault.get("main")) ?? null;
+  pinMeta = ((await db.table("vault").get("pin")) as PinMeta | undefined) ?? null;
   metaLoaded = true;
   return meta;
 }
+/** "none" sin bloqueo · "pin" bloqueo simple · "encrypted" contraseña con datos cifrados */
+export const lockMode = (): "none" | "pin" | "encrypted" => (meta ? "encrypted" : pinMeta ? "pin" : "none");
 export const isVaultEnabled = () => !!meta;
-export const isUnlocked = () => !meta || !!keys;
-export const getVaultPrefs = (): VaultPrefs | null => meta?.prefs ?? null;
-export const getLockState = () => ({ failedAttempts: meta?.failedAttempts ?? 0, lockoutUntil: meta?.lockoutUntil ?? 0 });
+export const isUnlocked = () => (meta ? !!keys : pinMeta ? pinUnlocked : true);
+export const getVaultPrefs = (): VaultPrefs | null => meta?.prefs ?? pinMeta?.prefs ?? null;
+export const getLockState = () => {
+  const m = meta ?? pinMeta;
+  return { failedAttempts: m?.failedAttempts ?? 0, lockoutUntil: m?.lockoutUntil ?? 0 };
+};
 
 // ---------- candado interno ----------
 // Activar, desactivar o borrar todo ("exclusivo") espera a que terminen las lecturas/escrituras en curso
@@ -255,6 +268,7 @@ export function enableEncryption(password: string, recoveryCode: string, prefs: 
 
 async function enableNow(password: string, recoveryCode: string, prefs: VaultPrefs): Promise<void> {
   if (await loadVaultMeta()) throw new Error("El cifrado ya está activo");
+  const prevPin = pinMeta; // pasar de PIN a Cifrada: el PIN se reemplaza por la contraseña
   const plain = await readAllRaw();
   const created = await createVault(password, recoveryCode, prefs);
   const encoded = {} as Record<TableName, Row[]>;
@@ -267,6 +281,7 @@ async function enableNow(password: string, recoveryCode: string, prefs: VaultPre
       await db.table(t).bulkPut(encoded[t]);
     }
     await db.vault.put(created.meta);
+    await db.table("vault").delete("pin");
   });
 
   try {
@@ -279,12 +294,14 @@ async function enableNow(password: string, recoveryCode: string, prefs: VaultPre
         await db.table(t).bulkPut(plain[t]);
       }
       await db.vault.delete("main");
+      if (prevPin) await db.table("vault").put(prevPin);
     });
     meta = null;
     throw new Error(`No se pudo activar el cifrado; tus datos quedaron como estaban. (${e instanceof Error ? e.message : e})`);
   }
   meta = created.meta;
   keys = created.keys;
+  pinMeta = null;
 }
 
 /** Desactiva el cifrado: pide la contraseña, descifra todo y lo guarda en claro (todo o nada). */
@@ -310,6 +327,7 @@ async function disableNow(password: string): Promise<void> {
 // ---------- bloquear / desbloquear ----------
 export function lock(): void {
   keys = null;
+  pinUnlocked = false;
 }
 
 export type UnlockResult =
@@ -322,30 +340,44 @@ async function saveMeta(next: VaultMeta) {
   meta = next;
 }
 
+async function savePin(next: PinMeta) {
+  await db.table("vault").put(next);
+  pinMeta = next;
+}
+
+type Lockable = { failedAttempts: number; lockoutUntil: number; prefs: VaultPrefs };
+type Slot<M extends Lockable> = { load: () => Promise<M | null>; save: (m: M) => Promise<void> };
+const mainSlot: Slot<VaultMeta> = { load: async () => (await loadVaultMeta(), meta), save: saveMeta };
+const pinSlot: Slot<PinMeta> = { load: async () => (await loadVaultMeta(), pinMeta), save: savePin };
+
 let attemptChain: Promise<unknown> = Promise.resolve();
 
 /**
  * Un intento por vez. El intento se cuenta ANTES de probar la clave (si la app se cierra a mitad de
  * camino, igual cuenta); si sale bien, el contador vuelve a cero. La espera se guarda en la base.
+ * check() lanza WrongSecretError si la clave no es la correcta.
  */
-function attempt(fn: (m: VaultMeta) => Promise<{ keys: VaultKeys; meta?: VaultMeta }>): Promise<UnlockResult> {
-  const run = attemptChain.catch(() => {}).then(() => attemptNow(fn));
+function attempt<M extends Lockable>(slot: Slot<M>, check: (m: M) => Promise<{ next?: M; apply: () => void }>): Promise<UnlockResult> {
+  const run = attemptChain.catch(() => {}).then(() => attemptNow(slot, check));
   attemptChain = run;
   return run;
 }
 
-async function attemptNow(fn: (m: VaultMeta) => Promise<{ keys: VaultKeys; meta?: VaultMeta }>): Promise<UnlockResult> {
-  const m = await loadVaultMeta();
+async function attemptNow<M extends Lockable>(
+  slot: Slot<M>,
+  check: (m: M) => Promise<{ next?: M; apply: () => void }>
+): Promise<UnlockResult> {
+  const m = await slot.load();
   if (!m) return { ok: true };
   if (m.lockoutUntil > Date.now()) return { ok: false, reason: "lockout", lockoutUntil: m.lockoutUntil };
   const failedAttempts = m.failedAttempts + 1;
-  await saveMeta({ ...m, failedAttempts });
-  let r: { keys: VaultKeys; meta?: VaultMeta };
+  await slot.save({ ...m, failedAttempts });
+  let r: { next?: M; apply: () => void };
   try {
-    r = await fn(m);
+    r = await check(m);
   } catch (e) {
     if (!(e instanceof WrongSecretError)) {
-      await saveMeta({ ...m }); // no fue la contraseña (p. ej. error del sistema): no cuenta
+      await slot.save({ ...m }); // no fue la clave (p. ej. error del sistema): no cuenta
       throw e;
     }
     if (m.prefs.wipeAfter10 && failedAttempts >= WIPE_AFTER_ATTEMPTS) {
@@ -354,18 +386,70 @@ async function attemptNow(fn: (m: VaultMeta) => Promise<{ keys: VaultKeys; meta?
     }
     const delay = lockoutDelayMs(failedAttempts);
     const lockoutUntil = delay ? Date.now() + delay : 0;
-    await saveMeta({ ...meta!, failedAttempts, lockoutUntil });
+    await slot.save({ ...m, failedAttempts, lockoutUntil });
     return { ok: false, reason: "wrong", failedAttempts, lockoutUntil, wiped: false };
   }
-  await saveMeta({ ...(r.meta ?? m), failedAttempts: 0, lockoutUntil: 0 });
-  keys = r.keys;
+  await slot.save({ ...(r.next ?? m), failedAttempts: 0, lockoutUntil: 0 });
+  r.apply();
   return { ok: true };
 }
 
-export const unlock = (password: string) => attempt(async (m) => ({ keys: await unlockWithPassword(m, password) }));
+export const unlock = (password: string) =>
+  attempt(mainSlot, async (m) => {
+    const k = await unlockWithPassword(m, password);
+    return { apply: () => (keys = k) };
+  });
+
+export const unlockPin = (pin: string) =>
+  attempt(pinSlot, async (m) => {
+    if (!(await verifyPin(m, pin))) throw new WrongSecretError();
+    return { apply: () => (pinUnlocked = true) };
+  });
+
+/** Activa el bloqueo simple con PIN (sin cifrar los datos). */
+export function enablePin(pin: string, prefs: VaultPrefs): Promise<void> {
+  return exclusive(async () => {
+    if (await loadVaultMeta()) throw new Error("Primero pasá la contraseña a PIN desde Seguridad");
+    await savePin(await createPin(pin, prefs));
+    pinUnlocked = true;
+  });
+}
+
+/** Quita el bloqueo simple: pide el PIN actual. */
+export async function disablePin(pin: string): Promise<void> {
+  await loadVaultMeta();
+  if (!pinMeta || !(await verifyPin(pinMeta, pin))) throw new WrongSecretError();
+  await db.table("vault").delete("pin");
+  pinMeta = null;
+  pinUnlocked = false;
+}
+
+export async function changePin(oldPin: string, newPin: string): Promise<void> {
+  if (!pinMeta || !(await verifyPin(pinMeta, oldPin))) throw new WrongSecretError();
+  await savePin({ ...(await createPin(newPin, pinMeta.prefs)) });
+}
+
+/** Comprueba el PIN sin contar intentos (para pasar de Simple a Cifrada). */
+export async function verifyCurrentPin(pin: string): Promise<boolean> {
+  return !!pinMeta && (await verifyPin(pinMeta, pin));
+}
+
+/** De Cifrada a Simple: pide la contraseña, descifra todo y deja el PIN nuevo. */
+export function switchToPin(password: string, pin: string, prefs: VaultPrefs): Promise<void> {
+  return exclusive(async () => {
+    const pinRecord = await createPin(pin, prefs);
+    await disableNow(password);
+    await savePin(pinRecord);
+    pinUnlocked = true;
+  });
+}
 
 /** "Olvidé mi contraseña": entra con el código y deja una contraseña nueva. */
-export const recover = (code: string, newPassword: string) => attempt((m) => recoverWithCode(m, code, newPassword));
+export const recover = (code: string, newPassword: string) =>
+  attempt(mainSlot, async (m) => {
+    const r = await recoverWithCode(m, code, newPassword);
+    return { next: r.meta, apply: () => (keys = r.keys) };
+  });
 
 /** Comprueba la contraseña actual sin tocar nada (para exportar el backup cifrado). */
 export async function verifyPassword(password: string): Promise<boolean> {
@@ -385,8 +469,8 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 }
 
 export async function updateVaultPrefs(partial: Partial<VaultPrefs>): Promise<void> {
-  if (!meta) return;
-  await saveMeta({ ...meta, prefs: { ...meta.prefs, ...partial } });
+  if (meta) await saveMeta({ ...meta, prefs: { ...meta.prefs, ...partial } });
+  else if (pinMeta) await savePin({ ...pinMeta, prefs: { ...pinMeta.prefs, ...partial } });
 }
 
 /** Borra absolutamente todo (datos y caja fuerte). La app vuelve a empezar desde la bienvenida. */
@@ -401,11 +485,15 @@ async function wipeNow(): Promise<void> {
   });
   meta = null;
   keys = null;
+  pinMeta = null;
+  pinUnlocked = false;
 }
 
 /** Solo para tests: olvida el estado en memoria como si la app se cerrara. */
 export function __resetMemoryForTests(): void {
   keys = null;
   meta = null;
+  pinMeta = null;
+  pinUnlocked = false;
   metaLoaded = false;
 }
