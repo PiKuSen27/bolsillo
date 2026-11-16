@@ -1047,13 +1047,18 @@ export default function App() {
         {updateReady && (
           <div
             role="status"
-            className="absolute left-1/2 -translate-x-1/2 top-[calc(0.5rem+var(--safe-top))] z-[70] px-3.5 py-2 rounded-xl bg-[#18181B] border border-[#27272A] text-white shadow-2xl flex items-center gap-3 text-xs select-none max-w-[92%]"
+            // Sin sombra grande: en WebKit dejaba una "estela" oscura. Borde fino y fondo sólido según el tema.
+            className={`absolute left-1/2 -translate-x-1/2 top-[calc(0.5rem+var(--safe-top))] z-[70] pl-3.5 pr-1.5 py-1.5 rounded-xl border flex items-center gap-3 text-xs select-none max-w-[92%] ${
+              isLight ? "bg-white border-zinc-300 text-black" : "bg-[#141416] border-[#2A2A2E] text-white"
+            }`}
           >
             <span className="font-extrabold whitespace-nowrap">Hay una versión nueva</span>
             <button
               type="button"
               onClick={() => applyPwaUpdate()}
-              className="px-2.5 py-0.5 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-black text-[11px] font-black cursor-pointer shrink-0"
+              className={`px-3 py-1 rounded-lg text-[11px] font-black cursor-pointer shrink-0 ${
+                isLight ? "bg-black text-white hover:bg-zinc-800" : "bg-white text-black hover:bg-zinc-200"
+              }`}
             >
               Actualizar
             </button>
