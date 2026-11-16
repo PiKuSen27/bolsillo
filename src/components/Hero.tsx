@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { TrendingUp, TrendingDown, ChevronRight, CalendarDays, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronRight, CalendarDays, Eye, EyeOff, PieChart } from "lucide-react";
 import { BalanceSummary } from "../lib/balance";
 import type { spendingPlan } from "../lib/spending";
 import { useState } from "react";
@@ -14,11 +14,12 @@ interface HeroProps {
   isLight?: boolean;
   onOpenMovements: () => void;
   onOpenWorkDays?: () => void; // solo en modo variable
+  onOpenSummary?: () => void;
   amountsHidden?: boolean;
   onToggleHidden?: () => void; // el ojo: tapa todos los montos de la app
 }
 
-export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, amountsHidden, onToggleHidden }: HeroProps) {
+export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, onOpenSummary, amountsHidden, onToggleHidden }: HeroProps) {
   const isPositive = summary.available >= 0;
   const [explain, setExplain] = useState(false);
 
@@ -174,25 +175,41 @@ export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, o
         </span>
       )}
 
-      {summary.incomeMode === "daily" && onOpenWorkDays && (
-        <button
-          data-tour="workdays"
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenWorkDays();
-          }}
-          className={`self-start flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold border cursor-pointer transition-colors ${
-            isLight
-              ? "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100"
-              : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+      <div className="flex flex-wrap items-center gap-1.5">
+        {summary.incomeMode === "daily" && onOpenWorkDays && (
+          <button
+            data-tour="workdays"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenWorkDays();
+            }}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold border cursor-pointer transition-colors ${
+            isLight ? "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
           }`}
-        >
-          <CalendarDays size={11} />
-          <span>Días trabajados</span>
-          <ChevronRight size={11} />
-        </button>
-      )}
+          >
+            <CalendarDays size={11} />
+            <span>Días trabajados</span>
+            <ChevronRight size={11} />
+          </button>
+        )}
+        {onOpenSummary && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSummary();
+            }}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold border cursor-pointer transition-colors ${
+            isLight ? "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          }`}
+          >
+            <PieChart size={11} />
+            <span>Resumen</span>
+            <ChevronRight size={11} />
+          </button>
+        )}
+      </div>
 
       {/* Suggested Daily Budget Highlight */}
       <div

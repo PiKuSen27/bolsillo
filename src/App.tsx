@@ -79,6 +79,7 @@ import { WorkDaysPanel } from "./panels/WorkDaysPanel";
 import { CalendarPanel } from "./panels/CalendarPanel";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { OnboardingPanel } from "./panels/OnboardingPanel";
+import { SummaryPanel } from "./panels/SummaryPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { APP_VERSION } from "./lib/constants";
 import { backupStatus } from "./lib/backupReminder";
@@ -102,7 +103,7 @@ export default function App() {
 
   // Active sliding sheet
   const [activeSheet, setActiveSheet] = useState<
-    null | "movements" | "fixed" | "debts" | "income" | "calendar" | "settings"
+    null | "movements" | "fixed" | "debts" | "income" | "calendar" | "settings" | "summary"
   >(null);
 
   // Aviso con "Deshacer" (guardar, saldar, borrar…): cada acción trae su propia forma de deshacerse
@@ -830,6 +831,7 @@ export default function App() {
                 isLight={isLight}
                 onOpenMovements={() => setActiveSheet("movements")}
                 onOpenWorkDays={() => setActiveSheet("income")}
+                onOpenSummary={() => setActiveSheet("summary")}
                 amountsHidden={!!amountsHidden}
                 onToggleHidden={toggleAmountsHidden}
               />
@@ -980,6 +982,7 @@ export default function App() {
               isLight={isLight}
               onOpenMovements={() => setActiveSheet("movements")}
               onOpenWorkDays={() => setActiveSheet("income")}
+                onOpenSummary={() => setActiveSheet("summary")}
               amountsHidden={!!amountsHidden}
               onToggleHidden={toggleAmountsHidden}
             />
@@ -1229,6 +1232,23 @@ export default function App() {
             onSetWorkDay={handleSetWorkDay}
             onResetWorkDay={handleResetWorkDay}
             onUpdateSettings={handleUpdateSettings}
+          />
+        </Sheet>
+
+        <Sheet
+          isOpen={activeSheet === "summary"}
+          onClose={() => setActiveSheet(null)}
+          title="Resumen"
+          subtitle="Gastos por categoría y comparación con el período anterior"
+          isLight={isLight}
+        >
+          <SummaryPanel
+            settings={settings}
+            movements={movements}
+            categories={settings.categories}
+            workDays={workDays}
+            todayStr={todayStr}
+            isLight={isLight}
           />
         </Sheet>
 

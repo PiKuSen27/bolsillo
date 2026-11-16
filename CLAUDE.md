@@ -77,6 +77,7 @@ Bolsillo/
 │   │   ├── FixedAndInstallmentsPanel.tsx # Fijos (mensuales) y cuotas, con categoría
 │   │   ├── MovementsPanel.tsx      # Movimientos del período + buscador en todo el historial
 │   │   ├── OnboardingPanel.tsx     # Primer uso
+│   │   ├── SummaryPanel.tsx        # Resumen del período: gastos por categoría (barras), ingresos, comparación y períodos anteriores (lib/summary.ts)
 │   │   ├── SettingsPanel.tsx       # Lista de secciones estilo iPhone (Apariencia, Sueldo, Avisos, Categorías, Seguridad, Dólar, Backup, Acerca de); cada una abre su pantalla con "‹ Ajustes" para volver y muestra un resumen de su estado
 │   │   └── WorkDaysPanel.tsx       # Modo variable: días del rango, montos, días libres, cambio de tarifa
 │   ├── lib/                    # Lógica pura, cada archivo tiene su .test.ts (salary-flow.test.ts: sueldo fijo de punta a punta)
@@ -166,6 +167,9 @@ Bolsillo/
 * En modo variable, la tira de días muestra "Libre" (tachado) o el monto en naranja cuando el día está editado, con los mismos datos que "Días trabajados" (`getDayValue` / `isDayModified`).
 * `MovementsPanel` muestra **solo el período actual**; con texto en el buscador recorre **todo el historial** por nota, nombre de categoría o monto (con o sin puntos), sin distinguir mayúsculas ni acentos (`search.ts`).
 * En `MovementsPanel` y `DayDetailModal` se agrupa por categoría con acordeón: ícono, nombre, cantidad, subtotal y flecha.
+
+### E2. Resumen
+* Se abre con la pastilla "Resumen" del Hero. `periodAtOffset` da el período actual (0) y los anteriores: en sueldo fijo de cobro a cobro; en sueldo por día, el anterior es `dailyPreviousRange` y más atrás tramos del mismo largo. Ingresos del período = sueldo (fijo, o suma de días del rango) + ingresos anotados. Todo monto pasa por `formatCurrency` (respeta "ocultar montos").
 
 ### F. Calculadora
 * Máximo 12 dígitos por número y resultado ≤ `MAX_AMOUNT` (1e12); si se pasa o divide por cero, muestra el aviso en rojo y no guarda.
