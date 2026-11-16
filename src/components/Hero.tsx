@@ -1,11 +1,14 @@
 import { motion } from "motion/react";
 import { TrendingUp, TrendingDown, ChevronRight, CalendarDays, Eye, EyeOff } from "lucide-react";
 import { BalanceSummary } from "../lib/balance";
+import type { spendingPlan } from "../lib/spending";
+import { useState } from "react";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { formatCurrency } from "../lib/format";
 
 interface HeroProps {
   summary: BalanceSummary;
+  plan: ReturnType<typeof spendingPlan>; // Podés gastar = (Disponible − fijos por vencer − ahorro) ÷ días
   previousBalance?: number | null; // saldo con el que cerró el período anterior (informativo)
   daysRemaining: number;
   isLight?: boolean;
@@ -15,8 +18,9 @@ interface HeroProps {
   onToggleHidden?: () => void; // el ojo: tapa todos los montos de la app
 }
 
-export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, amountsHidden, onToggleHidden }: HeroProps) {
+export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, amountsHidden, onToggleHidden }: HeroProps) {
   const isPositive = summary.available >= 0;
+  const [explain, setExplain] = useState(false);
 
   return (
     <div
@@ -190,17 +194,25 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
           isLight ? "border-zinc-200" : "border-[#202022]"
         }`}
       >
-        <div className={isLight ? "text-zinc-600" : "text-zinc-300"}>
+        <button
+          type="button"
+          aria-expanded={explain}
+          onClick={(e) => {
+            e.stopPropagation(); // no abrir Movimientos
+            setExplain(!explain);
+          }}
+          className={`text-left cursor-pointer underline decoration-dotted underline-offset-4 ${isLight ? "text-zinc-600 decoration-zinc-400" : "text-zinc-300 decoration-zinc-600"}`}
+        >
           Podés gastar{" "}
           <strong
             className={`font-extrabold tabular-numbers ${
               isLight ? "text-black" : "text-white"
             }`}
           >
-            {formatCurrency(summary.dailySuggested)}
+            {formatCurrency(plan.perDay)}
           </strong>
           /día
-        </div>
+        </button>
         <div
           className={`text-[11px] font-bold ${
             isLight ? "text-zinc-400" : "text-zinc-500"
@@ -209,6 +221,18 @@ export function Hero({ summary, previousBalance, daysRemaining, isLight, onOpenM
           {daysRemaining} {daysRemaining === 1 ? "día restante" : "días restantes"}
         </div>
       </div>
+      {explain && (
+        <p
+          role="note"
+          onClick={(e) => e.stopPropagation()}
+          className={`text-[11px] font-semibold leading-relaxed tabular-numbers cursor-default ${isLight ? "text-zinc-600" : "text-zinc-300"}`}
+        >
+          Disponible {formatCurrency(plan.available)}
+          {plan.commitments > 0 && <> − fijos y cuotas por vencer {formatCurrency(plan.commitments)}</>}
+          {plan.savings > 0 && <> − ahorro {formatCurrency(plan.savings)}</>} = {formatCurrency(Math.max(0, plan.spendable))}, dividido{" "}
+          {Math.max(1, daysRemaining)} {Math.max(1, daysRemaining) === 1 ? "día" : "días"} = {formatCurrency(plan.perDay)} por día.
+        </p>
+      )}
     </div>
   );
 }

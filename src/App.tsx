@@ -83,6 +83,7 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { APP_VERSION } from "./lib/constants";
 import { backupStatus } from "./lib/backupReminder";
 import { whatsNewToShow } from "./lib/whatsNew";
+import { pendingCommitments, spendingPlan } from "./lib/spending";
 import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
@@ -416,6 +417,12 @@ export default function App() {
       todayDateStr: todayStr,
     });
   }, [settings?.incomeMode, settings?.fixedSalary, variableIncome, periodInfo, movements, todayStr]);
+
+  // Podés gastar por día: descuenta fijos y cuotas que todavía van a vencer en el período (y el ahorro)
+  const plan = useMemo(() => {
+    const commitments = pendingCommitments({ recurrings, installments, todayStr, periodEnd: periodInfo.endDate }).total;
+    return spendingPlan({ available: balanceSummary.available, commitments, savings: 0, daysRemaining: periodInfo.daysRemaining });
+  }, [recurrings, installments, todayStr, periodInfo, balanceSummary.available]);
 
   // Cartel informativo "Empezaste con $X a favor / Cerraste abajo" (no toca el Disponible)
   const previousBalance = useMemo(
@@ -816,6 +823,7 @@ export default function App() {
               {/* HERO Card */}
               <Hero
                 summary={balanceSummary}
+                plan={plan}
                 previousBalance={previousBalance}
                 daysRemaining={periodInfo.daysRemaining}
                 isLight={isLight}
@@ -965,6 +973,7 @@ export default function App() {
             {/* Top HERO: Saldo disponible, barra de progreso y gasto diario */}
             <Hero
               summary={balanceSummary}
+                plan={plan}
               previousBalance={previousBalance}
               daysRemaining={periodInfo.daysRemaining}
               isLight={isLight}
