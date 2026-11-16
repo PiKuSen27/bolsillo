@@ -9,6 +9,13 @@ import {
   Plus,
   Heart,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Lock,
+  Palette,
+  Tags,
+  Wallet,
 } from "lucide-react";
 import { addDays, differenceInCalendarDays } from "date-fns";
 import { Category, IncomeMode, Settings, WindowZoom } from "../types";
@@ -33,6 +40,8 @@ import {
   formatNumberWithDots,
   formatShortDate,
   parseLocalDate, formatAmountInput } from "../lib/format";
+
+type SettingsSection = "apariencia" | "sueldo" | "avisos" | "categorias" | "seguridad" | "backup" | "acerca";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -94,6 +103,14 @@ export function SettingsPanel({
   const [resetDone, setResetDone] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Lista de secciones (null) o una sección abierta, como en los ajustes del iPhone
+  const [section, setSection] = useState<SettingsSection | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const openSection = (next: SettingsSection | null) => {
+    setSection(next);
+    rootRef.current?.closest(".overflow-y-auto")?.scrollTo(0, 0);
+  };
 
   const parsedDailyRate = parseInt(dailyRate.replace(/\./g, ""), 10) || 0;
   const sDate = parseLocalDate(dailyRangeStart);
@@ -233,8 +250,57 @@ export function SettingsPanel({
     onRefreshData();
   };
 
+  const muted = isLight ? "text-zinc-500" : "text-zinc-400";
+  const sectionRows: { key: SettingsSection; label: string; summary: string; icon: React.ReactNode }[] = [
+    { key: "apariencia", label: "Apariencia", summary: settings.theme === "light" ? "Blanco" : "Negro", icon: <Palette size={16} /> },
+    {
+      key: "sueldo",
+      label: "Sueldo",
+      summary: settings.incomeMode === "daily" ? `Por día · ${formatCurrency(settings.dailyRate)}` : `Fijo · ${formatCurrency(settings.fixedSalary)}`,
+      icon: <Wallet size={16} />,
+    },
+    { key: "avisos", label: "Avisos", summary: settings.reminderEnabled ? `Recordatorio ${settings.reminderTime}` : "Apagados", icon: <Bell size={16} /> },
+    { key: "categorias", label: "Categorías", summary: `${settings.categories.length} categorías`, icon: <Tags size={16} /> },
+    { key: "seguridad", label: "Seguridad", summary: isVaultEnabled() ? "Cifrada" : "Sin bloqueo", icon: <Lock size={16} /> },
+    { key: "backup", label: "Backup", summary: settings.lastBackupAt ? backupStatus(settings.lastBackupAt, settings.createdAt).label.replace(/^Último backup: /, "") : "Nunca", icon: <Download size={16} /> },
+    { key: "acerca", label: "Acerca de", summary: `v${APP_VERSION}`, icon: <Info size={16} /> },
+  ];
+  const current = sectionRows.find((r) => r.key === section);
+
   return (
-    <div className="flex flex-col gap-4 select-none pb-6">
+    <div ref={rootRef} className="flex flex-col gap-4 select-none pb-6">
+      {section === null ? (
+        <div className={`rounded-2xl border overflow-hidden ${isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"}`}>
+          {sectionRows.map((r, i) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => openSection(r.key)}
+              className={`w-full flex items-center gap-3 px-3.5 py-3 text-left cursor-pointer ${
+                i > 0 ? (isLight ? "border-t border-zinc-200" : "border-t border-[#1F1F22]") : ""
+              } ${isLight ? "hover:bg-zinc-50" : "hover:bg-[#111113]"}`}
+            >
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isLight ? "bg-zinc-100" : "bg-zinc-900"}`}>{r.icon}</span>
+              <span className="flex-1 text-sm font-extrabold">{r.label}</span>
+              <span className={`text-xs font-bold truncate max-w-[45%] ${muted}`}>{r.summary}</span>
+              <ChevronRight size={16} className={muted} />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => openSection(null)}
+          className="self-start flex items-center gap-1 text-sm font-extrabold cursor-pointer -mb-1"
+        >
+          <ChevronLeft size={18} />
+          <span>Ajustes</span>
+          <span className={`font-bold ${muted}`}>· {current?.label}</span>
+        </button>
+      )}
+
+      {section === "apariencia" && (
+        <>
       {/* Theme Toggle Button: strictly "Blanco" and "Negro" */}
       <div
         className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs font-black ${
@@ -276,17 +342,6 @@ export function SettingsPanel({
           )}
         </button>
       </div>
-
-      <button
-        type="button"
-        onClick={onShowTutorial}
-        className={`p-3.5 rounded-2xl border text-left text-sm font-black cursor-pointer ${
-          isLight ? "bg-white border-zinc-300 hover:bg-zinc-50" : "bg-[#0A0A0C] border-[#222224] hover:bg-[#111113]"
-        }`}
-      >
-        Ver tutorial
-        <span className="block text-[11px] font-bold opacity-75">Un recorrido corto por cada parte de la app.</span>
-      </button>
 
       {/* Privacidad: montos ocultos al abrir */}
       <div
@@ -367,16 +422,30 @@ export function SettingsPanel({
         </div>
       )}
 
-      {/* General Settings Form */}
+      <button
+        type="button"
+        onClick={onShowTutorial}
+        className={`p-3.5 rounded-2xl border text-left text-sm font-black cursor-pointer ${
+          isLight ? "bg-white border-zinc-300 hover:bg-zinc-50" : "bg-[#0A0A0C] border-[#222224] hover:bg-[#111113]"
+        }`}
+      >
+        Ver tutorial
+        <span className="block text-[11px] font-bold opacity-75">Un recorrido corto por cada parte de la app.</span>
+      </button>
+
+        </>
+      )}
+
+      {section === "sueldo" && (
+        <>
+      {/* Sueldo */}
       <form
         onSubmit={handleSaveGeneral}
         className={`p-3.5 rounded-2xl border flex flex-col gap-3 ${
           isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"
         }`}
       >
-        <span className="text-xs font-black uppercase opacity-80">
-          Ajustes de Ingresos y Fechas
-        </span>
+        <span className="text-xs font-black uppercase opacity-80">Tu ingreso</span>
 
         {/* Income Mode Selection */}
         <div
@@ -523,9 +592,35 @@ export function SettingsPanel({
             )}
           </div>
         )}
+        <div className="flex justify-end pt-2">
+          <button
+            type="submit"
+            className={`px-4 py-2 rounded-xl font-black text-xs transition-colors cursor-pointer ${
+              isLight
+                ? "bg-black text-white hover:bg-zinc-800"
+                : "bg-white text-black hover:bg-zinc-200"
+            }`}
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+
+        </>
+      )}
+
+      {section === "avisos" && (
+        <>
+      {/* Avisos */}
+      <form
+        onSubmit={handleSaveGeneral}
+        className={`p-3.5 rounded-2xl border flex flex-col gap-3 ${
+          isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"
+        }`}
+      >
 
         {/* Reminders & System Tray with aligned custom checkboxes */}
-        <div className="flex flex-col gap-2.5 pt-2 border-t border-zinc-500/10">
+        <div className="flex flex-col gap-2.5 ">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell size={14} />
@@ -648,11 +743,16 @@ export function SettingsPanel({
                 : "bg-white text-black hover:bg-zinc-200"
             }`}
           >
-            Guardar ajustes generales
+            Guardar
           </button>
         </div>
       </form>
 
+        </>
+      )}
+
+      {section === "categorias" && (
+        <>
       {/* Categories Management */}
       <div
         className={`p-3.5 rounded-2xl border flex flex-col gap-2.5 ${
@@ -723,6 +823,11 @@ export function SettingsPanel({
         </div>
       </div>
 
+        </>
+      )}
+
+      {section === "seguridad" && (
+        <>
       <SecuritySettings
         isLight={isLight}
         theme={settings.theme}
@@ -731,42 +836,11 @@ export function SettingsPanel({
         onBackupSaved={() => onUpdateSettings({ lastBackupAt: new Date().toISOString() })}
       />
 
-      {askExportPw && (
-        <PasswordPrompt
-          title="Backup cifrado"
-          detail="Escribí tu contraseña de Bolsillo. El archivo queda cifrado con ella y solo se abre con esa contraseña (el código de recuperación no sirve para backups)."
-          confirmLabel="Preparar backup"
-          isLight={isLight}
-          onCancel={() => setAskExportPw(false)}
-          onSubmit={async (pw) => {
-            if (!(await verifyPassword(pw))) return "Contraseña incorrecta";
-            const contents = await encryptBackup(await exportAllData(), pw);
-            setAskExportPw(false);
-            setPreparedFile({ name: `bolsillo-backup-cifrado-${formatLocalDate(new Date())}.json`, contents });
-            return null;
-          }}
-        />
-      )}
-      {encryptedImport && (
-        <PasswordPrompt
-          title="Este backup está cifrado"
-          detail="Escribí la contraseña que tenía Bolsillo cuando se exportó."
-          confirmLabel="Abrir backup"
-          isLight={isLight}
-          onCancel={() => setEncryptedImport(null)}
-          onSubmit={async (pw) => {
-            try {
-              const json = await decryptBackup(encryptedImport, pw);
-              setEncryptedImport(null);
-              acceptBackupJson(json);
-              return null;
-            } catch (e) {
-              return e instanceof WrongSecretError ? "Contraseña incorrecta" : e instanceof Error ? e.message : String(e);
-            }
-          }}
-        />
+        </>
       )}
 
+      {section === "backup" && (
+        <>
       {/* Backup Section */}
       <div
         className={`p-3.5 rounded-2xl border flex flex-col gap-2 ${
@@ -940,17 +1014,11 @@ export function SettingsPanel({
         )}
       </div>
 
-      {showResetConfirm && (
-        <ConfirmDialog
-          title="¿Borrar todos los datos?"
-          detail="Esta acción no se puede deshacer."
-          confirmLabel="Borrar todos los datos"
-          isLight={isLight}
-          onConfirm={handleResetData}
-          onCancel={() => setShowResetConfirm(false)}
-        />
+        </>
       )}
 
+      {section === "acerca" && (
+        <>
       {/* Créditos */}
       <div
         className={`p-4 rounded-2xl border flex flex-col gap-3 ${
@@ -1008,6 +1076,56 @@ export function SettingsPanel({
           </span>
         </div>
       </div>
+        </>
+      )}
+
+      {askExportPw && (
+        <PasswordPrompt
+          title="Backup cifrado"
+          detail="Escribí tu contraseña de Bolsillo. El archivo queda cifrado con ella y solo se abre con esa contraseña (el código de recuperación no sirve para backups)."
+          confirmLabel="Preparar backup"
+          isLight={isLight}
+          onCancel={() => setAskExportPw(false)}
+          onSubmit={async (pw) => {
+            if (!(await verifyPassword(pw))) return "Contraseña incorrecta";
+            const contents = await encryptBackup(await exportAllData(), pw);
+            setAskExportPw(false);
+            setPreparedFile({ name: `bolsillo-backup-cifrado-${formatLocalDate(new Date())}.json`, contents });
+            return null;
+          }}
+        />
+      )}
+      {encryptedImport && (
+        <PasswordPrompt
+          title="Este backup está cifrado"
+          detail="Escribí la contraseña que tenía Bolsillo cuando se exportó."
+          confirmLabel="Abrir backup"
+          isLight={isLight}
+          onCancel={() => setEncryptedImport(null)}
+          onSubmit={async (pw) => {
+            try {
+              const json = await decryptBackup(encryptedImport, pw);
+              setEncryptedImport(null);
+              acceptBackupJson(json);
+              return null;
+            } catch (e) {
+              return e instanceof WrongSecretError ? "Contraseña incorrecta" : e instanceof Error ? e.message : String(e);
+            }
+          }}
+        />
+      )}
+
+      {showResetConfirm && (
+        <ConfirmDialog
+          title="¿Borrar todos los datos?"
+          detail="Esta acción no se puede deshacer."
+          confirmLabel="Borrar todos los datos"
+          isLight={isLight}
+          onConfirm={handleResetData}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
+
     </div>
   );
 }

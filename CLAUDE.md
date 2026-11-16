@@ -77,7 +77,7 @@ Bolsillo/
 │   │   ├── FixedAndInstallmentsPanel.tsx # Fijos (mensuales) y cuotas, con categoría
 │   │   ├── MovementsPanel.tsx      # Movimientos del período + buscador en todo el historial
 │   │   ├── OnboardingPanel.tsx     # Primer uso
-│   │   ├── SettingsPanel.tsx       # Tema, ingresos, recordatorios, categorías, backup, créditos
+│   │   ├── SettingsPanel.tsx       # Lista de secciones estilo iPhone (Apariencia, Sueldo, Avisos, Categorías, Seguridad, Dólar, Backup, Acerca de); cada una abre su pantalla con "‹ Ajustes" para volver y muestra un resumen de su estado
 │   │   └── WorkDaysPanel.tsx       # Modo variable: días del rango, montos, días libres, cambio de tarifa
 │   ├── lib/                    # Lógica pura, cada archivo tiene su .test.ts (salary-flow.test.ts: sueldo fijo de punta a punta)
 │   │   ├── balance.ts              # Disponible = ingreso base + ingresos del período − gastos del período
