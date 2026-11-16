@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { DEFAULT_SETTINGS } from "../lib/constants";
 import { validateBackup, ValidBackup } from "../lib/backup";
+import { debtArs } from "../lib/dollars";
 
 export interface DatabaseExport {
   version: number;
@@ -100,7 +101,7 @@ export async function settleDebts(
       created.push({
         id: `mov_debt_${debt.id}_${Date.now()}`,
         date: todayStr,
-        amount: debt.amount,
+        amount: debtArs(debt), // en pesos (dólares × cotización guardada)
         kind: debt.kind === "i_owe" ? "expense" : "income",
         categoryId: "otros",
         note: debt.kind === "i_owe" ? `Pago a ${debt.person}` : `Cobro a ${debt.person}`,

@@ -187,6 +187,9 @@ Bolsillo/
 * Deudas (`lib/debts.ts`, tests en `debts.test.ts`): **agrupadas por persona** por defecto (interruptor "Agrupar por persona"); el nombre se compara sin mayúsculas, acentos ni espacios de más (`personKey`). La tarjeta muestra nombre, cantidad y el **neto** ("Rocio te debe $ X" / "Le debés $ X"). Al escribir el nombre en "+ Nueva" se sugieren los ya usados (`suggestPersonNames`). Cualquier deuda se puede editar (nombre, monto, nota, fecha y tipo). "Saldar" por deuda y "Saldar todo" por persona, con confirmación; `settleDebts` en `repo.ts` es todo o nada y devuelve la función para deshacer (tests en `db/debts-settle.test.ts`).
 * Pestañas "Todas / Debo plata / Me deben", cada una muestra solo sus deudas (pendientes y saldadas). Al tocar "+ Nueva" parado en una pestaña, la deuda toma ese tipo sin preguntar; el selector "Debo / Me deben" aparece solo en "Todas". Saldar (opcionalmente creando el movimiento) o borrar.
 
+* **Deudas en dólares** (solo con Ajustes → Dólar → "Usar dólares"): `Debt.currency = "USD"`, `amount` en dólares enteros, `rate` (pesos por dólar), `rateDate`, `rateType`. La cotización queda **fija** en la deuda; "Actualizar cotización" la reemplaza a mano. Totales por persona, "Saldar" y su movimiento van **en pesos** con la cotización guardada (`lib/dollars.ts`: `debtArs`). Pantalla: "USD 300 · ≈ $ 450.000 (a $ 1.500 del 14 nov)".
+* **Cotización**: única conexión a internet de la app, `https://dolarapi.com/v1/dolares/{oficial|blue|bolsa}` (venta, redondeada a pesos), **solo al tocar el botón** (`fetchQuote`, 8 s de espera máxima, mensaje "escribí la cotización a mano" si falla). Permitida en la CSP (`connect-src`) de `tauri.conf.json` y `public/_headers`. Componente `QuoteField` (manual o "Cotización del día").
+
 ### H. Recordatorios
 * Recordatorio diario: dispara a `reminderTime` **o en el primer chequeo posterior** del mismo día (si la app estaba cerrada), una sola vez (`remindersSent`). No avisa si ya se anotó algo ese día.
 * Alertas de vencimiento: `dueAlertDays` días antes y el mismo día.
@@ -225,7 +228,7 @@ Bolsillo/
   * Backup con cifrado activo: va cifrado con la contraseña (`encryptBackup`); importar uno cifrado la pide. Al activar, el asistente pide guardar antes una copia cifrada con esa contraseña (se puede seguir sin copia, marcado "no recomendado", por si el dispositivo no deja guardar archivos).
 * CSP en `tauri.conf.json` (`default-src 'self'`, `worker-src blob:` para el confetti, `connect-src ipc:` para Tauri) y la misma en `public/_headers` para Cloudflare Pages.
 * Permisos de Tauri: solo `core:default`, ventana (minimize, close, hide, always-on-top, start-dragging) y `notification:default`.
-* Nada sale de la máquina: no hay red, analytics ni cuentas.
+* Nada sale de la máquina: no hay analytics ni cuentas. La única conexión es pedir la cotización del dólar a dolarapi.com cuando se toca "Cotización del día" (no se manda ningún dato del usuario).
 
 ---
 

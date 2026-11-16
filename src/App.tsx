@@ -1230,6 +1230,7 @@ export default function App() {
               await store.debts.put(d);
               await loadData();
             }}
+            dollars={{ enabled: settings.useDollars, type: settings.dollarType }}
           />
         </Sheet>
 

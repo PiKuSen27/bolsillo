@@ -16,9 +16,12 @@ import {
   Palette,
   Tags,
   Wallet,
+  DollarSign,
 } from "lucide-react";
 import { addDays, differenceInCalendarDays } from "date-fns";
-import { Category, IncomeMode, Settings, WindowZoom } from "../types";
+import { Category, DollarType, IncomeMode, Settings, WindowZoom } from "../types";
+import { DOLLAR_LABELS } from "../lib/dollars";
+import { Select } from "../components/Select";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
 import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
 import { requestPersistentStorage } from "../platform/pwa";
@@ -41,7 +44,7 @@ import {
   formatShortDate,
   parseLocalDate, formatAmountInput } from "../lib/format";
 
-type SettingsSection = "apariencia" | "sueldo" | "avisos" | "categorias" | "seguridad" | "backup" | "acerca";
+type SettingsSection = "apariencia" | "sueldo" | "avisos" | "categorias" | "seguridad" | "dolar" | "backup" | "acerca";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -264,6 +267,7 @@ export function SettingsPanel({
     { key: "avisos", label: "Avisos", summary: settings.reminderEnabled ? `Recordatorio ${settings.reminderTime}` : "Apagados", icon: <Bell size={16} /> },
     { key: "categorias", label: "Categorías", summary: `${settings.categories.length} categorías${settings.categories.some((c) => c.limit) ? " · con topes" : ""}`, icon: <Tags size={16} /> },
     { key: "seguridad", label: "Seguridad", summary: { none: "Sin bloqueo", pin: "Simple (PIN)", encrypted: "Cifrada" }[lockMode()], icon: <Lock size={16} /> },
+    { key: "dolar", label: "Dólar", summary: settings.useDollars ? DOLLAR_LABELS[settings.dollarType] : "Apagado", icon: <DollarSign size={16} /> },
     { key: "backup", label: "Backup", summary: settings.lastBackupAt ? backupStatus(settings.lastBackupAt, settings.createdAt).label.replace(/^Último backup: /, "") : "Nunca", icon: <Download size={16} /> },
     { key: "acerca", label: "Acerca de", summary: `v${APP_VERSION}`, icon: <Info size={16} /> },
   ];
@@ -897,6 +901,46 @@ export function SettingsPanel({
       />
 
         </>
+      )}
+
+      {section === "dolar" && (
+        <div className={`p-3.5 rounded-2xl border flex flex-col gap-3 ${isLight ? "bg-white border-zinc-300" : "bg-[#0A0A0C] border-[#222224]"}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="text-sm font-black">Usar dólares</span>
+              <span className="text-[11px] font-bold opacity-75">
+                Deudas en dólares y una pestaña para tus ahorros en dólares. El resto de la app sigue en pesos.
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.useDollars}
+              aria-label="Usar dólares"
+              onClick={() => onUpdateSettings({ useDollars: !settings.useDollars })}
+              className={`w-9 h-5 rounded-full p-0.5 flex shrink-0 cursor-pointer transition-colors ${
+                settings.useDollars ? (isLight ? "bg-[#16A34A] justify-end" : "bg-[#22C55E] justify-end") : isLight ? "bg-zinc-300" : "bg-zinc-700"
+              }`}
+            >
+              <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-black">Tipo de dólar</span>
+            <Select
+              ariaLabel="Tipo de dólar"
+              value={settings.dollarType}
+              isLight={isLight}
+              className="w-36"
+              options={(["oficial", "blue", "bolsa"] as const).map((t) => ({ value: t, label: DOLLAR_LABELS[t] }))}
+              onChange={(v) => onUpdateSettings({ dollarType: v as DollarType })}
+            />
+          </div>
+          <p className={`text-[11px] font-semibold leading-relaxed ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
+            Bolsillo no se conecta a internet solo. Solo cuando tocás "Cotización del día" pide la cotización de venta a
+            dolarapi.com (un servicio gratuito) y la deja fija; también la podés escribir a mano.
+          </p>
+        </div>
       )}
 
       {section === "backup" && (

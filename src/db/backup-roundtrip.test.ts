@@ -27,6 +27,7 @@ async function seedFullDatabase() {
   await db.installments.put({ id: "i1", name: "Tele", totalAmount: 100000, installmentsCount: 3, installmentAmount: 33333, firstDueDate: "2026-10-15", paidCount: 1, categoryId: "otros", autoAdd: true, active: true, lastAppliedDate: "2026-10-15" });
   await db.workDays.put({ date: "2026-11-15", worked: false, amount: 0 });
   await db.dayLogs.put({ date: "2026-11-09", logged: true, noExpenses: true });
+  await db.debts.put({ id: "d2", kind: "i_owe", person: "Ana", amount: 300, currency: "USD", rate: 1500, rateDate: "2026-11-14", rateType: "blue", settled: false, createdAt: "2026-11-02T10:00:00.000Z" });
   await db.debts.put({ id: "d1", kind: "they_owe", person: "Juan", amount: 15000, dueDate: "2026-11-30", note: "Cena", settled: false, createdAt: "2026-11-01T10:00:00.000Z" });
   await db.remindersSent.put({ key: "daily_2026-11-10", sentAt: "2026-11-10T21:00:00.000Z" });
 }

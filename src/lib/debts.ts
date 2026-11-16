@@ -1,5 +1,6 @@
 import { Debt } from "../types";
 import { normalizeText } from "./search";
+import { debtArs } from "./dollars";
 
 /** Clave para juntar deudas de la misma persona: sin mayúsculas, acentos ni espacios de más. */
 export function personKey(name: string): string {
@@ -33,8 +34,9 @@ export function groupDebtsByPerson(debts: Debt[]): PersonGroup[] {
     }
     g.debts.push(debt);
     g.count++;
-    if (debt.kind === "they_owe") g.theyOwe += debt.amount;
-    else g.iOwe += debt.amount;
+    // En pesos: las deudas en dólares usan la cotización guardada en cada una
+    if (debt.kind === "they_owe") g.theyOwe += debtArs(debt);
+    else g.iOwe += debtArs(debt);
     g.net = g.theyOwe - g.iOwe;
   }
   return [...map.values()].sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.name.localeCompare(b.name));

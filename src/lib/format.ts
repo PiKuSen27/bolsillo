@@ -26,6 +26,11 @@ export function formatCurrency(amount: number): string {
   return amountsHidden ? HIDDEN_AMOUNT : formatCurrencyVisible(amount);
 }
 
+/** Dólares: "USD 300" (o tapado si los montos están ocultos). */
+export function formatUsd(amount: number): string {
+  return amountsHidden ? "USD ••••" : `USD ${formatNumberWithDots(Math.round(amount))}`;
+}
+
 /** Igual que formatCurrency pero siempre visible (la calculadora muestra lo que se escribe). */
 export function formatCurrencyVisible(amount: number): string {
   if (isNaN(amount) || !isFinite(amount)) return "$ 0";

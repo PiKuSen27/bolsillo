@@ -50,6 +50,8 @@ export interface Settings {
   hideAmounts: boolean; // el ojo de "Disponible": montos tapados con $ ••••••
   startHidden: boolean; // "Abrir siempre con los montos ocultos"
   tutorialDone: boolean; // ya vio (o salteó) el recorrido de después de la bienvenida
+  useDollars: boolean; // "Usar dólares": deudas en dólares y pestaña de ahorros en dólares
+  dollarType: DollarType;
   savingsMode: "percent" | "amount"; // "Quiero ahorrar"
   savingsValue: number; // % (0 = no ahorra) o monto fijo por período
   lastSeenVersion?: string; // última versión cuyas novedades ya vio
@@ -136,13 +138,20 @@ export interface UpcomingItem {
   active: boolean;
 }
 
+/** oficial, blue o MEP ("bolsa" en dolarapi) */
+export type DollarType = "oficial" | "blue" | "bolsa";
+
 export type DebtKind = "i_owe" | "they_owe";
 
 export interface Debt {
   id: string;
   kind: DebtKind; // 'i_owe': debo plata | 'they_owe': me deben plata
   person: string;
-  amount: number;
+  amount: number; // en la moneda de la deuda (pesos o dólares enteros)
+  currency?: "ARS" | "USD"; // sin dato = pesos
+  rate?: number; // dólares: pesos por dólar fijados en esta deuda
+  rateDate?: string; // YYYY-MM-DD de esa cotización
+  rateType?: DollarType;
   dueDate?: string; // YYYY-MM-DD
   note?: string;
   settled: boolean;

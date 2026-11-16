@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight, ChevronDown, Users, Edit2 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { Debt, DebtKind } from "../types";
-import { formatCurrency, formatShortDate, formatAmountInput, formatNumberWithDots } from "../lib/format";
+import { Debt, DebtKind, DollarType } from "../types";
+import { debtArs, fetchQuote, Quote } from "../lib/dollars";
+import { QuoteField } from "../components/QuoteField";
+import { formatCurrency, formatShortDate, formatAmountInput, formatNumberWithDots, formatUsd, formatLocalDate } from "../lib/format";
 import { groupDebtsByPerson, PersonGroup, suggestPersonNames } from "../lib/debts";
 import { DateField } from "../components/DateField";
 
@@ -15,6 +17,7 @@ interface DebtsPanelProps {
   onSettleDebt: (debts: Debt[], addToMovement: boolean) => void;
   onDeleteDebt: (id: string) => void;
   onUpdateDebt: (d: Debt) => void;
+  dollars: { enabled: boolean; type: DollarType };
 }
 
 /** "Rocio te debe $ X" / "Le debés $ X" / "Están a mano" */
@@ -34,7 +37,9 @@ function DebtForm({
   submitLabel,
   onSubmit,
   onCancel,
+  dollars,
 }: {
+  dollars?: { enabled: boolean; type: DollarType };
   title: string;
   initial?: Partial<DebtFields>;
   lockedKind?: DebtKind; // parado en "Debo plata" / "Me deben": no se pregunta
@@ -49,6 +54,11 @@ function DebtForm({
   const [kind, setKind] = useState<DebtKind>(initial?.kind ?? "i_owe");
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
+  const [currency, setCurrency] = useState<"ARS" | "USD">(initial?.currency ?? "ARS");
+  const [quote, setQuote] = useState<Quote | null>(
+    initial?.rate ? { rate: initial.rate, date: initial.rateDate ?? formatLocalDate(new Date()), type: initial.rateType ?? dollars?.type ?? "oficial" } : null
+  );
+  const showCurrency = !!dollars?.enabled || initial?.currency === "USD";
   const finalKind = lockedKind ?? kind;
   const suggestions = suggestPersonNames(allDebts, person);
 
@@ -60,10 +70,15 @@ function DebtForm({
     e.preventDefault();
     const cleanAmount = parseInt(amount.replace(/\./g, ""), 10);
     if (!person.trim() || isNaN(cleanAmount) || cleanAmount <= 0) return;
+    if (currency === "USD" && !quote) return; // en dólares hace falta la cotización
     onSubmit({
       person: person.trim().replace(/\s+/g, " "),
       amount: cleanAmount,
       kind: finalKind,
+      currency: currency === "USD" ? "USD" : undefined,
+      rate: currency === "USD" ? quote!.rate : undefined,
+      rateDate: currency === "USD" ? quote!.date : undefined,
+      rateType: currency === "USD" ? quote!.type : undefined,
       dueDate: dueDate || undefined,
       note: note.trim() || undefined,
     });
@@ -115,7 +130,7 @@ function DebtForm({
         <input
           type="text"
           inputMode="numeric"
-          placeholder="Monto ($ ARS)"
+          placeholder={currency === "USD" ? "Monto (USD)" : "Monto ($ ARS)"}
           aria-label="Monto"
           value={amount}
           onChange={(e) => setAmount(formatAmountInput(e.target.value))}
@@ -123,6 +138,33 @@ function DebtForm({
           required
         />
       </div>
+
+      {showCurrency && (
+        <div className={`p-0.5 rounded-xl border flex gap-0.5 ${isLight ? "bg-zinc-100 border-zinc-200" : "bg-black border-[#222224]"}`}>
+          {(["ARS", "USD"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              aria-pressed={currency === c}
+              onClick={() => setCurrency(c)}
+              className={`flex-1 py-1 rounded-lg text-xs font-extrabold cursor-pointer ${
+                currency === c ? (isLight ? "bg-white text-black shadow-xs" : "bg-zinc-800 text-white") : isLight ? "text-zinc-600" : "text-zinc-400"
+              }`}
+            >
+              {c === "ARS" ? "Pesos" : "Dólares"}
+            </button>
+          ))}
+        </div>
+      )}
+      {currency === "USD" && (
+        <QuoteField
+          usd={parseInt(amount.replace(/\./g, ""), 10) || 0}
+          value={quote}
+          onChange={setQuote}
+          dollarType={dollars?.type ?? "oficial"}
+          isLight={isLight}
+        />
+      )}
 
       {/* Nombres ya usados: tocá uno para no crear "Rocio" y "Rocío" por separado */}
       {suggestions.length > 0 && (
@@ -180,7 +222,9 @@ function DebtForm({
   );
 }
 
-export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt, onUpdateDebt }: DebtsPanelProps) {
+export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDebt, onUpdateDebt, dollars }: DebtsPanelProps) {
+  const [quoteBusy, setQuoteBusy] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<{ id: string; text: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | DebtKind>("all");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -190,7 +234,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
   // Confirmación para saldar una deuda o todas las de una persona (pregunta si se registra el movimiento)
   const [settling, setSettling] = useState<{ debts: Debt[]; name: string; total: number } | null>(null);
   const askSettle = (list: Debt[], name: string) => {
-    const net = list.reduce((s, d) => s + (d.kind === "they_owe" ? d.amount : -d.amount), 0);
+    const net = list.reduce((s, d) => s + (d.kind === "they_owe" ? debtArs(d) : -debtArs(d)), 0);
     setSettling({ debts: list, name, total: Math.abs(net) });
   };
 
@@ -218,6 +262,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
       title="Editar deuda"
       initial={d}
       allDebts={debts.filter((x) => x.id !== d.id)}
+      dollars={dollars}
       isLight={isLight}
       submitLabel="Guardar cambios"
       onCancel={() => setEditingId(null)}
@@ -241,7 +286,8 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
   );
 
   const debtRow = (d: Debt, showPerson: boolean) => editingId === d.id ? editForm(d) : (
-    <div key={d.id} className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${card}`}>
+    <div key={d.id} className={`p-3 rounded-2xl border flex flex-col gap-1.5 ${card}`}>
+    <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2.5 min-w-0">
         <div
           className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
@@ -276,8 +322,8 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        <span className={`text-sm font-extrabold tabular-numbers ${d.kind === "i_owe" ? "text-[#EF4444]" : "text-[#16A34A]"}`}>
-          {formatCurrency(d.amount)}
+        <span className={`flex flex-col items-end text-sm font-extrabold tabular-numbers ${d.kind === "i_owe" ? "text-[#EF4444]" : "text-[#16A34A]"}`}>
+          {d.currency === "USD" ? formatUsd(d.amount) : formatCurrency(d.amount)}
         </span>
         <button
           type="button"
@@ -299,6 +345,37 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
           <Trash2 size={13} />
         </button>
       </div>
+    </div>
+    {d.currency === "USD" && (
+      <div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 pl-9 text-[10px] font-bold tabular-numbers ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
+        <span>
+          ≈ {formatCurrency(debtArs(d))} (a {formatCurrency(d.rate ?? 0)}
+          {d.rateDate ? ` del ${formatShortDate(d.rateDate)}` : ""})
+        </span>
+          {d.currency === "USD" && (
+            <button
+              type="button"
+              disabled={quoteBusy === d.id}
+              onClick={async () => {
+                setQuoteBusy(d.id);
+                setQuoteError(null);
+                try {
+                  const q = await fetchQuote(dollars.type);
+                  onUpdateDebt({ ...d, rate: q.rate, rateDate: q.date, rateType: q.type });
+                } catch (e) {
+                  setQuoteError({ id: d.id, text: e instanceof Error ? e.message : String(e) });
+                } finally {
+                  setQuoteBusy(null);
+                }
+              }}
+              className="text-[10px] font-extrabold underline opacity-80 hover:opacity-100 cursor-pointer disabled:opacity-50"
+            >
+              {quoteBusy === d.id ? "Buscando…" : "Actualizar cotización"}
+            </button>
+          )}
+          {quoteError?.id === d.id && <span role="alert" className="text-[10px] font-bold text-[#DC2626]">{quoteError.text}</span>}
+      </div>
+    )}
     </div>
   );
 
@@ -341,6 +418,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
           title={filter === "i_owe" ? "Registrar deuda (debo plata)" : filter === "they_owe" ? "Registrar deuda (me deben plata)" : "Registrar deuda"}
           lockedKind={filter === "all" ? undefined : filter}
           allDebts={debts}
+          dollars={dollars}
           isLight={isLight}
           submitLabel="Guardar deuda"
           onSubmit={(d) => {
@@ -454,7 +532,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
                 <span className="shrink-0">({d.kind === "i_owe" ? "pagado" : "cobrado"})</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold line-through tabular-numbers">{formatCurrency(d.amount)}</span>
+                <span className="text-xs font-bold line-through tabular-numbers">{d.currency === "USD" ? formatUsd(d.amount) : formatCurrency(d.amount)}</span>
                 {editButton(d)}
                 <button
                   type="button"
