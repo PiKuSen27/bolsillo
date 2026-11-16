@@ -34,16 +34,16 @@ describe("vault.ts - Cifrado de datos", () => {
 
   it("Cifra y descifra un registro ida y vuelta; el texto cifrado no contiene los datos", async () => {
     const { keys } = await createVault("caballo bateria grapa", generateRecoveryCode(), prefs, FAST);
-    const sk = await storedKeyFor(keys, "movements", "m1");
-    const rec = { id: "m1", amount: 987654, note: "PizzaSecreta" };
+    const sk = await storedKeyFor(keys, "movements", "mov-secreto-123");
+    const rec = { id: "mov-secreto-123", amount: 987654, note: "PizzaSecreta" };
     const sealed = await encryptRecord(keys, "movements", sk, rec);
     expect(sealed).not.toContain("Pizza");
     expect(atob(sealed)).not.toContain("PizzaSecreta");
     expect(await decryptRecord(keys, "movements", sk, sealed)).toEqual(rec);
     // la clave guardada no deja ver el id real y es siempre la misma para el mismo id
-    expect(sk).not.toContain("m1");
-    expect(await storedKeyFor(keys, "movements", "m1")).toBe(sk);
-    expect(await storedKeyFor(keys, "debts", "m1")).not.toBe(sk);
+    expect(sk).not.toContain("secreto");
+    expect(await storedKeyFor(keys, "movements", "mov-secreto-123")).toBe(sk);
+    expect(await storedKeyFor(keys, "debts", "mov-secreto-123")).not.toBe(sk);
   });
 
   it("Un registro movido a otra clave o tabla, o alterado, no se descifra", async () => {
