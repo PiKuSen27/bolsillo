@@ -2,6 +2,7 @@ import { store, applyAtomically, DATA_TABLES, wipeEverything } from "./store";
 import {
   DayLog,
   Debt,
+  DollarMove,
   Installment,
   Movement,
   Recurring,
@@ -23,6 +24,7 @@ export interface DatabaseExport {
   workDays: WorkDay[];
   dayLogs: DayLog[];
   debts?: Debt[];
+  dollars?: DollarMove[];
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -174,6 +176,7 @@ export async function exportAllData(): Promise<string> {
   const workDays = await store.workDays.toArray();
   const dayLogs = await store.dayLogs.toArray();
   const debts = await store.debts.toArray();
+  const dollars = await store.dollars.toArray();
 
   const exportData: DatabaseExport = {
     version: 2,
@@ -185,6 +188,7 @@ export async function exportAllData(): Promise<string> {
     workDays,
     dayLogs,
     debts,
+    dollars,
   };
 
   return JSON.stringify(exportData, null, 2);
@@ -208,6 +212,7 @@ export async function importValidatedBackup(data: ValidBackup): Promise<{ succes
       { type: "put", table: "workDays", recs: data.workDays },
       { type: "put", table: "dayLogs", recs: data.dayLogs },
       { type: "put", table: "debts", recs: data.debts },
+      { type: "put", table: "dollars", recs: data.dollars },
     ]);
     return { success: true };
   } catch (err) {

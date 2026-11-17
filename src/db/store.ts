@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { DayLog, Debt, Installment, Movement, Recurring, ReminderSent, Settings, WorkDay } from "../types";
+import { DayLog, Debt, DollarMove, Installment, Movement, Recurring, ReminderSent, Settings, WorkDay } from "../types";
 import {
   VaultKeys,
   VaultMeta,
@@ -46,7 +46,8 @@ export type TableName =
   | "workDays"
   | "dayLogs"
   | "debts"
-  | "remindersSent";
+  | "remindersSent"
+  | "dollars";
 
 const PK: Record<TableName, string> = {
   settings: "id",
@@ -57,6 +58,7 @@ const PK: Record<TableName, string> = {
   dayLogs: "date",
   debts: "id",
   remindersSent: "key",
+  dollars: "id",
 };
 export const DATA_TABLES = Object.keys(PK) as TableName[];
 
@@ -202,6 +204,7 @@ export const store = {
   workDays: new SecureTable<WorkDay>("workDays"),
   dayLogs: new SecureTable<DayLog>("dayLogs"),
   debts: new SecureTable<Debt>("debts"),
+  dollars: new SecureTable<DollarMove>("dollars"),
   remindersSent: new SecureTable<ReminderSent>("remindersSent"),
 };
 

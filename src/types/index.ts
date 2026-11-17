@@ -50,6 +50,7 @@ export interface Settings {
   hideAmounts: boolean; // el ojo de "Disponible": montos tapados con $ ••••••
   startHidden: boolean; // "Abrir siempre con los montos ocultos"
   tutorialDone: boolean; // ya vio (o salteó) el recorrido de después de la bienvenida
+  usdQuote?: { rate: number; date: string; type: DollarType }; // cotización fija de los ahorros en dólares
   useDollars: boolean; // "Usar dólares": deudas en dólares y pestaña de ahorros en dólares
   dollarType: DollarType;
   savingsMode: "percent" | "amount"; // "Quiero ahorrar"
@@ -70,6 +71,7 @@ export interface Movement {
   recurringId?: string;
   installmentId?: string;
   debtId?: string;
+  usdId?: string; // compra o venta de dólares que lo generó
   createdAt: string; // ISO string
 }
 
@@ -140,6 +142,20 @@ export interface UpcomingItem {
 
 /** oficial, blue o MEP ("bolsa" en dolarapi) */
 export type DollarType = "oficial" | "blue" | "bolsa";
+
+/** Movimiento de los ahorros en dólares (separados del Disponible). */
+export interface DollarMove {
+  id: string;
+  date: string; // YYYY-MM-DD
+  amount: number; // dólares enteros
+  kind: "in" | "out"; // + Ingresar / − Sacar
+  note?: string;
+  source: "manual" | "buy" | "sell"; // compra o venta: tiene su movimiento en pesos
+  rate?: number; // compra/venta: pesos por dólar
+  pesos?: number; // compra/venta: pesos pagados o cobrados
+  movementId?: string; // compra/venta: movimiento en pesos que la acompaña
+  createdAt: string;
+}
 
 export interface DebtPayment {
   id: string;

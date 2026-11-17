@@ -9,6 +9,7 @@ import {
   Recurring,
   Settings,
   WorkDay,
+  DollarMove,
 } from "../types";
 import { DEFAULT_SETTINGS, MAX_AMOUNT } from "./constants";
 
@@ -21,6 +22,7 @@ export interface ValidBackup {
   workDays: WorkDay[];
   dayLogs: DayLog[];
   debts: Debt[];
+  dollars: DollarMove[];
 }
 
 export type BackupResult = { ok: true; data: ValidBackup } | { ok: false; error: string };
@@ -110,6 +112,7 @@ function movement(o: Obj, i: number): Movement {
     recurringId: str(o.recurringId, "recurringId", where, { optional: true, max: 200 }),
     installmentId: str(o.installmentId, "installmentId", where, { optional: true, max: 200 }),
     debtId: str(o.debtId, "debtId", where, { optional: true, max: 200 }),
+    usdId: str(o.usdId, "usdId", where, { optional: true, max: 200 }),
     createdAt: str(o.createdAt, "createdAt", where, { optional: true, max: 40 }) ?? `${o.date}T00:00:00.000Z`,
   };
 }
@@ -191,6 +194,22 @@ function debt(o: Obj, i: number): Debt {
   };
 }
 
+function dollarMove(o: Obj, i: number): DollarMove {
+  const where = `dólares #${i + 1}`;
+  return {
+    id: str(o.id, "id", where, { max: 200 })!,
+    date: dateStr(o.date, "date", where)!,
+    amount: amount(o.amount, "amount", where, { min: 1 }),
+    kind: oneOf(o.kind, ["in", "out"] as const, "kind", where),
+    note: str(o.note, "note", where, { optional: true, max: 500 }),
+    source: oneOf(o.source, ["manual", "buy", "sell"] as const, "source", where),
+    rate: o.rate === undefined || o.rate === null ? undefined : amount(o.rate, "rate", where, { min: 1, max: 10_000_000 }),
+    pesos: o.pesos === undefined || o.pesos === null ? undefined : amount(o.pesos, "pesos", where),
+    movementId: str(o.movementId, "movementId", where, { optional: true, max: 200 }),
+    createdAt: str(o.createdAt, "createdAt", where, { optional: true, max: 40 }) ?? new Date().toISOString(),
+  };
+}
+
 function category(o: Obj, i: number): Category {
   const where = `categoría #${i + 1}`;
   const color = str(o.color, "color", where, { max: 20 })!;
@@ -255,6 +274,13 @@ function settings(raw: unknown): Settings {
     hideAmounts: bool(o.hideAmounts, "hideAmounts", where, d.hideAmounts),
     startHidden: bool(o.startHidden, "startHidden", where, d.startHidden),
     tutorialDone: bool(o.tutorialDone, "tutorialDone", where, true),
+    usdQuote: isObj(o.usdQuote)
+      ? {
+          rate: amount(o.usdQuote.rate, "usdQuote.rate", where, { min: 1, max: 10_000_000 }),
+          date: dateStr(o.usdQuote.date, "usdQuote.date", where)!,
+          type: oneOf(o.usdQuote.type, ["oficial", "blue", "bolsa"] as const, "usdQuote.type", where),
+        }
+      : undefined,
     useDollars: bool(o.useDollars, "useDollars", where, d.useDollars),
     dollarType: pick(o.dollarType, d.dollarType, (v) => oneOf(v, ["oficial", "blue", "bolsa"] as const, "dollarType", where)),
     savingsMode: pick(o.savingsMode, d.savingsMode, (v) => oneOf(v, ["percent", "amount"] as const, "savingsMode", where)),
@@ -290,6 +316,8 @@ export function validateBackup(jsonContent: string): BackupResult {
     const workDays = list(o.workDays, "workDays").map(workDay);
     const dayLogs = list(o.dayLogs, "dayLogs").map(dayLog);
     const debts = list(o.debts, "debts").map(debt);
+    const dollars = list(o.dollars, "dollars").map(dollarMove);
+    uniqueIds(dollars, "dólares", "id");
 
     uniqueIds(movements, "movimientos", "id");
     uniqueIds(recurrings, "fijos", "id");
@@ -300,7 +328,7 @@ export function validateBackup(jsonContent: string): BackupResult {
 
     return {
       ok: true,
-      data: { version, settings: settings(o.settings), movements, recurrings, installments, workDays, dayLogs, debts },
+      data: { version, settings: settings(o.settings), movements, recurrings, installments, workDays, dayLogs, debts, dollars },
     };
   } catch (err) {
     if (err instanceof Invalid) return { ok: false, error: err.message };
@@ -316,6 +344,7 @@ export function summarizeBackup(d: ValidBackup): string {
     n(d.recurrings.length, "fijo", "fijos"),
     n(d.installments.length, "cuota", "cuotas"),
     n(d.debts.length, "deuda", "deudas"),
+    ...(d.dollars.length ? [n(d.dollars.length, "movimiento en dólares", "movimientos en dólares")] : []),
     n(d.workDays.length, "día trabajado editado", "días trabajados editados"),
   ].join(", ");
 }

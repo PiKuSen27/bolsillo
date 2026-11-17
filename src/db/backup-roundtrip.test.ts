@@ -29,11 +29,12 @@ async function seedFullDatabase() {
   await db.dayLogs.put({ date: "2026-11-09", logged: true, noExpenses: true });
   await db.debts.put({ id: "d2", kind: "i_owe", person: "Ana", amount: 300, currency: "USD", rate: 1500, rateDate: "2026-11-14", rateType: "blue", settled: false, createdAt: "2026-11-02T10:00:00.000Z" });
   await db.debts.put({ id: "d1", kind: "they_owe", person: "Juan", amount: 15000, dueDate: "2026-11-30", note: "Cena", settled: false, createdAt: "2026-11-01T10:00:00.000Z" });
+  await db.dollars.put({ id: "usd1", date: "2026-11-14", amount: 100, kind: "in", source: "buy", rate: 1500, pesos: 150000, movementId: "m1", note: "Ahorro", createdAt: "2026-11-14T10:00:00.000Z" });
   await db.remindersSent.put({ key: "daily_2026-11-10", sentAt: "2026-11-10T21:00:00.000Z" });
 }
 
 async function snapshot() {
-  const [settings, movements, recurrings, installments, workDays, dayLogs, debts] = await Promise.all([
+  const [settings, movements, recurrings, installments, workDays, dayLogs, debts, dollars] = await Promise.all([
     db.settings.get("main"),
     db.movements.orderBy("id").toArray(),
     db.recurrings.orderBy("id").toArray(),
@@ -41,8 +42,9 @@ async function snapshot() {
     db.workDays.orderBy("date").toArray(),
     db.dayLogs.orderBy("date").toArray(),
     db.debts.orderBy("id").toArray(),
+    db.dollars.orderBy("id").toArray(),
   ]);
-  return { settings, movements, recurrings, installments, workDays, dayLogs, debts };
+  return { settings, movements, recurrings, installments, workDays, dayLogs, debts, dollars };
 }
 
 async function wipe() {

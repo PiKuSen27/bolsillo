@@ -77,6 +77,7 @@ Bolsillo/
 │   │   ├── FixedAndInstallmentsPanel.tsx # Fijos (mensuales) y cuotas, con categoría
 │   │   ├── MovementsPanel.tsx      # Movimientos del período + buscador en todo el historial
 │   │   ├── OnboardingPanel.tsx     # Primer uso
+│   │   ├── DollarsPanel.tsx        # Historial de ahorros en dólares + formulario Compré / Vendí dólares
 │   │   ├── SummaryPanel.tsx        # Resumen del período: gastos por categoría (barras), ingresos, comparación y períodos anteriores (lib/summary.ts)
 │   │   ├── SettingsPanel.tsx       # Lista de secciones estilo iPhone (Apariencia, Sueldo, Avisos, Categorías, Seguridad, Dólar, Backup, Acerca de); cada una abre su pantalla con "‹ Ajustes" para volver y muestra un resumen de su estado
 │   │   └── WorkDaysPanel.tsx       # Modo variable: días del rango, montos, días libres, cambio de tarifa
@@ -94,7 +95,7 @@ Bolsillo/
 │   │   ├── search.ts               # Buscador de movimientos
 │   │   └── workdays.ts             # Modo variable: tarifa por fecha, valor de cada día, suma del rango
 │   ├── db/
-│   │   ├── db.ts                   # Esquema Dexie (versiones 1→8) y tablas
+│   │   ├── db.ts                   # Esquema Dexie (versiones 1→9) y tablas
 │   │   ├── repo.ts                 # Ajustes, días, deudas, exportar/importar
 │   │   └── backup-roundtrip.test.ts # Exportar → base vacía → importar = idéntica; archivo roto no toca nada
 │   ├── platform/index.ts       # isTauri(), ventana, tray, notificaciones, cerrar-al-tray
@@ -111,7 +112,7 @@ Bolsillo/
 └── package.json · vite.config.ts · vitest.config.ts · tsconfig*.json
 ```
 
-**Tablas de Dexie** (`BolsilloDB`, versión 8): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
+**Tablas de Dexie** (`BolsilloDB`, versión 9): `settings`, `movements`, `recurrings`, `installments`, `workDays`, `dayLogs`, `remindersSent`, `debts`, `dollars`, `vault`. Cualquier cambio de esquema va con una `this.version(n)` nueva en `db.ts`.
 
 ---
 
@@ -190,6 +191,8 @@ Bolsillo/
 * **Deudas en dólares** (solo con Ajustes → Dólar → "Usar dólares"): `Debt.currency = "USD"`, `amount` en dólares enteros, `rate` (pesos por dólar), `rateDate`, `rateType`. La cotización queda **fija** en la deuda; "Actualizar cotización" la reemplaza a mano. Totales por persona, "Saldar" y su movimiento van **en pesos** con la cotización guardada (`lib/dollars.ts`: `debtArs`). Pantalla: "USD 300 · ≈ $ 450.000 (a $ 1.500 del 14 nov)".
 * **Pagos parciales** (`Debt.payments[]`, en la moneda de la deuda): "Registrar pago" con monto y fecha (`applyPayment` no deja pagar más que el saldo; con saldo 0 queda saldada) y opción de anotarlo en el saldo en pesos (`registerDebtPayment`, con Deshacer). Todo usa el **saldo** (`debtBalance`): totales por persona, "Saldar" y su movimiento.
 * **Cotización**: única conexión a internet de la app, `https://dolarapi.com/v1/dolares/{oficial|blue|bolsa}` (venta, redondeada a pesos), **solo al tocar el botón** (`fetchQuote`, 8 s de espera máxima, mensaje "escribí la cotización a mano" si falla). Permitida en la CSP (`connect-src`) de `tauri.conf.json` y `public/_headers`. Componente `QuoteField` (manual o "Cotización del día").
+
+* **Pestaña Pesos | Dólares** del Hero (solo con "Usar dólares"): ahorros en dólares **separados del Disponible** (tabla `dollars`, tipo `DollarMove`, Dexie v9, cifrada como el resto e incluida en el backup). En Dólares la calculadora anota "+ Ingresar" / "− Sacar" (no deja sacar más de lo que hay, `checkUsdOut`), el Hero muestra "USD X ≈ $ Y a $ Z del …" con `settings.usdQuote` (fija; "Cotización del día" o "Escribirla"), e historial con editar (solo los manuales) y borrar con confirmación. **"Compré dólares"** = `DollarMove` in + gasto en pesos de categoría especial `compra_usd` ("Compra de dólares", `USD_BUY_CATEGORY`, no editable, se suma solo para mostrar); **"Vendí dólares"** = out + ingreso en pesos. Ambos se guardan juntos (`applyAtomically`) y se borran juntos (`usdId` / `movementId`). Lo demás no toca el Disponible ni el "Podés gastar".
 
 ### H. Recordatorios
 * Recordatorio diario: dispara a `reminderTime` **o en el primer chequeo posterior** del mismo día (si la app estaba cerrada), una sola vez (`remindersSent`). No avisa si ya se anotó algo ese día.

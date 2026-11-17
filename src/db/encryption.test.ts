@@ -29,7 +29,7 @@ import { validateBackup } from "../lib/backup";
 const PW = "caballo bateria grapa";
 const prefs = { lockAfterMs: 5000, wipeAfter10: false, theme: "light" as const };
 // Datos con textos y montos "raros" para poder buscarlos en lo guardado
-const SECRETS = ["PizzaSecreta", "987654", "RocioTest", "NetflixTest", "TeleTest", "1234567", "424242"];
+const SECRETS = ["AhorroSecreto", "PizzaSecreta", "987654", "RocioTest", "NetflixTest", "TeleTest", "1234567", "424242"];
 
 async function seed() {
   await updateSettings({ fixedSalary: 1234567, dailyRate: 424242, onboardingDone: true });
@@ -42,6 +42,7 @@ async function seed() {
   await store.workDays.put({ date: "2026-11-15", worked: true, amount: 55555 });
   await store.dayLogs.put({ date: "2026-11-09", logged: true, noExpenses: true });
   await store.debts.put({ id: "d1", kind: "they_owe", person: "RocioTest", amount: 15000, note: "Cena", settled: false, createdAt: "2026-11-01T10:00:00.000Z" });
+  await store.dollars.put({ id: "usd1", date: "2026-11-14", amount: 777, kind: "in", source: "manual", note: "AhorroSecreto", createdAt: "2026-11-14T10:00:00.000Z" });
   await store.remindersSent.put({ key: "due_alert_r1_2026-11-10_0", sentAt: "2026-11-10T21:00:00.000Z" });
 }
 

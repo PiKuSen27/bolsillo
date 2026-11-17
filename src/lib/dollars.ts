@@ -1,4 +1,4 @@
-import { Debt, DollarType } from "../types";
+import { Debt, DollarMove, DollarType, Movement } from "../types";
 import { formatLocalDate } from "./format";
 
 /** Único servicio externo de la app (dolarapi.com, gratuito). Solo se usa al tocar "Cotización del día". */
@@ -53,3 +53,55 @@ export const debtBalance = (d: Debt) => Math.max(0, d.amount - debtPaid(d));
 
 /** Saldo de la deuda en pesos. */
 export const debtArs = (d: Debt) => debtUnitsToArs(d, debtBalance(d));
+
+// ---------- ahorros en dólares ----------
+/** Categoría especial (no editable) del gasto en pesos al comprar dólares. */
+export const USD_BUY_CATEGORY = { id: "compra_usd", name: "Compra de dólares", icon: "DollarSign", color: "#0F766E" };
+
+export const usdBalance = (moves: DollarMove[]) => moves.reduce((s, m) => s + (m.kind === "in" ? m.amount : -m.amount), 0);
+
+/** Mensaje si se quieren sacar más dólares de los que hay; null si se puede. */
+export function checkUsdOut(balance: number, amount: number): string | null {
+  return amount > balance ? `No te alcanzan: tenés USD ${balance}.` : null;
+}
+
+interface Trade {
+  usd: number;
+  pesos?: number; // lo que se pagó o cobró
+  rate?: number; // o la cotización
+  date: string;
+  id: string;
+  note?: string;
+}
+
+function tradeValues(t: Trade) {
+  const usd = Math.round(t.usd);
+  if (!(usd > 0)) throw new Error("Escribí cuántos dólares");
+  const pesos = t.pesos && t.pesos > 0 ? Math.round(t.pesos) : t.rate && t.rate > 0 ? usdToArs(usd, t.rate) : 0;
+  if (!pesos) throw new Error("Escribí cuántos pesos o la cotización");
+  return { usd, pesos, rate: Math.round(pesos / usd) };
+}
+
+const nowIso = () => new Date().toISOString();
+
+/** "Compré dólares": suma USD a los ahorros y resta los pesos del Disponible como gasto. */
+export function buyDollars(t: Trade): { move: DollarMove; movement: Movement } {
+  const { usd, pesos, rate } = tradeValues(t);
+  const move: DollarMove = { id: `usd_${t.id}`, date: t.date, amount: usd, kind: "in", source: "buy", rate, pesos, note: t.note, movementId: `mov_usd_${t.id}`, createdAt: nowIso() };
+  const movement: Movement = {
+    id: `mov_usd_${t.id}`, date: t.date, amount: pesos, kind: "expense", categoryId: USD_BUY_CATEGORY.id,
+    note: `Compra de USD ${usd}`, source: "manual", usdId: move.id, createdAt: move.createdAt,
+  };
+  return { move, movement };
+}
+
+/** "Vendí dólares": resta USD de los ahorros y suma los pesos al Disponible como ingreso. */
+export function sellDollars(t: Trade): { move: DollarMove; movement: Movement } {
+  const { usd, pesos, rate } = tradeValues(t);
+  const move: DollarMove = { id: `usd_${t.id}`, date: t.date, amount: usd, kind: "out", source: "sell", rate, pesos, note: t.note, movementId: `mov_usd_${t.id}`, createdAt: nowIso() };
+  const movement: Movement = {
+    id: `mov_usd_${t.id}`, date: t.date, amount: pesos, kind: "income", categoryId: "income",
+    note: `Venta de USD ${usd}`, source: "manual", usdId: move.id, createdAt: move.createdAt,
+  };
+  return { move, movement };
+}

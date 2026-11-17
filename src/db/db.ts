@@ -2,6 +2,7 @@ import Dexie, { type Table } from "dexie";
 import {
   DayLog,
   Debt,
+  DollarMove,
   Installment,
   Movement,
   Recurring,
@@ -20,6 +21,7 @@ export class BolsilloDatabase extends Dexie {
   dayLogs!: Table<DayLog, string>;
   remindersSent!: Table<ReminderSent, string>;
   debts!: Table<Debt, string>;
+  dollars!: Table<DollarMove, string>;
   vault!: Table<VaultMeta, string>;
 
   constructor() {
@@ -113,6 +115,9 @@ export class BolsilloDatabase extends Dexie {
             if (typeof s.tutorialDone !== "boolean") s.tutorialDone = true;
           });
       });
+
+    // v9: ahorros en dólares (separados del Disponible). Tabla nueva, sin cambios en las demás.
+    this.version(9).stores({ dollars: "id" });
   }
 }
 

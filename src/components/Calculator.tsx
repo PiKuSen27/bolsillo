@@ -23,6 +23,8 @@ interface CalculatorProps {
   }) => void;
   /** Celular: el teclado crece para llenar el alto disponible (sin huecos) */
   fill?: boolean;
+  /** USD: anota en los ahorros en dólares (− Sacar / + Ingresar), sin categorías */
+  currency?: "ARS" | "USD";
 }
 
 export function Calculator({
@@ -32,6 +34,7 @@ export function Calculator({
   isLight,
   onSaveMovement,
   fill,
+  currency = "ARS",
 }: CalculatorProps) {
   // Store raw expression without decorative dots
   const [expression, setExpression] = useState("");
@@ -233,7 +236,7 @@ export function Calculator({
                 isLight ? "text-[#16A34A]" : "text-[#22C55E]"
               }`}
             >
-              = {formatCurrency(evaluatedValue)}
+              = {currency === "USD" ? `USD ${formatCurrency(evaluatedValue).replace("$ ", "")}` : formatCurrency(evaluatedValue)}
             </span>
           )}
         </div>
@@ -286,6 +289,11 @@ export function Calculator({
       </div>
 
       {/* Categories Chips with sliding layoutId indicator */}
+      {currency === "USD" ? (
+        <div className={`py-1.5 text-[11px] font-extrabold text-center ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
+          Ahorros en dólares: lo que anotes acá no cambia tu Disponible
+        </div>
+      ) : (
       <HScroll className={isLight ? "[--hscroll-bg:#F4F4F5]" : "[--hscroll-bg:#0D0D0E]"}>
         {categories.map((cat) => {
           const isSelected = cat.id === selectedCategoryId;
@@ -325,6 +333,7 @@ export function Calculator({
           );
         })}
       </HScroll>
+      )}
 
       {/* Numpad Grid with elastic press animation */}
       <div className={fill ? "flex-1 min-h-0 grid grid-cols-4 grid-rows-[repeat(4,minmax(2rem,1fr))] gap-1.5" : "grid grid-cols-4 gap-1.5"}>
@@ -365,7 +374,7 @@ export function Calculator({
               : "bg-[#EF4444] hover:bg-[#DC2626] text-white shadow-[#EF4444]/20"
           }`}
         >
-          <span>− Gasto</span>
+          <span>{currency === "USD" ? "− Sacar" : "− Gasto"}</span>
         </motion.button>
 
         <motion.button
@@ -378,7 +387,7 @@ export function Calculator({
               : "bg-[#22C55E] hover:bg-[#16A34A] text-black shadow-[#22C55E]/20"
           }`}
         >
-          <span>+ Ingreso</span>
+          <span>{currency === "USD" ? "+ Ingresar" : "+ Ingreso"}</span>
         </motion.button>
       </div>
     </div>

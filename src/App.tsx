@@ -26,6 +26,7 @@ import {
 import {
   DayLog,
   Debt,
+  DollarMove,
   Installment,
   Movement,
   PeriodInfo,
@@ -34,7 +35,7 @@ import {
   WINDOW_ZOOM_VALUES,
   WorkDay,
 } from "./types";
-import { getVaultPrefs, loadVaultMeta, lock as lockStore, lockMode, store, updateVaultPrefs } from "./db/store";
+import { applyAtomically, getVaultPrefs, loadVaultMeta, lock as lockStore, lockMode, store, updateVaultPrefs } from "./db/store";
 import { LockScreen } from "./components/LockScreen";
 import { Tour, TourStep } from "./components/Tour";
 import { flushSync } from "react-dom";
@@ -87,6 +88,8 @@ import { backupStatus } from "./lib/backupReminder";
 import { whatsNewToShow } from "./lib/whatsNew";
 import { pendingCommitments, savingsAmount, spendingPlan } from "./lib/spending";
 import { limitWarning } from "./lib/limits";
+import { buyDollars, checkUsdOut, sellDollars, USD_BUY_CATEGORY, usdBalance } from "./lib/dollars";
+import { DollarsPanel, DollarTradeForm } from "./panels/DollarsPanel";
 import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
 
@@ -99,19 +102,23 @@ export default function App() {
   const [workDays, setWorkDays] = useState<WorkDay[]>([]);
   const [dayLogs, setDayLogs] = useState<DayLog[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [dollarMoves, setDollarMoves] = useState<DollarMove[]>([]);
+  // Pestaña de la tarjeta principal: Pesos (Disponible) o Dólares (ahorros, solo con "Usar dólares")
+  const [heroTab, setHeroTab] = useState<"ARS" | "USD">("ARS");
+  const [tradeKind, setTradeKind] = useState<"buy" | "sell">("buy");
 
   const [todayStr, setTodayStr] = useState(() => formatLocalDate(new Date()));
   const [selectedDateStr, setSelectedDateStr] = useState(() => formatLocalDate(new Date()));
 
   // Active sliding sheet
   const [activeSheet, setActiveSheet] = useState<
-    null | "movements" | "fixed" | "debts" | "income" | "calendar" | "settings" | "summary"
+    null | "movements" | "fixed" | "debts" | "income" | "calendar" | "settings" | "summary" | "dollars" | "trade"
   >(null);
 
   // Aviso con "Deshacer" (guardar, saldar, borrar…): cada acción trae su propia forma de deshacerse
-  const [undoToast, setUndoToast] = useState<{ message: string; undo: () => Promise<void>; warning?: string } | null>(null);
+  const [undoToast, setUndoToast] = useState<{ message: string; undo: (() => Promise<void>) | null; warning?: string } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showUndo = (message: string, undo: () => Promise<void>, ms = 6000, warning?: string) => {
+  const showUndo = (message: string, undo: (() => Promise<void>) | null, ms = 6000, warning?: string) => {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndoToast({ message, undo, warning });
     undoTimerRef.current = setTimeout(() => setUndoToast(null), ms);
@@ -145,13 +152,14 @@ export default function App() {
     setSettings(s);
     setAmountsHiddenState((cur) => (cur === null ? s.startHidden || s.hideAmounts : cur));
 
-    const [allM, allR, allI, allW, allD, allDebts] = await Promise.all([
+    const [allM, allR, allI, allW, allD, allDebts, allUsd] = await Promise.all([
       store.movements.toArray().then((ms) => ms.sort((a, b) => b.date.localeCompare(a.date))),
       store.recurrings.toArray(),
       store.installments.toArray(),
       store.workDays.toArray(),
       store.dayLogs.toArray(),
       store.debts.toArray(),
+      store.dollars.toArray().then((ds) => ds.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))),
     ]);
 
     // Automatic migration: Any income movement with categoryId !== 'income' gets converted to 'income'
@@ -169,6 +177,7 @@ export default function App() {
     setWorkDays(allW);
     setDayLogs(allD);
     setDebts(allDebts);
+    setDollarMoves(allUsd);
   }, []);
 
   // Contraseña y cifrado: "checking" al arrancar, "off" sin cifrado, "locked" / "unlocked" con cifrado
@@ -195,6 +204,7 @@ export default function App() {
     setWorkDays([]);
     setDayLogs([]);
     setDebts([]);
+    setDollarMoves([]);
     setActiveSheet(null);
     setPendingDelete(null);
     setUndoToast(null);
@@ -468,6 +478,28 @@ export default function App() {
     note?: string;
     date: string;
   }) => {
+    // Pestaña Dólares: la calculadora anota en los ahorros en dólares (no toca el Disponible)
+    if (usdMode) {
+      const amount = Math.round(params.amount);
+      const kind = params.kind === "income" ? "in" : "out";
+      if (kind === "out") {
+        const err = checkUsdOut(usdBalance(dollarMoves), amount);
+        if (err) return showUndo(err, null, 4000);
+      }
+      const move: DollarMove = {
+        id: `usd_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        date: params.date,
+        amount,
+        kind,
+        note: params.note,
+        source: "manual",
+        createdAt: new Date().toISOString(),
+      };
+      await store.dollars.put(move);
+      await loadData();
+      showUndo(`Guardado: ${kind === "in" ? "+" : "−"} USD ${formatNumberWithDots(amount)}`, () => store.dollars.delete(move.id), 4000);
+      return;
+    }
     const newMovement: Movement = {
       id: `mov_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       date: params.date,
@@ -514,6 +546,7 @@ export default function App() {
     if (!undoToast) return;
     const { undo } = undoToast;
     setUndoToast(null);
+    if (!undo) return;
     await undo();
     await loadData();
   };
@@ -640,6 +673,8 @@ export default function App() {
 
   const handleDeleteMovement = (id: string) => {
     const m = movements.find((x) => x.id === id);
+    const linked = m?.usdId ? dollarMoves.find((d) => d.id === m.usdId) : undefined;
+    if (m && linked) return handleDeleteDollarMove(linked);
     const cat =
       m?.kind === "income" ? "Ingreso de plata" : settings?.categories.find((c) => c.id === m?.categoryId)?.name ?? "Otros";
     confirmDelete(
@@ -652,6 +687,57 @@ export default function App() {
       (x) => store.movements.put(x),
       "Movimiento borrado"
     );
+  };
+
+  /** Borra un movimiento en dólares; si es compra/venta, también su movimiento en pesos. */
+  const handleDeleteDollarMove = (d: DollarMove) => {
+    const linked = d.movementId ? movements.find((m) => m.id === d.movementId) : undefined;
+    const what = d.source === "buy" ? "esta compra de dólares" : d.source === "sell" ? "esta venta de dólares" : "este movimiento en dólares";
+    confirmDelete(
+      { d, linked },
+      `¿Borrar ${what}?`,
+      `${d.kind === "in" ? "+" : "−"} ${formatUsd(d.amount)} · ${formatShortDate(d.date)}${
+        linked ? ` · también se borra el ${linked.kind === "expense" ? "gasto" : "ingreso"} de ${formatCurrency(linked.amount)} en pesos` : ""
+      }`,
+      () =>
+        applyAtomically([
+          { type: "delete", table: "dollars", keys: [d.id] },
+          { type: "delete", table: "movements", keys: linked ? [linked.id] : [] },
+        ]),
+      (x) =>
+        applyAtomically([
+          { type: "put", table: "dollars", recs: [x.d] },
+          { type: "put", table: "movements", recs: x.linked ? [x.linked] : [] },
+        ]),
+      "Borrado"
+    );
+  };
+
+  const handleTrade = async (t: { usd: number; pesos?: number; rate?: number; date: string; note?: string }): Promise<string | null> => {
+    try {
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      if (tradeKind === "sell") {
+        const err = checkUsdOut(usdBalance(dollarMoves), Math.round(t.usd));
+        if (err) return err;
+      }
+      const { move, movement } = (tradeKind === "buy" ? buyDollars : sellDollars)({ ...t, id });
+      await applyAtomically([
+        { type: "put", table: "dollars", recs: [move] },
+        { type: "put", table: "movements", recs: [movement] },
+      ]);
+      await markDayAsLogged(t.date);
+      await loadData();
+      setActiveSheet(null);
+      showUndo(tradeKind === "buy" ? `Compraste ${formatUsd(move.amount)}` : `Vendiste ${formatUsd(move.amount)}`, () =>
+        applyAtomically([
+          { type: "delete", table: "dollars", keys: [move.id] },
+          { type: "delete", table: "movements", keys: [movement.id] },
+        ])
+      );
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
   };
 
   const handleUpdateMovement = async (m: Movement) => {
@@ -710,6 +796,24 @@ export default function App() {
   }
 
   const isLight = settings.theme === "light";
+  const usdMode = settings.useDollars && heroTab === "USD";
+  // Para mostrar: las categorías del usuario más la especial "Compra de dólares"
+  const displayCategories = [...settings.categories, USD_BUY_CATEGORY];
+  const dollarsHero = settings.useDollars
+    ? {
+        tab: heroTab,
+        onTab: setHeroTab,
+        balance: usdBalance(dollarMoves),
+        quote: settings.usdQuote,
+        dollarType: settings.dollarType,
+        onQuote: (q: { rate: number; date: string; type: typeof settings.dollarType }) => handleUpdateSettings({ usdQuote: q }),
+        onOpenHistory: () => setActiveSheet("dollars"),
+        onTrade: (k: "buy" | "sell") => {
+          setTradeKind(k);
+          setActiveSheet("trade");
+        },
+      }
+    : undefined;
   // Antes de dibujar los hijos: todos los formatCurrency de esta pasada usan el estado del ojo
   setAmountsHidden(!!amountsHidden);
   const toggleAmountsHidden = () => {
@@ -846,6 +950,7 @@ export default function App() {
                 onOpenSummary={() => setActiveSheet("summary")}
                 amountsHidden={!!amountsHidden}
                 onToggleHidden={toggleAmountsHidden}
+                dollars={dollarsHero}
               />
 
               {/* Horizontal Days Strip (Hoy + 3 días + '+ Días') */}
@@ -855,7 +960,7 @@ export default function App() {
                 onSelectDate={(date) => setSelectedDateStr(date)}
                 onMarkNoExpenses={handleMarkNoExpenses}
                 movements={movements}
-                categories={settings.categories}
+                categories={displayCategories}
                 dayLogs={dayLogs}
                 isLight={isLight}
                 onDeleteMovement={handleDeleteMovement}
@@ -871,6 +976,7 @@ export default function App() {
                   onChangeDate={(date) => setSelectedDateStr(date)}
                   isLight={isLight}
                   onSaveMovement={handleSaveMovement}
+                  currency={usdMode ? "USD" : "ARS"}
                 />
               </div>
             </div>
@@ -997,6 +1103,7 @@ export default function App() {
                 onOpenSummary={() => setActiveSheet("summary")}
               amountsHidden={!!amountsHidden}
               onToggleHidden={toggleAmountsHidden}
+              dollars={dollarsHero}
             />
 
             {/* Bottom Layout: 3 Columns (Days Strip, Calculator, Right Widget) */}
@@ -1010,7 +1117,7 @@ export default function App() {
                 onOpenCalendar={() => setActiveSheet("calendar")}
                 onMarkNoExpenses={handleMarkNoExpenses}
                 movements={movements}
-                categories={settings.categories}
+                categories={displayCategories}
                 dayLogs={dayLogs}
                 settings={settings}
                 workDays={workDays}
@@ -1026,6 +1133,7 @@ export default function App() {
                 onChangeDate={(date) => setSelectedDateStr(date)}
                 isLight={isLight}
                 onSaveMovement={handleSaveMovement}
+                currency={usdMode ? "USD" : "ARS"}
               />
 
               {/* Columna Derecha: Próximos Vencimientos y Deudas */}
@@ -1153,6 +1261,7 @@ export default function App() {
                   </span>
                 )}
               </span>
+              {undoToast.undo && (
               <button
                 type="button"
                 onClick={handleUndoRecent}
@@ -1161,6 +1270,7 @@ export default function App() {
                 <RotateCcw size={11} strokeWidth={3} />
                 <span>Deshacer</span>
               </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1177,7 +1287,7 @@ export default function App() {
         >
           <MovementsPanel
             movements={movements}
-            categories={settings.categories}
+            categories={displayCategories}
             periodStart={periodInfo.startDate}
             periodEnd={periodInfo.endDate}
             isLight={isLight}
@@ -1259,6 +1369,42 @@ export default function App() {
         </Sheet>
 
         <Sheet
+          isOpen={activeSheet === "dollars"}
+          onClose={() => setActiveSheet(null)}
+          title="Dólares"
+          subtitle="Tus ahorros en dólares, separados del Disponible"
+          isLight={isLight}
+        >
+          <DollarsPanel
+            moves={dollarMoves}
+            isLight={isLight}
+            onUpdate={async (d) => {
+              await store.dollars.put(d);
+              await loadData();
+            }}
+            onDelete={handleDeleteDollarMove}
+          />
+        </Sheet>
+
+        <Sheet
+          isOpen={activeSheet === "trade"}
+          onClose={() => setActiveSheet(null)}
+          title={tradeKind === "buy" ? "Compré dólares" : "Vendí dólares"}
+          subtitle={tradeKind === "buy" ? "Los pesos salen de tu Disponible" : "Los pesos entran a tu Disponible"}
+          isLight={isLight}
+        >
+          <DollarTradeForm
+            key={tradeKind}
+            kind={tradeKind}
+            defaultDate={selectedDateStr}
+            dollarType={settings.dollarType}
+            quote={settings.usdQuote}
+            isLight={isLight}
+            onSubmit={handleTrade}
+          />
+        </Sheet>
+
+        <Sheet
           isOpen={activeSheet === "summary"}
           onClose={() => setActiveSheet(null)}
           title="Resumen"
@@ -1268,7 +1414,7 @@ export default function App() {
           <SummaryPanel
             settings={settings}
             movements={movements}
-            categories={settings.categories}
+            categories={displayCategories}
             workDays={workDays}
             todayStr={todayStr}
             isLight={isLight}
@@ -1284,7 +1430,7 @@ export default function App() {
         >
           <CalendarPanel
             movements={movements}
-            categories={settings.categories}
+            categories={displayCategories}
             dayLogs={dayLogs}
             todayStr={todayStr}
             selectedDateStr={selectedDateStr}

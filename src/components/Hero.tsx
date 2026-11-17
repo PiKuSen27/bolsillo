@@ -1,10 +1,12 @@
 import { motion } from "motion/react";
+import { DOLLAR_LABELS, fetchQuote, Quote, usdToArs } from "../lib/dollars";
+import { DollarType } from "../types";
 import { TrendingUp, TrendingDown, ChevronRight, CalendarDays, Eye, EyeOff, PieChart } from "lucide-react";
 import { BalanceSummary } from "../lib/balance";
 import type { spendingPlan } from "../lib/spending";
 import { useState } from "react";
 import { AnimatedNumber } from "./AnimatedNumber";
-import { formatCurrency } from "../lib/format";
+import { formatAmountInput, formatCurrency, formatLocalDate, formatShortDate, formatUsd } from "../lib/format";
 
 interface HeroProps {
   summary: BalanceSummary;
@@ -17,9 +19,24 @@ interface HeroProps {
   onOpenSummary?: () => void;
   amountsHidden?: boolean;
   onToggleHidden?: () => void; // el ojo: tapa todos los montos de la app
+  /** Pestaña Dólares (solo con "Usar dólares"): ahorros separados del Disponible */
+  dollars?: {
+    tab: "ARS" | "USD";
+    onTab: (t: "ARS" | "USD") => void;
+    balance: number;
+    quote?: Quote;
+    dollarType: DollarType;
+    onQuote: (q: Quote) => void;
+    onOpenHistory: () => void;
+    onTrade: (kind: "buy" | "sell") => void;
+  };
 }
 
-export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, onOpenSummary, amountsHidden, onToggleHidden }: HeroProps) {
+export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, onOpenMovements, onOpenWorkDays, onOpenSummary, amountsHidden, onToggleHidden, dollars }: HeroProps) {
+  const usd = dollars?.tab === "USD";
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteMsg, setQuoteMsg] = useState<string | null>(null);
+  const [manualRate, setManualRate] = useState<string | null>(null);
   const isPositive = summary.available >= 0;
   const [explain, setExplain] = useState(false);
 
@@ -28,9 +45,9 @@ export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, o
       data-tour="hero"
       role="button"
       tabIndex={0}
-      onClick={onOpenMovements}
+      onClick={usd ? dollars!.onOpenHistory : onOpenMovements}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onOpenMovements();
+        if (e.key === "Enter" || e.key === " ") (usd ? dollars!.onOpenHistory : onOpenMovements)();
       }}
       // Sin escala ni cambio de fondo al tocar: en WebKitGTK el transform dejaba el texto borroso
       className={`w-full rounded-2xl p-3.5 flex flex-col gap-2 [@media(max-width:479px)_and_(max-height:700px)]:p-3 [@media(max-width:479px)_and_(max-height:700px)]:gap-1 cursor-pointer relative select-none border ${
@@ -39,6 +56,135 @@ export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, o
           : "bg-[#0D0D0E] border-[#262626] text-white"
       }`}
     >
+      {dollars && (
+        <div
+          role="tablist"
+          aria-label="Moneda"
+          onClick={(e) => e.stopPropagation()}
+          className={`self-start relative flex p-0.5 rounded-xl border ${isLight ? "bg-zinc-200/70 border-zinc-300" : "bg-black border-[#262626]"}`}
+        >
+          {(["ARS", "USD"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={dollars.tab === t}
+              onClick={() => dollars.onTab(t)}
+              className="relative px-3 py-0.5 text-[11px] font-extrabold cursor-pointer"
+            >
+              {dollars.tab === t && (
+                <motion.span
+                  layoutId="heroCurrencyTab"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  className={`absolute inset-0 rounded-lg ${isLight ? "bg-white shadow-xs" : "bg-zinc-800"}`}
+                />
+              )}
+              <span className={`relative ${dollars.tab === t ? "" : isLight ? "text-zinc-600" : "text-zinc-400"}`}>{t === "ARS" ? "Pesos" : "Dólares"}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {usd && dollars ? (
+        <motion.div
+          key="usd"
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          className="flex flex-col gap-2"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[11px] font-extrabold tracking-wider uppercase ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>Ahorros en dólares</span>
+            {onToggleHidden && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHidden();
+              }}
+              aria-label={amountsHidden ? "Mostrar montos" : "Ocultar montos"}
+              aria-pressed={!!amountsHidden}
+              className={`p-1 -m-1 rounded-md cursor-pointer ${
+                isLight ? "text-zinc-500 hover:text-black hover:bg-zinc-200" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
+            >
+              {amountsHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          )}
+          </div>
+          <span className="text-3xl font-extrabold tracking-tight tabular-numbers">{formatUsd(dollars.balance)}</span>
+          <span className={`text-[11px] font-bold tabular-numbers ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+            {dollars.quote
+              ? `≈ ${formatCurrency(usdToArs(dollars.balance, dollars.quote.rate))} a ${formatCurrency(dollars.quote.rate)} del ${formatShortDate(dollars.quote.date)} (${DOLLAR_LABELS[dollars.quote.type]})`
+              : "Sin cotización: tocá \"Cotización del día\" o escribila"}
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              disabled={quoteBusy}
+              onClick={async () => {
+                setQuoteBusy(true);
+                setQuoteMsg(null);
+                try {
+                  dollars.onQuote(await fetchQuote(dollars.dollarType));
+                } catch (e) {
+                  setQuoteMsg(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setQuoteBusy(false);
+                }
+              }}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border cursor-pointer disabled:opacity-60 ${isLight ? "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"}`}
+            >
+              {quoteBusy ? "Buscando…" : "Cotización del día"}
+            </button>
+            {manualRate === null ? (
+              <button type="button" onClick={() => setManualRate("")} className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border cursor-pointer disabled:opacity-60 ${isLight ? "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"}`}>
+                Escribirla
+              </button>
+            ) : (
+              <span className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  inputMode="numeric"
+                  aria-label="Cotización en pesos por dólar"
+                  placeholder="$ por dólar"
+                  value={manualRate}
+                  onChange={(e) => setManualRate(formatAmountInput(e.target.value))}
+                  className={`w-24 px-2 py-0.5 rounded-lg border text-[11px] font-bold focus:outline-none ${isLight ? "bg-white border-zinc-300" : "bg-zinc-900 border-zinc-700"}`}
+                />
+                <button
+                  type="button"
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border cursor-pointer disabled:opacity-60 ${isLight ? "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"}`}
+                  onClick={() => {
+                    const rate = parseInt(manualRate.replace(/\./g, ""), 10) || 0;
+                    if (rate) dollars.onQuote({ rate, date: formatLocalDate(new Date()), type: dollars.dollarType });
+                    setManualRate(null);
+                  }}
+                >
+                  Listo
+                </button>
+              </span>
+            )}
+          </div>
+          {quoteMsg && (
+            <span role="alert" className="text-[11px] font-bold text-[#DC2626]">
+              {quoteMsg}
+            </span>
+          )}
+          <div className={`pt-1.5 flex flex-wrap gap-1.5 border-t ${isLight ? "border-zinc-200" : "border-[#202022]"}`} onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => dollars.onTrade("buy")} className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border cursor-pointer disabled:opacity-60 ${isLight ? "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"}`}>Compré dólares</button>
+            <button type="button" onClick={() => dollars.onTrade("sell")} className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border cursor-pointer disabled:opacity-60 ${isLight ? "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"}`}>Vendí dólares</button>
+            <button type="button" onClick={dollars.onOpenHistory} className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border cursor-pointer disabled:opacity-60 ${isLight ? "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"}`}>Historial</button>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="ars"
+          initial={dollars ? { opacity: 0, x: -24 } : false}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          className="flex flex-col gap-2 [@media(max-width:479px)_and_(max-height:700px)]:gap-1"
+        >
       {/* Top row: Label & Today delta */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -255,6 +401,8 @@ export function Hero({ summary, plan, previousBalance, daysRemaining, isLight, o
           {plan.savings > 0 && <> − ahorro {formatCurrency(plan.savings)}</>} = {formatCurrency(Math.max(0, plan.spendable))}, dividido{" "}
           {Math.max(1, daysRemaining)} {Math.max(1, daysRemaining) === 1 ? "día" : "días"} = {formatCurrency(plan.perDay)} por día.
         </p>
+      )}
+        </motion.div>
       )}
     </div>
   );

@@ -45,3 +45,42 @@ describe("dollars.ts - Cotización y deudas en dólares", () => {
     expect(g.net).toBe(500000);
   });
 });
+
+import { buyDollars, sellDollars, usdBalance, checkUsdOut } from "./dollars";
+import { DollarMove } from "../types";
+
+const move = (id: string, kind: DollarMove["kind"], amount: number): DollarMove => ({
+  id, kind, amount, date: "2026-11-10", source: "manual", createdAt: "2026-11-10T10:00:00Z",
+});
+
+describe("dollars.ts - Ahorros en dólares", () => {
+  it("El saldo en dólares es lo ingresado menos lo sacado", () => {
+    expect(usdBalance([move("a", "in", 50), move("b", "in", 40), move("c", "out", 20)])).toBe(70);
+    expect(usdBalance([])).toBe(0);
+  });
+
+  it("No se pueden sacar más dólares de los que hay", () => {
+    expect(checkUsdOut(70, 70)).toBeNull();
+    expect(checkUsdOut(70, 71)).toMatch(/70/);
+  });
+
+  it("Compré dólares: suma USD y resta los pesos del Disponible como gasto 'Compra de dólares'", () => {
+    const r = buyDollars({ usd: 100, pesos: 150000, date: "2026-11-14", id: "x" });
+    expect(r.move).toMatchObject({ kind: "in", amount: 100, source: "buy", rate: 1500, pesos: 150000, date: "2026-11-14" });
+    expect(r.movement).toMatchObject({ kind: "expense", amount: 150000, categoryId: "compra_usd", date: "2026-11-14", usdId: r.move.id });
+    expect(r.move.movementId).toBe(r.movement.id);
+    // con la cotización en vez de los pesos
+    expect(buyDollars({ usd: 300, rate: 1500, date: "2026-11-14", id: "y" }).movement.amount).toBe(450000);
+  });
+
+  it("Vendí dólares: resta USD y suma los pesos como ingreso", () => {
+    const r = sellDollars({ usd: 50, rate: 1600, date: "2026-11-14", id: "z" });
+    expect(r.move).toMatchObject({ kind: "out", amount: 50, source: "sell", pesos: 80000, rate: 1600 });
+    expect(r.movement).toMatchObject({ kind: "income", amount: 80000, categoryId: "income" });
+  });
+
+  it("Compra o venta sin pesos ni cotización, o en cero, se rechaza", () => {
+    expect(() => buyDollars({ usd: 100, date: "2026-11-14", id: "x" })).toThrow();
+    expect(() => buyDollars({ usd: 0, pesos: 10, date: "2026-11-14", id: "x" })).toThrow();
+  });
+});
