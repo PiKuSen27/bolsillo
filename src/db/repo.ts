@@ -164,6 +164,15 @@ export async function registerDebtPayment(
   };
 }
 
+/** Cobros automáticos de fijos y cuotas: gastos y fijos/cuotas actualizados se guardan todo o nada. */
+export async function saveAutoCharges(r: { movementsToAdd: Movement[]; updatedRecurrings: Recurring[]; updatedInstallments: Installment[] }) {
+  await applyAtomically([
+    { type: "put", table: "movements", recs: r.movementsToAdd },
+    { type: "put", table: "recurrings", recs: r.updatedRecurrings },
+    { type: "put", table: "installments", recs: r.updatedInstallments },
+  ]);
+}
+
 export async function deleteDebt(id: string): Promise<void> {
   await store.debts.delete(id);
 }

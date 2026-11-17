@@ -46,6 +46,7 @@ import {
   markDayAsLogged,
   markDayAsNoExpenses,
   settleDebts,
+  saveAutoCharges,
   registerDebtPayment,
   setWorkDay,
   resetWorkDay,
@@ -163,11 +164,10 @@ export default function App() {
     ]);
 
     // Automatic migration: Any income movement with categoryId !== 'income' gets converted to 'income'
-    for (const m of allM) {
-      if (m.kind === "income" && m.categoryId !== "income") {
-        m.categoryId = "income";
-        await store.movements.put(m);
-      }
+    const fixed = allM.filter((m) => m.kind === "income" && m.categoryId !== "income");
+    if (fixed.length) {
+      fixed.forEach((m) => (m.categoryId = "income"));
+      await store.movements.bulkPut(fixed); // una sola escritura
     }
 
     if (gen !== lockGen.current) return;
@@ -320,15 +320,7 @@ export default function App() {
       });
 
       if (autoResult.movementsToAdd.length > 0) {
-        for (const mov of autoResult.movementsToAdd) {
-          await store.movements.put(mov);
-        }
-        for (const rec of autoResult.updatedRecurrings) {
-          await store.recurrings.put(rec);
-        }
-        for (const inst of autoResult.updatedInstallments) {
-          await store.installments.put(inst);
-        }
+        await saveAutoCharges(autoResult); // todo o nada: gasto y fijo/cuota juntos
         await loadData();
       }
 
