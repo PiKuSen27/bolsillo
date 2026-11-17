@@ -309,7 +309,10 @@ async function enableNow(password: string, recoveryCode: string, prefs: VaultPre
 
 /** Desactiva el cifrado: pide la contraseña, descifra todo y lo guarda en claro (todo o nada). */
 export function disableEncryption(password: string): Promise<void> {
-  return exclusive(() => disableNow(password));
+  return exclusive(async () => {
+    await settingsGuard(() => checkPasswordNow(password));
+    return disableNow(password);
+  });
 }
 
 async function disableNow(password: string): Promise<void> {
@@ -418,29 +421,81 @@ export function enablePin(pin: string, prefs: VaultPrefs): Promise<void> {
   });
 }
 
+// ---------- clave pedida desde Ajustes (con la app ya abierta) ----------
+// Cuenta intentos con la misma espera creciente que la pantalla de bloqueo, pero NUNCA borra los datos.
+// Vive en memoria: cerrar o recargar la app vuelve a pedir la clave en la pantalla de bloqueo, que sí guarda la cuenta.
+let settingsFailures = 0;
+let settingsLockoutUntil = 0;
+
+export class SettingsLockoutError extends Error {
+  constructor(public until: number) {
+    const s = Math.ceil((until - Date.now()) / 1000);
+    super(`Demasiados intentos. Esperá ${s >= 60 ? `${Math.ceil(s / 60)} min` : `${s} s`} para volver a probar.`);
+    this.name = "SettingsLockoutError";
+  }
+}
+
+/** Corre check() en la fila de intentos; si lanza WrongSecretError suma un fallo y arma la espera. */
+function settingsGuard<T>(check: () => Promise<T>): Promise<T> {
+  const run = attemptChain.catch(() => {}).then(async () => {
+    if (settingsLockoutUntil > Date.now()) throw new SettingsLockoutError(settingsLockoutUntil);
+    try {
+      const r = await check();
+      settingsFailures = 0;
+      settingsLockoutUntil = 0;
+      return r;
+    } catch (e) {
+      if (e instanceof WrongSecretError) {
+        settingsFailures++;
+        const delay = lockoutDelayMs(settingsFailures);
+        settingsLockoutUntil = delay ? Date.now() + delay : 0;
+      }
+      throw e;
+    }
+  });
+  attemptChain = run;
+  return run;
+}
+
+const checkPinNow = async (pin: string) => {
+  if (!pinMeta || !(await verifyPin(pinMeta, pin))) throw new WrongSecretError();
+};
+const checkPasswordNow = async (password: string) => {
+  if (!meta) throw new WrongSecretError();
+  await unlockWithPassword(meta, password); // lanza WrongSecretError si no es; no guarda ni desbloquea nada
+};
+/** true si es la correcta, false si no; SettingsLockoutError si hay que esperar. Sin otros efectos. */
+const asBoolean = (p: Promise<void>) =>
+  p.then(
+    () => true,
+    (e) => {
+      if (e instanceof WrongSecretError) return false;
+      throw e;
+    }
+  );
+
 /** Quita el bloqueo simple: pide el PIN actual. */
 export async function disablePin(pin: string): Promise<void> {
   await loadVaultMeta();
-  if (!pinMeta || !(await verifyPin(pinMeta, pin))) throw new WrongSecretError();
+  await settingsGuard(() => checkPinNow(pin));
   await db.table("vault").delete("pin");
   pinMeta = null;
   pinUnlocked = false;
 }
 
 export async function changePin(oldPin: string, newPin: string): Promise<void> {
-  if (!pinMeta || !(await verifyPin(pinMeta, oldPin))) throw new WrongSecretError();
-  await savePin({ ...(await createPin(newPin, pinMeta.prefs)) });
+  await settingsGuard(() => checkPinNow(oldPin));
+  await savePin({ ...(await createPin(newPin, pinMeta!.prefs)) });
 }
 
-/** Comprueba el PIN sin contar intentos (para pasar de Simple a Cifrada). */
-export async function verifyCurrentPin(pin: string): Promise<boolean> {
-  return !!pinMeta && (await verifyPin(pinMeta, pin));
-}
+/** Comprueba el PIN actual desde Ajustes (cuenta intentos, sin otros efectos). */
+export const verifyCurrentPin = (pin: string) => asBoolean(settingsGuard(() => checkPinNow(pin)));
 
 /** De Cifrada a Simple: pide la contraseña, descifra todo y deja el PIN nuevo. */
 export function switchToPin(password: string, pin: string, prefs: VaultPrefs): Promise<void> {
   return exclusive(async () => {
     const pinRecord = await createPin(pin, prefs);
+    await settingsGuard(() => checkPasswordNow(password));
     await disableNow(password);
     await savePin(pinRecord);
     pinUnlocked = true;
@@ -454,21 +509,13 @@ export const recover = (code: string, newPassword: string) =>
     return { next: r.meta, apply: () => (keys = r.keys) };
   });
 
-/** Comprueba la contraseña actual sin tocar nada (para exportar el backup cifrado). */
-export async function verifyPassword(password: string): Promise<boolean> {
-  if (!meta) return false;
-  try {
-    await unlockWithPassword(meta, password);
-    return true;
-  } catch (e) {
-    if (e instanceof WrongSecretError) return false;
-    throw e;
-  }
-}
+/** Comprueba la contraseña desde Ajustes (exportar backup): cuenta intentos, sin otros efectos. */
+export const verifyPassword = (password: string) => (meta ? asBoolean(settingsGuard(() => checkPasswordNow(password))) : Promise.resolve(false));
 
 export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
   if (!meta) throw new Error("El cifrado no está activo");
-  await saveMeta(await changeVaultPassword(meta, oldPassword, newPassword));
+  const next = await settingsGuard(() => changeVaultPassword(meta!, oldPassword, newPassword));
+  await saveMeta(next);
 }
 
 export async function updateVaultPrefs(partial: Partial<VaultPrefs>): Promise<void> {
@@ -494,6 +541,8 @@ async function wipeNow(): Promise<void> {
 
 /** Solo para tests: olvida el estado en memoria como si la app se cerrara. */
 export function __resetMemoryForTests(): void {
+  settingsFailures = 0;
+  settingsLockoutUntil = 0;
   keys = null;
   meta = null;
   pinMeta = null;

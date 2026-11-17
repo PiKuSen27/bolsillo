@@ -493,7 +493,7 @@ export function SecuritySettings({
                       setOldPw("");
                       resetWizard();
                     } catch (e) {
-                      setMessage({ ok: false, text: e instanceof WrongSecretError ? "La contraseña actual no es correcta" : String(e) });
+                      setMessage({ ok: false, text: e instanceof WrongSecretError ? "La contraseña actual no es correcta" : e instanceof Error ? e.message : String(e) });
                     } finally {
                       setBusy(false);
                     }
@@ -525,7 +525,7 @@ export function SecuritySettings({
             try {
               await disableEncryption(p);
             } catch (e) {
-              return e instanceof WrongSecretError ? "Contraseña incorrecta" : String(e);
+              return e instanceof WrongSecretError ? "Contraseña incorrecta" : e instanceof Error ? e.message : String(e);
             }
             setAskDisable(false);
             setMessage({ ok: true, text: "Cifrado desactivado." });
