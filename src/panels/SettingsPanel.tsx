@@ -19,7 +19,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { addDays, differenceInCalendarDays } from "date-fns";
-import { Category, DollarType, IncomeMode, Settings, WindowZoom } from "../types";
+import { DollarType, IncomeMode, Settings, WindowZoom } from "../types";
 import { DOLLAR_LABELS } from "../lib/dollars";
 import { Select } from "../components/Select";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
@@ -35,6 +35,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
 import { APP_VERSION, TEXT_LIMITS } from "../lib/constants";
 import { NOVEDADES } from "../novedades";
+import { newCategory } from "../lib/categories";
 import { calculateVariableIncome } from "../lib/workdays";
 import { shouldStorePreviousRange } from "../lib/carryover";
 import {
@@ -148,18 +149,14 @@ export function SettingsPanel({
     });
   };
 
+  const [catError, setCatError] = useState<string | null>(null);
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
-    const newCat: Category = {
-      id: newCatName.trim().toLowerCase().replace(/\s+/g, "_"),
-      name: newCatName.trim(),
-      icon: "Tag",
-      color: newCatColor,
-    };
-    onUpdateSettings({
-      categories: [...settings.categories, newCat],
-    });
+    const cat = newCategory(settings.categories, newCatName, newCatColor);
+    if (!cat) return setCatError("Ya tenés una categoría con ese nombre");
+    onUpdateSettings({ categories: [...settings.categories, cat] });
     setNewCatName("");
+    setCatError(null);
   };
 
   const handleDeleteCategory = (catId: string) => {
@@ -854,6 +851,7 @@ export function SettingsPanel({
           ))}
         </div>
 
+        {catError && <p role="alert" className="text-[11px] font-bold text-[#DC2626]">{catError}</p>}
         {/* Add new category */}
         <div className="flex items-center gap-2 pt-2 border-t border-zinc-500/10">
           <input
