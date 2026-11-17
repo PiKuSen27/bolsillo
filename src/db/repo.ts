@@ -1,3 +1,4 @@
+import { uid } from "../lib/id";
 import { store, applyAtomically, DATA_TABLES, wipeEverything } from "./store";
 import {
   DayLog,
@@ -76,7 +77,7 @@ export async function resetWorkDay(dateStr: string): Promise<void> {
 export async function addDebt(debt: Omit<Debt, "id" | "settled" | "createdAt">): Promise<Debt> {
   const newDebt: Debt = {
     ...debt,
-    id: `debt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `debt_${uid()}`,
     settled: false,
     createdAt: new Date().toISOString(),
   };
@@ -103,7 +104,7 @@ export async function settleDebts(
     settled.push({ ...debt, settled: true, settledAt });
     if (addToMovement) {
       created.push({
-        id: `mov_debt_${debt.id}_${Date.now()}`,
+        id: `mov_debt_${debt.id}_${uid()}`,
         date: todayStr,
         amount: debtArs(debt), // en pesos (dólares × cotización guardada)
         kind: debt.kind === "i_owe" ? "expense" : "income",
@@ -139,10 +140,10 @@ export async function registerDebtPayment(
 ): Promise<() => Promise<void>> {
   const before = await store.debts.get(debtId);
   if (!before) throw new Error("No se encontró la deuda");
-  const after = applyPayment(before, Math.round(amount), date, `pay_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+  const after = applyPayment(before, Math.round(amount), date, `pay_${uid()}`);
   const movement: Movement | null = addToMovement
     ? {
-        id: `mov_debtpay_${before.id}_${Date.now()}`,
+        id: `mov_debtpay_${before.id}_${uid()}`,
         date,
         amount: debtUnitsToArs(before, Math.round(amount)),
         kind: before.kind === "i_owe" ? "expense" : "income",
@@ -179,7 +180,7 @@ export async function payInstallment(inst: Installment, todayStr: string): Promi
   if (inst.paidCount >= inst.installmentsCount) return async () => {};
   const nextPaid = inst.paidCount + 1;
   const movement: Movement = {
-    id: `mov_inst_${inst.id}_${nextPaid}_${Date.now()}`,
+    id: `mov_inst_${inst.id}_${nextPaid}_${uid()}`,
     date: todayStr,
     amount: getInstallmentAmount(inst, nextPaid),
     kind: "expense",

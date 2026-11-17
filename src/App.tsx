@@ -1,3 +1,4 @@
+import { uid } from "./lib/id";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Pin,
@@ -485,7 +486,7 @@ export default function App() {
         if (err) return showUndo(err, null, 4000);
       }
       const move: DollarMove = {
-        id: `usd_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        id: `usd_${uid()}`,
         date: params.date,
         amount,
         kind,
@@ -499,7 +500,7 @@ export default function App() {
       return;
     }
     const newMovement: Movement = {
-      id: `mov_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `mov_${uid()}`,
       date: params.date,
       amount: Math.round(params.amount),
       kind: params.kind,
@@ -578,7 +579,7 @@ export default function App() {
   const handleAddRecurring = async (recData: Omit<Recurring, "id">) => {
     const newRec: Recurring = {
       ...recData,
-      id: `rec_${Date.now()}`,
+      id: `rec_${uid()}`,
     };
     await store.recurrings.put(newRec);
     await loadData();
@@ -623,7 +624,7 @@ export default function App() {
   const handleAddInstallment = async (instData: Omit<Installment, "id">) => {
     const newInst: Installment = {
       ...instData,
-      id: `inst_${Date.now()}`,
+      id: `inst_${uid()}`,
     };
     await store.installments.put(newInst);
     await loadData();
@@ -696,7 +697,7 @@ export default function App() {
 
   const handleTrade = async (t: { usd: number; pesos?: number; rate?: number; date: string; note?: string }): Promise<string | null> => {
     try {
-      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const id = `${uid()}`;
       if (tradeKind === "sell") {
         const err = checkUsdOut(usdBalance(dollarMoves), Math.round(t.usd));
         if (err) return err;
