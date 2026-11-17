@@ -84,3 +84,20 @@ describe("dollars.ts - Ahorros en dólares", () => {
     expect(() => buyDollars({ usd: 0, pesos: 10, date: "2026-11-14", id: "x" })).toThrow();
   });
 });
+
+import { checkUsdChange, syncTradePesos } from "./dollars";
+
+describe("dollars.ts - Ediciones que no rompen el saldo (A-03)", () => {
+  const moves = [move("a", "in", 100), move("b", "out", 80)];
+  it("Editar o borrar un movimiento en dólares no puede dejar el saldo negativo", () => {
+    expect(checkUsdChange(moves, { ...moves[1], amount: 120 })).toMatch(/negativo/); // salida más grande que lo que hay
+    expect(checkUsdChange(moves, { ...moves[0], amount: 50 })).toMatch(/negativo/); // achicar un ingreso ya gastado
+    expect(checkUsdChange(moves, { ...moves[1], amount: 90 })).toBeNull();
+    expect(checkUsdChange(moves, null, "a")).toMatch(/negativo/); // borrar el ingreso
+    expect(checkUsdChange(moves, null, "b")).toBeNull();
+  });
+  it("Si se edita en pesos el gasto de una compra, la compra guarda los pesos y la cotización nuevos", () => {
+    const buy = { ...move("c", "in", 100), source: "buy" as const, pesos: 150000, rate: 1500 };
+    expect(syncTradePesos(buy, 160000)).toMatchObject({ pesos: 160000, rate: 1600, amount: 100 });
+  });
+});

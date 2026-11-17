@@ -105,3 +105,16 @@ export function sellDollars(t: Trade): { move: DollarMove; movement: Movement } 
   };
   return { move, movement };
 }
+
+/**
+ * ¿Editar (edited) o borrar (removeId) un movimiento en dólares deja el saldo negativo?
+ * Devuelve el mensaje para mostrar, o null si se puede.
+ */
+export function checkUsdChange(moves: DollarMove[], edited: DollarMove | null, removeId?: string): string | null {
+  const next = moves.filter((m) => m.id !== removeId).map((m) => (edited && m.id === edited.id ? edited : m));
+  const bal = usdBalance(next);
+  return bal < 0 ? `No se puede: tus dólares quedarían en negativo (USD ${bal}).` : null;
+}
+
+/** Al editar en pesos el movimiento de una compra/venta, la compra/venta guarda los pesos y la cotización nuevos. */
+export const syncTradePesos = (m: DollarMove, pesos: number): DollarMove => ({ ...m, pesos, rate: Math.round(pesos / m.amount) });

@@ -89,7 +89,7 @@ import { backupStatus } from "./lib/backupReminder";
 import { whatsNewToShow } from "./lib/whatsNew";
 import { pendingCommitments, savingsAmount, spendingPlan } from "./lib/spending";
 import { limitWarning } from "./lib/limits";
-import { buyDollars, checkUsdOut, sellDollars, USD_BUY_CATEGORY, usdBalance } from "./lib/dollars";
+import { buyDollars, checkUsdChange, checkUsdOut, sellDollars, syncTradePesos, USD_BUY_CATEGORY, usdBalance } from "./lib/dollars";
 import { DollarsPanel, DollarTradeForm } from "./panels/DollarsPanel";
 import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
@@ -664,6 +664,8 @@ export default function App() {
 
   /** Borra un movimiento en dólares; si es compra/venta, también su movimiento en pesos. */
   const handleDeleteDollarMove = (d: DollarMove) => {
+    const blocked = checkUsdChange(dollarMoves, null, d.id);
+    if (blocked) return showUndo(blocked, null, 5000);
     const linked = d.movementId ? movements.find((m) => m.id === d.movementId) : undefined;
     const what = d.source === "buy" ? "esta compra de dólares" : d.source === "sell" ? "esta venta de dólares" : "este movimiento en dólares";
     confirmDelete(
@@ -714,7 +716,14 @@ export default function App() {
   };
 
   const handleUpdateMovement = async (m: Movement) => {
-    await store.movements.put(m);
+    // Gasto/ingreso de una compra o venta de dólares: la compra/venta se actualiza junto (A-03)
+    const trade = m.usdId ? dollarMoves.find((d) => d.id === m.usdId) : undefined;
+    if (trade && trade.pesos !== m.amount) {
+      await applyAtomically([
+        { type: "put", table: "movements", recs: [m] },
+        { type: "put", table: "dollars", recs: [syncTradePesos(trade, m.amount)] },
+      ]);
+    } else await store.movements.put(m);
     await loadData();
   };
 
@@ -1352,6 +1361,8 @@ export default function App() {
             moves={dollarMoves}
             isLight={isLight}
             onUpdate={async (d) => {
+              const blocked = checkUsdChange(dollarMoves, d);
+              if (blocked) return showUndo(blocked, null, 5000);
               await store.dollars.put(d);
               await loadData();
             }}
