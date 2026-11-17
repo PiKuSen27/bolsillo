@@ -8,8 +8,11 @@ import { registerSW } from "virtual:pwa-register";
  */
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | null = null;
 
+let started = false; // una sola vez: React en modo estricto (desarrollo) llama los efectos dos veces
+
 export function startPwaUpdates(onUpdateReady: () => void): void {
-  if (!("serviceWorker" in navigator)) return;
+  if (started || !("serviceWorker" in navigator)) return;
+  started = true;
   updateSW = registerSW({
     immediate: true,
     onNeedRefresh: onUpdateReady,
