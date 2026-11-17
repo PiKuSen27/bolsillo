@@ -5,6 +5,13 @@
  */
 export const NOVEDADES: { version: string; items: string[] }[] = [
   {
+    version: "1.3.5",
+    items: [
+      "Bolsillo ahora es software libre: el código está en GitHub",
+      "Nueva dirección web: bolsillo.pikusen27.workers.dev",
+    ],
+  },
+  {
     version: "1.3.4",
     items: [
       "Fijos, cuotas y deudas se guardan completos o no se guardan: ya no pueden quedar a medias",

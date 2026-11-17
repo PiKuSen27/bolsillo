@@ -6,7 +6,7 @@ Anotás gastos e ingresos con una calculadora y Bolsillo te dice cuánto tenés 
 
 Pensada para Argentina: pesos sin centavos (`$ 20.000`), interfaz en español rioplatense y, si querés, ahorros y deudas en dólares.
 
-👉 **Probala en el navegador:** https://bolsillo.santiagopicusen.workers.dev
+👉 **Probala en el navegador:** https://bolsillo.pikusen27.workers.dev
 
 <p align="center">
   <img src="docs/capturas/celular.png" alt="Bolsillo en el celular, tema Negro" width="260">
@@ -41,12 +41,12 @@ Pensada para Argentina: pesos sin centavos (`$ 20.000`), interfaz en español ri
 Bolsillo es una **PWA**: una página web que se instala como una app y funciona sin internet.
 
 **iPhone (Safari)**
-1. Abrí https://bolsillo.santiagopicusen.workers.dev en **Safari**.
+1. Abrí https://bolsillo.pikusen27.workers.dev en **Safari**.
 2. Tocá el botón **Compartir** (el cuadrado con la flecha hacia arriba).
 3. Elegí **Agregar a inicio**.
 
 **Android (Chrome)**
-1. Abrí https://bolsillo.santiagopicusen.workers.dev en **Chrome**.
+1. Abrí https://bolsillo.pikusen27.workers.dev en **Chrome**.
 2. Tocá el menú **⋮** y elegí **Instalar app** (o **Agregar a la pantalla principal**).
 
 Tus datos quedan solo en ese teléfono. Para pasarlos de un dispositivo a otro: Ajustes → Backup → **Exportar** en uno e **Importar** en el otro.

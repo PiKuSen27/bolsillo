@@ -2,7 +2,7 @@
 
 > Explicá todo en palabras simples y decí qué hace cada comando antes de correrlo. Si existe `CLAUDE.local.md` (datos del entorno del dueño, fuera del repo), leelo también.
 
-> **Bolsillo v1.3.4** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
+> **Bolsillo v1.3.5** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
 > **Autor y dueño**: PiKuSen27.
 > **Moneda**: pesos argentinos, números enteros sin centavos, con punto de miles (`$ 20.000`). Toda la interfaz en español riopl## 1. Entorno
 
@@ -229,7 +229,7 @@ Bolsillo/
 | `pnpm tauri dev` | Abre la app de escritorio en modo desarrollo (se recarga sola al editar). |
 | `pnpm tauri build` | Compila la app de producción: `src-tauri/target/release/bolsillo` (+ .deb y .rpm en `bundle/`). |
 | `pnpm build` | Solo la parte web, a `dist/` (para probar; **no** sube la versión). |
-| `pnpm release` | **Para publicar la PWA**: sube la versión (1.3.4 → 1.3.5) en los tres archivos y arma `dist/`. Después se sube `dist/` a Cloudflare. |
+| `pnpm release` | **Para publicar la PWA**: sube la versión (1.3.5 → 1.3.6) en los tres archivos y arma `dist/`. Después se sube `dist/` a Cloudflare. |
 | `pnpm release:desktop` | Igual, pero compila la app de escritorio. |
 | `pnpm preview` | Sirve `dist/` en `http://localhost:4173` para probar la PWA en esta PC. |
 | `pnpm mobile` | Sirve `dist/` en el puerto 5173 **abierto a toda la red local** (hay que correr `pnpm build` antes). Apagarlo al terminar. |
