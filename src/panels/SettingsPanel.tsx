@@ -1184,6 +1184,17 @@ export function SettingsPanel({
           Software libre bajo la licencia GPL-3.0: podés usarlo, estudiarlo, compartirlo y modificarlo,
           siempre que lo que compartas siga siendo libre. © 2026 PiKuSen27.
         </p>
+        <p className={`text-[10px] font-bold ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
+          Código:{" "}
+          {/* En escritorio un link navegaría dentro de la ventana de la app: ahí va como texto para copiar */}
+          {isTauri() ? (
+            <span className="select-text">github.com/PiKuSen27/bolsillo</span>
+          ) : (
+            <a href="https://github.com/PiKuSen27/bolsillo" target="_blank" rel="noopener noreferrer" className="underline">
+              github.com/PiKuSen27/bolsillo
+            </a>
+          )}
+        </p>
       </div>
         </>
       )}
