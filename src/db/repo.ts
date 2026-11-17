@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from "../lib/constants";
 import { validateBackup, ValidBackup } from "../lib/backup";
 import { debtArs, debtUnitsToArs } from "../lib/dollars";
 import { applyPayment } from "../lib/debts";
+import { getInstallmentAmount } from "../lib/recurring";
 
 export interface DatabaseExport {
   version: number;
@@ -171,6 +172,32 @@ export async function saveAutoCharges(r: { movementsToAdd: Movement[]; updatedRe
     { type: "put", table: "recurrings", recs: r.updatedRecurrings },
     { type: "put", table: "installments", recs: r.updatedInstallments },
   ]);
+}
+
+/** Pago manual de la próxima cuota: gasto y cuota juntos (todo o nada). Devuelve la función para deshacer. */
+export async function payInstallment(inst: Installment, todayStr: string): Promise<() => Promise<void>> {
+  if (inst.paidCount >= inst.installmentsCount) return async () => {};
+  const nextPaid = inst.paidCount + 1;
+  const movement: Movement = {
+    id: `mov_inst_${inst.id}_${nextPaid}_${Date.now()}`,
+    date: todayStr,
+    amount: getInstallmentAmount(inst, nextPaid),
+    kind: "expense",
+    categoryId: inst.categoryId,
+    note: `${inst.name} (Cuota ${nextPaid}/${inst.installmentsCount})`,
+    source: "installment",
+    installmentId: inst.id,
+    createdAt: new Date().toISOString(),
+  };
+  await applyAtomically([
+    { type: "put", table: "movements", recs: [movement] },
+    { type: "put", table: "installments", recs: [{ ...inst, paidCount: nextPaid, active: nextPaid < inst.installmentsCount }] },
+  ]);
+  return () =>
+    applyAtomically([
+      { type: "delete", table: "movements", keys: [movement.id] },
+      { type: "put", table: "installments", recs: [inst] },
+    ]);
 }
 
 export async function deleteDebt(id: string): Promise<void> {

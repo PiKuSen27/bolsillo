@@ -47,6 +47,7 @@ import {
   markDayAsNoExpenses,
   settleDebts,
   saveAutoCharges,
+  payInstallment,
   registerDebtPayment,
   setWorkDay,
   resetWorkDay,
@@ -57,7 +58,6 @@ import { calculateBalance } from "./lib/balance";
 import { calculateVariableIncome } from "./lib/workdays";
 import { calculatePreviousPeriodBalance } from "./lib/carryover";
 import {
-  getInstallmentAmount,
   getUpcomingItems,
   processAutoAddRules,
 } from "./lib/recurring";
@@ -639,28 +639,9 @@ export default function App() {
 
   const handlePayInstallment = async (inst: Installment) => {
     if (inst.paidCount >= inst.installmentsCount) return;
-    const nextPaid = inst.paidCount + 1;
-    const isDone = nextPaid >= inst.installmentsCount;
-
-    const movement: Movement = {
-      id: `mov_inst_${inst.id}_${nextPaid}_${Date.now()}`,
-      date: todayStr,
-      amount: getInstallmentAmount(inst, nextPaid),
-      kind: "expense",
-      categoryId: inst.categoryId,
-      note: `${inst.name} (Cuota ${nextPaid}/${inst.installmentsCount})`,
-      source: "installment",
-      installmentId: inst.id,
-      createdAt: new Date().toISOString(),
-    };
-
-    await store.movements.put(movement);
-    await store.installments.put({
-      ...inst,
-      paidCount: nextPaid,
-      active: !isDone,
-    });
+    const undo = await payInstallment(inst, todayStr);
     await loadData();
+    showUndo(`Cuota ${inst.paidCount + 1}/${inst.installmentsCount} de ${inst.name} pagada`, undo);
   };
 
   const handleDeleteMovement = (id: string) => {

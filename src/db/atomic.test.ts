@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach } from "vitest";
 import { db } from "./db";
 import { store } from "./store";
-import { saveAutoCharges } from "./repo";
+import { payInstallment, saveAutoCharges } from "./repo";
 import { Installment, Movement } from "../types";
 
 const inst: Installment = {
@@ -31,5 +31,14 @@ describe("Integridad de la plata (A-01, A-02)", () => {
     await saveAutoCharges({ movementsToAdd: [mv], updatedRecurrings: [], updatedInstallments: [{ ...inst, paidCount: 1 }] });
     expect(await db.movements.count()).toBe(1);
     expect((await store.installments.get("tele"))!.paidCount).toBe(1);
+  });
+  it("A-02: pagar una cuota a mano guarda gasto y cuota juntos, y se puede deshacer", async () => {
+    const undo = await payInstallment(inst, "2026-11-16");
+    expect((await store.installments.get("tele"))!.paidCount).toBe(1);
+    const [m] = await store.movements.toArray();
+    expect(m).toMatchObject({ amount: 33333, installmentId: "tele", date: "2026-11-16" });
+    await undo();
+    expect((await store.installments.get("tele"))!.paidCount).toBe(0);
+    expect(await db.movements.count()).toBe(0);
   });
 });
