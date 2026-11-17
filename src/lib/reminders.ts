@@ -22,8 +22,12 @@ export function isDayLogged(
   return hasManual;
 }
 
+/** Días que muestra la tira (hoy y los 13 anteriores). El aviso "Te falta anotar" solo mira esos. */
+export const STRIP_DAYS = 14;
+
 /**
- * Returns array of dates (YYYY-MM-DD) between startDateStr and yesterday (inclusive) that are unlogged.
+ * Días sin anotar desde hace 13 días (o desde que se empezó a usar la app) hasta ayer.
+ * Indexa una sola vez lo anotado: no recorre todos los movimientos por cada día.
  */
 export function getMissingDays(params: {
   appStartDateStr: string;
@@ -32,26 +36,22 @@ export function getMissingDays(params: {
   dayLogs: DayLog[];
 }): string[] {
   const { appStartDateStr, todayStr, movements, dayLogs } = params;
-
-  const start = parseLocalDate(appStartDateStr);
   const today = parseLocalDate(todayStr);
-
+  const appStart = parseLocalDate(appStartDateStr);
+  const windowStart = addDays(today, -(STRIP_DAYS - 1));
+  const start = appStart.getTime() > windowStart.getTime() ? appStart : windowStart;
   const yesterday = addDays(today, -1);
-  if (yesterday.getTime() < start.getTime()) {
-    return [];
-  }
+  if (yesterday.getTime() < start.getTime()) return [];
+
+  const logged = new Set<string>();
+  for (const d of dayLogs) if (d.logged || d.noExpenses) logged.add(d.date);
+  for (const m of movements) if (m.source === "manual") logged.add(m.date);
 
   const missing: string[] = [];
-  let cur = start;
-
-  while (cur.getTime() <= yesterday.getTime()) {
+  for (let cur = start; cur.getTime() <= yesterday.getTime(); cur = addDays(cur, 1)) {
     const curStr = formatLocalDate(cur);
-    if (!isDayLogged(curStr, movements, dayLogs)) {
-      missing.push(curStr);
-    }
-    cur = addDays(cur, 1);
+    if (!logged.has(curStr)) missing.push(curStr);
   }
-
   return missing;
 }
 

@@ -3,7 +3,7 @@ import { addDays } from "date-fns";
 import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { Category, DayLog, Movement } from "../types";
 import { formatDayShortWithNum, formatLocalDate, parseLocalDate } from "../lib/format";
-import { isDayLogged } from "../lib/reminders";
+import { isDayLogged, STRIP_DAYS } from "../lib/reminders";
 import { DayDetailModal } from "./DayDetailModal";
 
 interface MobileDayStripProps {
@@ -43,7 +43,7 @@ export function MobileDayStrip({
     daysAgo: number;
   }[] = [];
 
-  for (let i = 13; i >= 0; i--) {
+  for (let i = STRIP_DAYS - 1; i >= 0; i--) {
     const d = addDays(today, -i);
     const dateStr = formatLocalDate(d);
     const label = formatDayShortWithNum(dateStr);

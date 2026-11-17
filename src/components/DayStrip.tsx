@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Category, DayLog, Movement, Settings, WorkDay } from "../types";
 import { formatCurrency, formatDayShortWithNum, formatLocalDate, parseLocalDate } from "../lib/format";
-import { isDayLogged } from "../lib/reminders";
+import { isDayLogged, STRIP_DAYS } from "../lib/reminders";
 import { getDayValue, isDayModified } from "../lib/workdays";
 import { DayDetailModal } from "./DayDetailModal";
 
@@ -74,7 +74,7 @@ export function DayStrip({
     return { value, free: value === 0, modified: isDayModified(d, settings, workDays.find((w) => w.date === d)) };
   };
 
-  for (let i = 13; i >= 0; i--) {
+  for (let i = STRIP_DAYS - 1; i >= 0; i--) {
     const d = addDays(today, -i);
     const dateStr = formatLocalDate(d);
     const label = formatDayShortWithNum(dateStr);

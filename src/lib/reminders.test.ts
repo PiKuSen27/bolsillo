@@ -144,3 +144,24 @@ describe("reminders.ts - Recordatorios, días faltantes y alertas", () => {
     expect(alerts[1].body).toContain("Luz vence hoy");
   });
 });
+
+import { STRIP_DAYS } from "./reminders";
+
+describe("reminders.ts - Días sin anotar solo en la tira (A-05)", () => {
+  it("Con la app usada desde hace 2 años, el aviso solo mira los días de la tira, no meses atrás", () => {
+    const missing = getMissingDays({ appStartDateStr: "2024-11-16", todayStr: "2026-11-16", movements: [], dayLogs: [] });
+    expect(missing.length).toBe(STRIP_DAYS - 1); // de hace 13 días hasta ayer
+    expect(missing[0]).toBe("2026-11-03");
+    expect(missing[missing.length - 1]).toBe("2026-11-15");
+  });
+
+  it("Rápido aunque haya muchísimos movimientos", () => {
+    const movements = Array.from({ length: 50000 }, (_, i) => ({
+      id: `m${i}`, date: `2026-${String((i % 11) + 1).padStart(2, "0")}-10`, amount: 1, kind: "expense" as const,
+      categoryId: "x", source: "manual" as const, createdAt: "x",
+    }));
+    const t = performance.now();
+    for (let i = 0; i < 20; i++) getMissingDays({ appStartDateStr: "2024-11-16", todayStr: "2026-11-16", movements, dayLogs: [] });
+    expect(performance.now() - t).toBeLessThan(500);
+  });
+});
