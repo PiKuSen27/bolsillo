@@ -64,7 +64,10 @@ struct CloseToTray(Mutex<bool>);
 /// Si no la hay, esconder la ventana dejaría la app viva pero inalcanzable.
 fn tray_host_registered() -> bool {
     (|| -> zbus::Result<bool> {
-        let conn = zbus::blocking::Connection::session()?;
+        // Máximo 800 ms: si el servicio de la bandeja está colgado, no esperamos los 25 s por defecto
+        let conn = zbus::blocking::connection::Builder::session()?
+            .method_timeout(std::time::Duration::from_millis(800))
+            .build()?;
         let proxy = zbus::blocking::Proxy::new(
             &conn,
             "org.kde.StatusNotifierWatcher",
@@ -76,9 +79,12 @@ fn tray_host_registered() -> bool {
     .unwrap_or(false)
 }
 
+/// Corre en un hilo aparte (async + spawn_blocking): nunca traba la ventana.
 #[tauri::command]
-fn tray_host_available() -> bool {
-    tray_host_registered()
+async fn tray_host_available() -> bool {
+    tauri::async_runtime::spawn_blocking(tray_host_registered)
+        .await
+        .unwrap_or(false)
 }
 
 #[tauri::command]
@@ -212,11 +218,19 @@ pub fn run() {
                     .lock()
                     .map(|v| *v)
                     .unwrap_or(true);
-                // Sin bandeja en la barra, esconder = app fantasma: mejor cerrar de verdad
-                if hide && tray_host_registered() {
-                    let _ = window.hide();
-                    let _ = window.emit("app-hidden", ());
+                // Sin bandeja en la barra, esconder = app fantasma: mejor cerrar de verdad.
+                // La consulta por D-Bus va en otro hilo para no trabar la ventana (A-06).
+                if hide {
                     api.prevent_close();
+                    let w = window.clone();
+                    std::thread::spawn(move || {
+                        if tray_host_registered() {
+                            let _ = w.hide();
+                            let _ = w.emit("app-hidden", ());
+                        } else {
+                            w.app_handle().exit(0);
+                        }
+                    });
                 } else {
                     window.app_handle().exit(0);
                 }
