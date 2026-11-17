@@ -67,7 +67,7 @@ Revisión completa con Claude: seguridad del sistema, código, tests y documenta
 
 ---
 
-## 3. Tests (131, en `src/lib/*.test.ts` y `src/db/*.test.ts`, `pnpm test`)
+## 3. Tests (165, en `src/lib/*.test.ts` y `src/db/*.test.ts`, `pnpm test`)
 
 | Archivo | Qué prueba |
 | :--- | :--- |
@@ -89,7 +89,7 @@ Revisión completa con Claude: seguridad del sistema, código, tests y documenta
 
 ## 4. Estado verificado al 11/11/2026
 
-- `pnpm test`: 131 de 131 (al 12/11/2026). `tsc --noEmit`: sin errores. `cargo check --release`: sin warnings del proyecto.
+- `pnpm test`: 165 de 165 (al 16/11/2026). `tsc --noEmit`: sin errores. `cargo check --release`: sin warnings del proyecto.
 - Binario de producción: 7,6 MB, instalado en `~/.local/bin/bolsillo`, abierto y verificado con captura de pantalla sobre los datos reales (migración Dexie v3 aplicada sin pérdida).
 - PWA: 42 archivos de `dist/` precacheados por el service worker, manifest y registro servidos correctamente, fallback a `index.html`. Probado en localhost; no se probó sin conexión en un celular real.
 - CSP probada sobre el build web con Firefox sin interfaz: renderiza igual que sin CSP.

@@ -5,6 +5,14 @@
  */
 export const NOVEDADES: { version: string; items: string[] }[] = [
   {
+    version: "1.3.3",
+    items: [
+      "Ahorros y deudas en dólares, con la cotización del día",
+      "Resumen del mes con topes por categoría y pagos parciales en deudas",
+      "\"Podés gastar\" ahora descuenta fijos y cuotas que vienen, y podés apartar un ahorro",
+    ],
+  },
+  {
     version: "1.3.2",
     items: [
       "Podés ocultar los montos con el ojo de Disponible",
