@@ -84,3 +84,21 @@ describe("debts.ts - Pagos parciales", () => {
     expect(groupDebtsByPerson([d])[0].net).toBe(300000);
   });
 });
+
+import { editDebt } from "./debts";
+
+describe("debts.ts - Editar una deuda con pagos (A-04)", () => {
+  const paid: Debt = { id: "x", person: "Rocio", kind: "they_owe", amount: 100000, settled: false, createdAt: "2026-11-01T10:00:00Z", payments: [{ id: "p", amount: 60000, date: "2026-11-10" }] };
+  it("No deja poner un monto menor que lo ya pagado", () => {
+    expect(() => editDebt(paid, { amount: 50000 })).toThrow(/pagado/);
+  });
+  it("Si el monto nuevo es igual a lo pagado, queda saldada (no se queda pendiente con saldo $ 0)", () => {
+    const d = editDebt(paid, { amount: 60000 });
+    expect(d.settled).toBe(true);
+  });
+  it("Si sube el monto de una deuda saldada, vuelve a pendiente", () => {
+    const d = editDebt({ ...paid, amount: 60000, settled: true, settledAt: "x" }, { amount: 80000 });
+    expect(d.settled).toBe(false);
+    expect(d.settledAt).toBeUndefined();
+  });
+});

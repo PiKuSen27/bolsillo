@@ -5,7 +5,7 @@ import { Debt, DebtKind, DollarType } from "../types";
 import { debtArs, debtBalance, debtPaid, fetchQuote, Quote } from "../lib/dollars";
 import { QuoteField } from "../components/QuoteField";
 import { formatCurrency, formatShortDate, formatAmountInput, formatNumberWithDots, formatUsd, formatLocalDate } from "../lib/format";
-import { groupDebtsByPerson, PersonGroup, suggestPersonNames } from "../lib/debts";
+import { editDebt, groupDebtsByPerson, PersonGroup, suggestPersonNames } from "../lib/debts";
 import { DateField } from "../components/DateField";
 
 type DebtFields = Omit<Debt, "id" | "settled" | "createdAt" | "settledAt">;
@@ -231,6 +231,7 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
   const [quoteBusy, setQuoteBusy] = useState<string | null>(null);
   const [quoteError, setQuoteError] = useState<{ id: string; text: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | DebtKind>("all");
   const [showAddForm, setShowAddForm] = useState(false);
   const [grouped, setGrouped] = useState(true);
@@ -262,6 +263,8 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
   const card = isLight ? "bg-white border-zinc-200" : "bg-[#0E0E10] border-[#222224]";
 
   const editForm = (d: Debt) => (
+    <div key={d.id} className="flex flex-col gap-1">
+    {editError && <p role="alert" className="text-[11px] font-bold text-[#DC2626]">{editError}</p>}
     <DebtForm
       key={d.id}
       title="Editar deuda"
@@ -270,12 +273,21 @@ export function DebtsPanel({ debts, isLight, onAddDebt, onSettleDebt, onDeleteDe
       dollars={dollars}
       isLight={isLight}
       submitLabel="Guardar cambios"
-      onCancel={() => setEditingId(null)}
-      onSubmit={(fields) => {
-        onUpdateDebt({ ...d, ...fields });
+      onCancel={() => {
         setEditingId(null);
+        setEditError(null);
+      }}
+      onSubmit={(fields) => {
+        try {
+          onUpdateDebt(editDebt(d, fields));
+          setEditingId(null);
+          setEditError(null);
+        } catch (e) {
+          setEditError(e instanceof Error ? e.message : String(e));
+        }
       }}
     />
+    </div>
   );
 
   const editButton = (d: Debt) => (

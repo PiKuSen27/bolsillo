@@ -1,7 +1,8 @@
 import { Debt } from "../types";
 import { normalizeText } from "./search";
 import { debtArs, debtBalance } from "./dollars";
-export { debtPaid } from "./dollars";
+import { debtPaid } from "./dollars";
+export { debtPaid };
 
 /** Clave para juntar deudas de la misma persona: sin mayúsculas, acentos ni espacios de más. */
 export function personKey(name: string): string {
@@ -61,5 +62,18 @@ export function applyPayment(d: Debt, amount: number, date: string, id: string):
   if (amount > balance) throw new Error("El pago no puede ser mayor que el saldo");
   const next: Debt = { ...d, payments: [...(d.payments ?? []), { id, amount, date }] };
   if (debtBalance(next) === 0) return { ...next, settled: true, settledAt: new Date().toISOString() };
+  return next;
+}
+
+/**
+ * Aplica la edición de una deuda: el monto no puede quedar por debajo de lo ya pagado; si el saldo
+ * queda en 0 se marca saldada, y si una saldada vuelve a tener saldo, vuelve a pendiente.
+ */
+export function editDebt(d: Debt, fields: Partial<Debt>): Debt {
+  const next: Debt = { ...d, ...fields };
+  const paid = debtPaid(next);
+  if (next.amount < paid) throw new Error("El monto no puede ser menor que lo ya pagado");
+  if (paid > 0 && debtBalance(next) === 0) return { ...next, settled: true, settledAt: next.settledAt ?? new Date().toISOString() };
+  if (next.settled && debtBalance(next) > 0 && paid > 0) return { ...next, settled: false, settledAt: undefined };
   return next;
 }

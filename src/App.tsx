@@ -89,7 +89,7 @@ import { backupStatus } from "./lib/backupReminder";
 import { whatsNewToShow } from "./lib/whatsNew";
 import { pendingCommitments, savingsAmount, spendingPlan } from "./lib/spending";
 import { limitWarning } from "./lib/limits";
-import { buyDollars, checkUsdChange, checkUsdOut, sellDollars, syncTradePesos, USD_BUY_CATEGORY, usdBalance } from "./lib/dollars";
+import { debtBalance, buyDollars, checkUsdChange, checkUsdOut, sellDollars, syncTradePesos, USD_BUY_CATEGORY, usdBalance } from "./lib/dollars";
 import { DollarsPanel, DollarTradeForm } from "./panels/DollarsPanel";
 import { NOVEDADES } from "./novedades";
 import { applyPwaUpdate, removeServiceWorkers, requestPersistentStorage, startPwaUpdates } from "./platform/pwa";
@@ -735,10 +735,11 @@ export default function App() {
   const handleSettleDebts = async (list: Debt[], addToMovement: boolean) => {
     const undo = await settleDebts(list.map((d) => d.id), addToMovement, todayStr);
     await loadData();
-    const total = list.reduce((s, d) => s + d.amount, 0);
+    // Lo que faltaba pagar (saldo), en la moneda de la deuda
+    const d0 = list[0];
     showUndo(
       list.length === 1
-        ? `Saldada: ${list[0].person} ${formatCurrency(total)}`
+        ? `Saldada: ${d0.person} ${d0.currency === "USD" ? formatUsd(debtBalance(d0)) : formatCurrency(debtBalance(d0))}`
         : `Saldadas ${list.length} deudas de ${list[0].person}`,
       undo
     );

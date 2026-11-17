@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { UpcomingItem, Debt } from "../types";
 import { formatCurrency, formatRelativeDue, formatUsd } from "../lib/format";
+import { debtBalance } from "../lib/dollars";
 
 interface RightColumnWidgetProps {
   items: UpcomingItem[];
@@ -179,7 +180,7 @@ export function RightColumnWidget({
                       : "text-[#22C55E]"
                   }`}
                 >
-                  {d.currency === "USD" ? formatUsd(d.amount) : formatCurrency(d.amount)}
+                  {d.currency === "USD" ? formatUsd(debtBalance(d)) : formatCurrency(debtBalance(d))}
                 </span>
               </div>
 
