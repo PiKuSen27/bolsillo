@@ -115,6 +115,23 @@ fn save_backup(app: AppHandle, file_name: String, contents: String) -> Result<St
     fs::write(&path, contents).map_err(|e| e.to_string())?;
     Ok(path.display().to_string())
 }
+/// Ruta del programa lista para `Exec=` (especificación Desktop Entry): entre comillas, con " ` $ y \ escapados,
+/// después el escape de texto (cada \ se duplica) y % → %%. Sin saltos de línea (C-03).
+/// escapados, después el escape de texto (`\\` → `\\\\`) y `%` → `%%`. Sin saltos de línea (C-03).
+fn desktop_exec(path: &str) -> Result<String, String> {
+    if path.contains(['\n', '\r']) {
+        return Err("La ruta del programa tiene un salto de línea".into());
+    }
+    let mut quoted = String::from("\"");
+    for c in path.chars() {
+        if matches!(c, '"' | '`' | '$' | '\\') {
+            quoted.push('\\');
+        }
+        quoted.push(c);
+    }
+    quoted.push('"');
+    Ok(quoted.replace('\\', "\\\\").replace('%', "%%"))
+}
 
 #[tauri::command]
 fn set_autostart(app: AppHandle, enable: bool) -> Result<(), String> {
@@ -125,9 +142,10 @@ fn set_autostart(app: AppHandle, enable: bool) -> Result<(), String> {
         if enable {
             let _ = fs::create_dir_all(&autostart_dir);
             let current_exe = std::env::current_exe().map_err(|e| e.to_string())?;
+            let exec = desktop_exec(&current_exe.to_string_lossy())?;
             let content = format!(
                 "[Desktop Entry]\nType=Application\nName=Bolsillo\nComment=Control de gastos\nExec={}\nIcon=bolsillo\nTerminal=false\nCategories=Office;Finance;\n",
-                current_exe.display()
+                exec
             );
             fs::write(desktop_file, content).map_err(|e| e.to_string())?;
         } else if desktop_file.exists() {
@@ -238,4 +256,16 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::desktop_exec;
+
+    #[test]
+    fn exec_con_espacios_y_caracteres_raros() {
+        assert_eq!(desktop_exec("/home/a/Mis Apps/bolsillo").unwrap(), "\"/home/a/Mis Apps/bolsillo\"");
+        assert_eq!(desktop_exec("/x/50%/b$a\"r").unwrap(), "\"/x/50%%/b\\\\$a\\\\\"r\"");
+        assert!(desktop_exec("/x\nExec=rm").is_err());
+    }
 }
