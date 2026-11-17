@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS } from "./constants";
 import { Installment, Movement, Recurring, Settings } from "../types";
 
 /**
- * Modo Sueldo fijo de punta a punta (lo usan los padres del dueño):
+ * Modo Sueldo fijo de punta a punta (hay gente que lo usa todos los días: no romperlo):
  * cobro el 10, sueldo 700.000, un gasto, cambio de período, cartel del período anterior,
  * un fijo y una compra en cuotas.
  */

@@ -1,64 +1,100 @@
 # Bolsillo
 
-App chiquita para saber, cada día, cuánta plata te queda. Anotás gastos e ingresos con una calculadora, y Bolsillo te dice cuánto podés gastar por día hasta el próximo cobro. Todo se guarda en tu dispositivo: no hay cuentas, nube ni internet de por medio.
+**Una app chiquita para saber, cada día, cuánta plata te queda.**
 
-Hecha con **Tauri 2** (escritorio Linux), **React 19**, **TypeScript**, **Tailwind CSS 4** y **Dexie** (base de datos local). También funciona como **PWA** en el celular.
+Anotás gastos e ingresos con una calculadora y Bolsillo te dice cuánto tenés disponible y cuánto podés gastar por día hasta el próximo cobro. Todo se guarda en tu dispositivo: sin cuentas, sin nube, sin publicidad y sin rastreo.
+
+Pensada para Argentina: pesos sin centavos (`$ 20.000`), interfaz en español rioplatense y, si querés, ahorros y deudas en dólares.
+
+👉 **Probala en el navegador:** https://bolsillo.santiagopicusen.workers.dev
+
+<p align="center">
+  <img src="docs/capturas/celular.png" alt="Bolsillo en el celular, tema Negro" width="260">
+  &nbsp;
+  <img src="docs/capturas/resumen.png" alt="Resumen del período con gastos por categoría" width="260">
+</p>
+<p align="center">
+  <img src="docs/capturas/escritorio.png" alt="Bolsillo en la PC, tema Blanco" width="540">
+</p>
+
+<sub>Las capturas usan datos de ejemplo inventados.</sub>
 
 ## Qué hace
 
-- **Disponible en grande**: ingreso del período − gastos del período, con "podés gastar $ X por día".
-- **Dos modos de ingreso** (se elige uno):
-  - **Sueldo fijo**: monto mensual y día de cobro.
-  - **Sueldo por día**: tarifa diaria y un rango de fechas. De lunes a sábado cada día ya vale la tarifa; los domingos son libres. Podés tocar cualquier día para cambiarle el monto, marcarlo libre, o cambiar la tarifa "de tal fecha en adelante".
-- **Cartel del período anterior**: "Empezaste con $ X a favor" o "Cerraste $ X abajo" (solo informativo).
-- **Calculadora** con teclado físico: `3500 × 4`, `Enter` guarda gasto, `Shift + Enter` ingreso, `Esc` limpia.
-- **Tira de días** con indicador de días sin anotar y botón "Hoy no gasté nada".
-- **Fijos y cuotas** que se anotan solos el día que vencen (sin duplicar), con próximos vencimientos.
-- **Deudas**: lo que debés y lo que te deben.
-- **Movimientos** del período con buscador por nota, categoría o monto en todo el historial.
-- **Recordatorio diario** si no anotaste nada, y alertas de vencimientos.
-- **Backup** en JSON (exportar / importar con validación y confirmación).
-- Temas **Blanco** y **Negro**. Respeta "reducir movimiento" del sistema.
+- **Disponible en grande**: lo que cobraste en el período menos lo que gastaste, y **"Podés gastar $ X por día"**, que ya descuenta los fijos y cuotas que están por venir.
+- **Calculadora rápida**: `3500 × 4` y Enter. Elegís la categoría con un toque.
+- **Sueldo fijo** (monto y día de cobro) o **sueldo por día** (tarifa diaria, días libres y cambios de tarifa).
+- **Fijos y cuotas** que se anotan solos el día que vencen, con aviso antes del vencimiento.
+- **Deudas**: lo que debés y lo que te deben, agrupado por persona, con pagos parciales.
+- **Resumen** del período: gastos por categoría, topes por categoría y comparación con el período anterior.
+- **Dólares** (opcional): ahorros en dólares separados del día a día, compra y venta, y la cotización del día.
+- **Buscador** en todo el historial por nota, categoría o monto.
+- **Recordatorio diario** si no anotaste nada.
+- **Privacidad**: botón para ocultar los montos, bloqueo con PIN o contraseña con **los datos cifrados** (AES-256).
+- **Backup** en un archivo JSON (cifrado si usás contraseña) para pasar tus datos de un dispositivo a otro.
+- Temas **Blanco** y **Negro**. Funciona sin conexión.
 
-## Requisitos (CachyOS / Arch)
+> La única conexión a internet que hace la app es pedir la cotización del dólar a [dolarapi.com](https://dolarapi.com), y solo cuando tocás "Cotización del día". No se manda ningún dato tuyo.
+
+## Instalarla en el celular
+
+Bolsillo es una **PWA**: una página web que se instala como una app y funciona sin internet.
+
+**iPhone (Safari)**
+1. Abrí https://bolsillo.santiagopicusen.workers.dev en **Safari**.
+2. Tocá el botón **Compartir** (el cuadrado con la flecha hacia arriba).
+3. Elegí **Agregar a inicio**.
+
+**Android (Chrome)**
+1. Abrí https://bolsillo.santiagopicusen.workers.dev en **Chrome**.
+2. Tocá el menú **⋮** y elegí **Instalar app** (o **Agregar a la pantalla principal**).
+
+Tus datos quedan solo en ese teléfono. Para pasarlos de un dispositivo a otro: Ajustes → Backup → **Exportar** en uno e **Importar** en el otro.
+
+> En iPhone, Safari no permite avisos programados sin un servidor, así que el recordatorio aparece como cartel "Te falta anotar" cuando abrís la app.
+
+## Compilarla en Linux (app de escritorio)
+
+La versión de escritorio usa [Tauri 2](https://tauri.app). Necesitás Node.js, pnpm y Rust.
+
+**1. Dependencias del sistema** (Arch Linux y derivadas; para otras distribuciones mirá la [guía de Tauri](https://tauri.app/start/prerequisites/)):
 
 ```bash
 sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl librsvg nodejs pnpm rustup
 rustup default stable
 ```
 
-## Desarrollo
+**2. Bajar el código y compilar:**
 
 ```bash
-pnpm install      # instala las dependencias de Node
-pnpm tauri dev    # abre la app de escritorio con recarga automática
-pnpm test         # corre los 185 tests
+git clone <URL-de-este-repositorio> bolsillo
+cd bolsillo
+pnpm install       # baja las dependencias
+pnpm tauri build   # compila; tarda unos minutos la primera vez
 ```
 
-## Compilar e instalar en Linux
+El programa queda en `src-tauri/target/release/bolsillo` (también se arman paquetes `.deb` y `.rpm` en `src-tauri/target/release/bundle/`).
+
+**3. Instalarlo para tu usuario** (con su ícono en el menú de aplicaciones):
 
 ```bash
-pnpm tauri build
-# Binario: src-tauri/target/release/bolsillo  (también .deb y .rpm en src-tauri/target/release/bundle/)
-cp src-tauri/target/release/bolsillo ~/.local/bin/bolsillo
-chmod 755 ~/.local/bin/bolsillo
-cp bolsillo.desktop ~/.local/share/applications/   # entrada en el menú de aplicaciones
+install -Dm755 src-tauri/target/release/bolsillo ~/.local/bin/bolsillo
+install -Dm644 public/icons/icon-512.png ~/.local/share/icons/hicolor/512x512/apps/bolsillo.png
+install -Dm644 bolsillo.desktop ~/.local/share/applications/bolsillo.desktop
 ```
 
-Antes de instalar una versión nueva, copiá la carpeta de datos: `~/.local/share/com.bolsillo.desktop/`.
+Tus datos se guardan en `~/.local/share/com.bolsillo.desktop/`. Copiá esa carpeta antes de instalar una versión nueva.
 
-Este proyecto se usa en **Niri (Wayland)**. La regla de ventana que deja la app flotante de 810×900 está en `CLAUDE.md`.
+### Para programar
 
-## Usarla en el celular (PWA)
+```bash
+pnpm tauri dev   # abre la app y se recarga sola al editar
+pnpm dev         # solo la versión web, en el navegador
+pnpm test        # corre los tests
+pnpm build       # arma la versión web (PWA) en dist/
+```
 
-1. `pnpm build` genera la carpeta `dist/`.
-2. Subí `dist/` a un hosting estático (por ejemplo Cloudflare Pages; `public/_headers` ya trae las cabeceras de seguridad).
-3. Abrí la dirección en Safari (iPhone) o Chrome (Android) y elegí **Agregar a inicio**. Funciona sin conexión.
-4. Para pasar tus datos de la PC al celular: Ajustes → Exportar JSON en la PC, Importar JSON en el celular.
-
-> En iPhone, Safari no permite notificaciones programadas sin un servidor; la app se apoya en el aviso "Te falta anotar" al abrirla.
-
-Para probarla en el celular sin subirla a ningún lado: `pnpm build && pnpm mobile` y abrí `http://IP-de-tu-PC:5173` desde el celular (misma red Wi-Fi). Apagá el comando al terminar.
+Hecha con Tauri 2, React 19, TypeScript, Tailwind CSS 4, Motion y Dexie (IndexedDB).
 
 ## Atajos de teclado (escritorio)
 
@@ -71,8 +107,12 @@ Para probarla en el celular sin subirla a ningún lado: `pnpm build && pnpm mobi
 | `Enter` | Guardar como **gasto** |
 | `Shift + Enter` | Guardar como **ingreso** |
 
-Con un panel abierto la calculadora no reacciona al teclado.
+## Licencia
+
+Bolsillo es **software libre** bajo la licencia [GNU GPL-3.0](LICENSE): podés usarlo, estudiarlo, compartirlo y modificarlo, siempre que lo que distribuyas también se comparta con la misma licencia y su código fuente.
+
+Copyright © 2026 PiKuSen27.
 
 ## Créditos
 
-Creado por **PiKuSen27**, con mucho esfuerzo y cariño.
+Hecho por **PiKuSen27** con [Claude](https://claude.ai).

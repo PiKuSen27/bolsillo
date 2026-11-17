@@ -8,7 +8,7 @@
 ## 1. Cronología
 
 ### Fase 1 — Base (noviembre 2026)
-Tauri 2 + React 19 + TypeScript + Tailwind 4 + Dexie (IndexedDB) + Vitest. Objetivo: app de finanzas personales offline, sin servidor, para CachyOS/Niri.
+Tauri 2 + React 19 + TypeScript + Tailwind 4 + Dexie (IndexedDB) + Vitest. Objetivo: app de finanzas personales offline, sin servidor, para Linux (Wayland) y el celular.
 
 ### Fase 2 — Ventana 540 × 600
 Se descartó un widget inicial de 440×440 translúcido (artefactos en Wayland) por una ventana fija de 540×600, sólida, con tres columnas: tira de días, calculadora y próximos vencimientos/deudas, y el Hero del Disponible arriba.
@@ -22,8 +22,8 @@ Tablas `recurrings` e `installments`, aplicación automática sin duplicados (`r
 ### Fase 5 — Deudas
 Tabla `debts`, panel "Debo plata" / "Me deben plata".
 
-### Fase 6 — Wayland / Niri
-Problemas y soluciones: `window-state: {}` en `tauri.conf.json` rompía el arranque (se configura en Rust); `StateFlags::SIZE` abría a pantalla completa (solo `POSITION`); el arrastre del header tapaba los botones (`stopPropagation`); regla de ventana en `config.kdl`.
+### Fase 6 — Wayland
+Problemas y soluciones: `window-state: {}` en `tauri.conf.json` rompía el arranque (se configura en Rust); `StateFlags::SIZE` abría a pantalla completa (solo `POSITION`); el arrastre del header tapaba los botones (`stopPropagation`).
 
 ### Fase 7 — Auditoría externa (10–11 de noviembre de 2026)
 Revisión completa con Claude: seguridad del sistema, código, tests y documentación. Resultado en la sección 2.
@@ -45,7 +45,7 @@ Revisión completa con Claude: seguridad del sistema, código, tests y documenta
 
 | ID | Problema | Causa | Arreglo |
 | :--- | :--- | :--- | :--- |
-| **A-01** | `.git`, `target/`, `dist/` y `node_modules/` con permisos 777 (cualquier usuario de la máquina podía modificarlos). | La herramienta anterior creó los archivos sin respetar el `umask`. | `chmod -R go-w` en el proyecto, en VECTARIS y en `~/.cargo/.crates*`. |
+| **A-01** | `.git`, `target/`, `dist/` y `node_modules/` con permisos 777 (cualquier usuario de la máquina podía modificarlos). | La herramienta anterior creó los archivos sin respetar el `umask`. | `chmod -R go-w` en el proyecto y en las carpetas de herramientas afectadas. |
 | **B-01** | Los gastos del período anterior se restaban del sueldo nuevo. | "Ventana de 14 días" en `balance.ts` que miraba antes de `periodStart`. | Solo cuentan movimientos del período (tests `Bug #1`). Regla D del CLAUDE.md. |
 | **B-02** | Con el rango variable vencido, los gastos nuevos no bajaban el Disponible. | Filtro cortaba en `periodEnd`. | La ventana se estira hasta hoy (test `Bug #2`). |
 | **B-03** | Fijos y cuotas quedaban siempre en la primera categoría. | `useState` sin setter y sin selector. | Selector de categoría en ambos formularios. |
@@ -90,7 +90,7 @@ Revisión completa con Claude: seguridad del sistema, código, tests y documenta
 ## 4. Estado verificado al 11/11/2026
 
 - `pnpm test`: 185 de 185 (al 16/11/2026, v1.3.4). `cargo test --lib`: 1 de 1. `tsc --noEmit`: sin errores. `cargo check --release`: sin warnings del proyecto.
-- Binario de producción: 7,6 MB, instalado en `~/.local/bin/bolsillo`, abierto y verificado con captura de pantalla sobre los datos reales (migración Dexie v3 aplicada sin pérdida).
+- Binario de producción: 7,6 MB, instalado y verificado (migración Dexie v3 aplicada sin pérdida de datos).
 - PWA: 42 archivos de `dist/` precacheados por el service worker, manifest y registro servidos correctamente, fallback a `index.html`. Probado en localhost; no se probó sin conexión en un celular real.
 - CSP probada sobre el build web con Firefox sin interfaz: renderiza igual que sin CSP.
 - No medido: consumo de RAM y tiempo de arranque.

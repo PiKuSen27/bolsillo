@@ -1180,6 +1180,10 @@ export function SettingsPanel({
             <span>Con mucho esfuerzo y cariño</span>
           </span>
         </div>
+        <p className={`text-[10px] font-semibold leading-relaxed ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+          Software libre bajo la licencia GPL-3.0: podés usarlo, estudiarlo, compartirlo y modificarlo,
+          siempre que lo que compartas siga siendo libre. © 2026 PiKuSen27.
+        </p>
       </div>
         </>
       )}

@@ -1,33 +1,16 @@
 # CLAUDE.md — Guía técnica de Bolsillo
 
-> **El usuario es principiante. Explicá todo en palabras simples, sin dar por sabido ningún término técnico, y decí qué hace cada comando antes de correrlo.**
+> Explicá todo en palabras simples y decí qué hace cada comando antes de correrlo. Si existe `CLAUDE.local.md` (datos del entorno del dueño, fuera del repo), leelo también.
 
 > **Bolsillo v1.3.4** (la versión real vive en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`; los tres tienen que coincidir).
 > **Autor y dueño**: PiKuSen27.
-> **Moneda**: pesos argentinos, números enteros sin centavos, con punto de miles (`$ 20.000`). Toda la interfaz en español rioplatense.
+> **Moneda**: pesos argentinos, números enteros sin centavos, con punto de miles (`$ 20.000`). Toda la interfaz en español riopl## 1. Entorno
+
+Linux (Wayland) o Windows para escritorio; cualquier navegador moderno para la PWA. Los datos de la app de escritorio viven en la carpeta de datos del usuario (`com.bolsillo.desktop`); copiarla antes de instalar un binario nuevo.
 
 ---
 
-## 1. Entorno del usuario
-
-* **Sistema operativo**: CachyOS (Arch Linux).
-* **Escritorio**: compositor Wayland **Niri** con la barra **iNiR**. **No usa KDE ni GNOME.**
-* **Shell**: Fish (`/usr/bin/fish`). Para variables de entorno se usa `set -gx VAR valor`, no `export`.
-* **Binario instalado**: `~/.local/bin/bolsillo` (está en el `PATH`).
-* **Lanzador**: `~/.local/share/applications/bolsillo.desktop` (apunta al binario y al ícono `public/icons/icon-512.png` del proyecto).
-* **Datos de la app** (IndexedDB de WebKit): `~/.local/share/com.bolsillo.desktop/`. Antes de instalar un binario nuevo, copiar esa carpeta.
-* **Regla de ventana en Niri** (`~/.config/niri/config.kdl`, tal cual está instalada):
-  ```kdl
-  window-rule {
-      match app-id=r#"(?i)bolsillo"#
-      match title=r#"(?i)bolsillo"#
-      open-floating true
-      default-column-width { fixed 810; }
-      default-window-height { fixed 900; }
-      focus-ring { off }
-      border { off }
-      shadow { off }
-  }
+}
   ```
 
 ---
@@ -122,8 +105,8 @@ Bolsillo/
 1. **La interfaz está diseñada a 540 × 600 px lógicos** y la ventana es `540×zoom` por `600×zoom`, no redimensionable (`resizable: false`, `maximizable: false`, `transparent: false`, `decorations: false`). El zoom lo aplica `apply_zoom` en `lib.rs` (webview `set_zoom` + `set_min_size`/`set_max_size`/`set_size` + `center`):
    * **Automático** (por defecto): el mayor entre 1,0 y 1,5 con el que la ventana ocupa como máximo el 85 % del alto y del ancho del monitor (`auto_zoom`). En 2560×1440 da 1,5 (810 × 900); en 1366×768 da 1,08. Si no se puede leer el monitor, 1,0.
    * Ajustes → "Tamaño de ventana": Automático / Chico (1,0) / Mediano (1,25) / Grande (1,5) (`settings.windowZoom`, comando `set_window_zoom`). El frontend lo reaplica al cargar.
-   * `tauri.conf.json` trae 810 × 900 solo como tamaño inicial; en la PC del dueño la regla de Niri también fija 810 × 900, en otras máquinas no hace falta ninguna regla.
-2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en Niri abría a pantalla completa).
+   * `tauri.conf.json` trae 810 × 900 solo como tamaño inicial; no hace falta ninguna regla del gestor de ventanas.
+2. `tauri.conf.json` **no** debe tener `plugins.window-state` (rompe el arranque). En Rust se usa solo `StateFlags::POSITION`; **nunca** `SIZE` (en algunos compositores Wayland abría a pantalla completa).
 3. El header tiene `data-tauri-drag-region`. **Todos los botones del header** (pin, –, ×) llevan `onMouseDown={(e) => e.stopPropagation()}` para que el arrastre no se coma el click.
 4. `–` llama al comando `minimize_window` (minimiza y esconde). El tray (click izquierdo o "Abrir Bolsillo") y volver a ejecutar el binario (`single-instance`) hacen `show()` + `set_focus()`.
 5. `×` respeta el ajuste **"Cerrar al tray"** (`set_close_to_tray` → estado en Rust): encendido esconde la ventana y siguen los recordatorios; apagado cierra la app. **Antes de esconder, Rust consulta por D-Bus (`zbus`) si hay una bandeja registrada** (`org.kde.StatusNotifierWatcher` → `IsStatusNotifierHostRegistered`); si no la hay, cierra de verdad para no dejar una app fantasma, y Ajustes muestra un aviso (`tray_host_available`). Si el ícono no se ve en la barra, volver a ejecutar el binario muestra la ventana (`single-instance`).
@@ -137,7 +120,7 @@ Bolsillo/
 4. Se respeta "reducir movimiento" del sistema (`MotionConfig reducedMotion="user"` + media query en `index.css`).
 
 ### C. Modos de ingreso (excluyentes)
-1. **Sueldo Fijo** (lo usan los padres del dueño, no tocar su comportamiento):
+1. **Sueldo Fijo** (hay gente que lo usa todos los días: no cambiar su comportamiento):
    * `fixedSalary` y día de cobro `payday` (1 a 31).
    * El período va desde el último día de cobro hasta el día anterior al próximo (`calculatePeriod`). Si el mes no tiene ese día, se usa el último día del mes.
 2. **Sueldo Variable por día** (`incomeMode: "daily"`, lógica en `src/lib/workdays.ts`, UI en `WorkDaysPanel.tsx`):
@@ -237,7 +220,7 @@ Bolsillo/
 
 ---
 
-## 5. Comandos (correr con `pnpm` desde `/home/pikusen27/Proyectos/Bolsillo`)
+## 5. Comandos (correr con `pnpm` desde la carpeta del proyecto)
 
 | Comando | Qué hace |
 | :--- | :--- |
@@ -252,13 +235,10 @@ Bolsillo/
 | `pnpm mobile` | Sirve `dist/` en el puerto 5173 **abierto a toda la red local** (hay que correr `pnpm build` antes). Apagarlo al terminar. |
 | `pnpm tauri icon public/icons/bolsillo.svg` | Regenera los íconos de escritorio desde el logo. |
 
-### Instalar el binario nuevo (Fish)
-```fish
-# 1. Cerrar la app si está abierta (tray → "Salir de Bolsillo" o: pkill -x bolsillo)
-# 2. Copia de seguridad de los datos
-cp -a ~/.local/share/com.bolsillo.desktop ~/.local/share/com.bolsillo.desktop.backup-(date +%Y%m%d)
-# 3. Compilar e instalar
-pnpm tauri build
-cp src-tauri/target/release/bolsillo ~/.local/bin/bolsillo
-chmod 755 ~/.local/bin/bolsillo
+### Instalar el binario nuevo (Linux)
+```sh
+pkill -x bolsillo                                   # 1. cerrar la app
+cp -a ~/.local/share/com.bolsillo.desktop ~/.local/share/com.bolsillo.desktop.backup   # 2. copia de los datos
+pnpm tauri build                                    # 3. compilar
+install -m 755 src-tauri/target/release/bolsillo ~/.local/bin/bolsillo   # 4. instalar
 ```

@@ -2,6 +2,8 @@
   "name": "bolsillo",
   "private": true,
   "version": "1.3.4",
+  "license": "GPL-3.0-only",
+  "author": "PiKuSen27",
   "type": "module",
   "scripts": {
     "dev": "vite",

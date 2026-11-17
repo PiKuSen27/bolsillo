@@ -1,10 +1,10 @@
 name: Build Windows App
 
+# NO corre en cada push: solo cuando lo pedís a mano (pestaña Actions → "Run workflow")
+# o cuando subís una etiqueta de versión (git tag v1.3.5 && git push origin v1.3.5).
+# Deja un borrador de release (no público) con el instalador .exe para que lo revises.
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - 'v*'
   workflow_dispatch:
@@ -23,12 +23,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 12.21.0
           run_install: false
 
       - name: Get pnpm store directory
@@ -48,7 +48,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build web application
         run: pnpm build
