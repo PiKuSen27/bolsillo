@@ -20,18 +20,12 @@ importers:
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
       dexie:
         specifier: ^4.4.7
         version: 4.4.7
-      dexie-react-hooks:
-        specifier: ^4.4.0
-        version: 4.4.0(dexie@4.4.7)(react@19.3.1)
       lucide-react:
         specifier: ^1.70.0
         version: 1.70.0(@types/react@19.3.0)(react@19.3.1)
@@ -44,9 +38,6 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.3.1(react@19.3.1)
-      tailwind-merge:
-        specifier: ^3.7.0
-        version: 3.7.0
       workbox-window:
         specifier: 7.4.1
         version: 7.4.1
@@ -1257,10 +1248,6 @@ packages:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
     engines: {node: '>=18'}
 
-  clsx@2.1.1:
-    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
-    engines: {node: '>=6'}
-
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
@@ -1325,12 +1312,6 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
-
-  dexie-react-hooks@4.4.0:
-    resolution: {integrity: sha512-ObLXBS5+4BJU8vtSvBx6b9fY6zZYgniAtwxzjCHsUQadgbqYN6935X2/1TWw4Rf2N1aZV1io5/ziox4vKuxABA==}
-    peerDependencies:
-      dexie: '>=4.2.0-alpha.1 <5.0.0'
-      react: '>=16'
 
   dexie@4.4.7:
     resolution: {integrity: sha512-wemFiCl3DTCnfzyqepUTX1ugbYbkTrw3aEZOG7YjAOUoEQB5g5PrEywPzk5JpbX/SxqQ9IvjUpxCDIEjoOWEfA==}
@@ -2067,9 +2048,6 @@ packages:
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
-
-  tailwind-merge@3.7.0:
-    resolution: {integrity: sha512-XPPUyAc+cvspz3lHTcR/QgPfW2A0lv/xQNIjX3HGhLR+Nq2lHaLq5MtTesHn8GUr3W3DguT2KT5x3NVgRtYwmA==}
 
   tailwindcss@4.3.5:
     resolution: {integrity: sha512-FcQk9BuffmEHJP2G0XmB2SplU1aLTI7j07Kunk+U74Ny+XiWOtzXz9aujFZ/avntw1e2cOv/3PkgzflQ7gX2vQ==}
@@ -3493,8 +3471,6 @@ snapshots:
 
   chai@6.3.0: {}
 
-  clsx@2.1.1: {}
-
   commander@2.20.3: {}
 
   common-tags@1.8.2: {}
@@ -3554,11 +3530,6 @@ snapshots:
       object-keys: 1.1.1
 
   detect-libc@2.1.2: {}
-
-  dexie-react-hooks@4.4.0(dexie@4.4.7)(react@19.3.1):
-    dependencies:
-      dexie: 4.4.7
-      react: 19.3.1
 
   dexie@4.4.7: {}
 
@@ -4379,8 +4350,6 @@ snapshots:
   strip-comments@2.0.1: {}
 
   supports-preserve-symlinks-flag@1.0.0: {}
-
-  tailwind-merge@3.7.0: {}
 
   tailwindcss@4.3.5: {}
 
