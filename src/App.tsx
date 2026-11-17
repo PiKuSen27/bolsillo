@@ -293,8 +293,13 @@ export default function App() {
   }, [settings?.windowZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodic date & autoAdd & reminder check
+  // Los ajustes se leen de una ref: cambiar el tema o tocar el ojo no tiene que reiniciar el chequeo (M-02)
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const hasSettings = !!settings;
   useEffect(() => {
     const checkRoutine = async () => {
+      const settings = settingsRef.current;
       const now = new Date();
       const curToday = formatLocalDate(now);
       if (curToday !== todayStr) {
@@ -385,7 +390,7 @@ export default function App() {
     safeRoutine();
     const interval = setInterval(safeRoutine, 60000);
     return () => clearInterval(interval);
-  }, [settings, todayStr, loadData, vault]);
+  }, [hasSettings, todayStr, loadData, vault]);
 
   // Derived Calculations
   const periodInfo: PeriodInfo = useMemo(() => {
