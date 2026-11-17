@@ -1,6 +1,6 @@
 [package]
 name = "bolsillo"
-version = "1.3.3"
+version = "1.3.4"
 description = "Bolsillo - Control de gastos"
 authors = ["Bolsillo"]
 edition = "2021"

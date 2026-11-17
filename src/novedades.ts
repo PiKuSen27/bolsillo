@@ -5,6 +5,14 @@
  */
 export const NOVEDADES: { version: string; items: string[] }[] = [
   {
+    version: "1.3.4",
+    items: [
+      "Fijos, cuotas y deudas se guardan completos o no se guardan: ya no pueden quedar a medias",
+      "Editar compras de dólares o deudas con pagos ya no descuadra los números",
+      "Arreglos de seguridad y velocidad",
+    ],
+  },
+  {
     version: "1.3.3",
     items: [
       "Ahorros y deudas en dólares, con la cotización del día",

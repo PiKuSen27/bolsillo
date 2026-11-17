@@ -67,7 +67,7 @@ Revisión completa con Claude: seguridad del sistema, código, tests y documenta
 
 ---
 
-## 3. Tests (165, en `src/lib/*.test.ts` y `src/db/*.test.ts`, `pnpm test`)
+## 3. Tests (185, en `src/lib/*.test.ts` y `src/db/*.test.ts`, `pnpm test`)
 
 | Archivo | Qué prueba |
 | :--- | :--- |
@@ -89,8 +89,32 @@ Revisión completa con Claude: seguridad del sistema, código, tests y documenta
 
 ## 4. Estado verificado al 11/11/2026
 
-- `pnpm test`: 165 de 165 (al 16/11/2026). `tsc --noEmit`: sin errores. `cargo check --release`: sin warnings del proyecto.
+- `pnpm test`: 185 de 185 (al 16/11/2026, v1.3.4). `cargo test --lib`: 1 de 1. `tsc --noEmit`: sin errores. `cargo check --release`: sin warnings del proyecto.
 - Binario de producción: 7,6 MB, instalado en `~/.local/bin/bolsillo`, abierto y verificado con captura de pantalla sobre los datos reales (migración Dexie v3 aplicada sin pérdida).
 - PWA: 42 archivos de `dist/` precacheados por el service worker, manifest y registro servidos correctamente, fallback a `index.html`. Probado en localhost; no se probó sin conexión en un celular real.
 - CSP probada sobre el build web con Firefox sin interfaz: renderiza igual que sin CSP.
 - No medido: consumo de RAM y tiempo de arranque.
+
+## Auditoría externa (docs/auditoria-gemini.md, sobre v1.3.2) → v1.3.4
+
+Cada hallazgo se revisó contra el código; los de lógica, con un test primero.
+
+| Hallazgo | Resultado | Qué se hizo |
+| :--- | :--- | :--- |
+| A-01 Fijos/cuotas automáticos no atómicos | Confirmado | `saveAutoCharges` (una transacción) + migración en un solo `bulkPut` |
+| A-02 Pagar cuota no atómico | Confirmado | `payInstallment` con Deshacer |
+| A-03 Editar compra/venta de dólares | Confirmado | Se sincroniza el movimiento de dólares; no deja quedar en negativo (`checkUsdChange`) |
+| A-04 Editar deuda con pagos | Confirmado | `editDebt` (no menos que lo pagado, salda/reabre solo); totales con el saldo |
+| M-04 Textos sin largo máximo | Confirmado | `TEXT_LIMITS` para la UI y `validateBackup` |
+| M-03 Categorías que chocan con las internas | Confirmado | `newCategory` (reservadas y duplicados) |
+| C-01 Candado lector/escritor | Falso | Test de estrés en `db/lock.test.ts`, sin cambios |
+| C-02 Clave en Ajustes sin límite de intentos | Confirmado | `settingsGuard`: espera creciente, sin borrado automático |
+| A-05 "Te falta anotar" lento | Confirmado | Solo los 14 días de la tira, con índice |
+| A-06 D-Bus en el hilo principal | Confirmado | Otro hilo, 800 ms máximo |
+| A-07 Registro de la PWA duplicado | Exagerado (solo en desarrollo) | Se registra una sola vez |
+| M-01 Estado global de "ocultar montos" | Exagerado | Sin cambios (se fija antes de cada dibujo) |
+| M-02 Chequeo periódico se reinicia | Confirmado | Ajustes por ref |
+| B-01 Permiso de avisos sin toque | Confirmado (navegador) | Se pide en la bienvenida y al prender el recordatorio |
+| B-02 Dependencias sin usar | Confirmado | Sacadas |
+| B-03 Ids con Math.random | Exagerado | `uid()` con `crypto.getRandomValues` |
+| C-03 Ruta sin comillas en el autostart | Confirmado (falla con espacios) | `desktop_exec` + test en Rust |
