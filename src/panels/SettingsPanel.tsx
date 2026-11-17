@@ -23,7 +23,7 @@ import { DollarType, IncomeMode, Settings, WindowZoom } from "../types";
 import { DOLLAR_LABELS } from "../lib/dollars";
 import { Select } from "../components/Select";
 import { exportAllData, importValidatedBackup, resetAllData } from "../db/repo";
-import { isTauri, isTrayAvailable, saveBackupFile } from "../platform";
+import { isTauri, isTrayAvailable, requestAppNotificationPermission, saveBackupFile } from "../platform";
 import { requestPersistentStorage } from "../platform/pwa";
 import { backupStatus } from "../lib/backupReminder";
 import { DateField } from "../components/DateField";
@@ -679,7 +679,10 @@ export function SettingsPanel({
             </div>
             <button
               type="button"
-              onClick={() => setReminderEnabled(!reminderEnabled)}
+              onClick={() => {
+                if (!reminderEnabled) requestAppNotificationPermission(); // B-01: se pide al prenderlo, con el toque
+                setReminderEnabled(!reminderEnabled);
+              }}
               className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border transition-all cursor-pointer ${
                 reminderEnabled
                   ? isLight

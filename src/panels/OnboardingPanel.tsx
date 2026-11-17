@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Sparkles, ArrowRight, Check, Calendar } from "lucide-react";
 import confetti from "canvas-confetti";
+import { requestAppNotificationPermission } from "../platform";
 import { calculateVariableIncome } from "../lib/workdays";
 import { DEFAULT_SETTINGS } from "../lib/constants";
 import { addDays, differenceInCalendarDays } from "date-fns";
@@ -62,6 +63,7 @@ export function OnboardingPanel({ onComplete, isLight }: OnboardingPanelProps) {
     if (step < 3) {
       setStep(step + 1);
     } else {
+      requestAppNotificationPermission(); // con el toque del usuario: si no, Safari/Chrome lo bloquean (B-01)
       try {
         confetti({
           particleCount: 100,

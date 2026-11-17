@@ -186,7 +186,8 @@ export default function App() {
   useEffect(() => {
     loadVaultMeta().then(() => setVault(lockMode() !== "none" ? "locked" : "off"));
     isWindowAlwaysOnTop().then(setIsPinned);
-    requestAppNotificationPermission();
+    // En escritorio no hace falta un toque; en el navegador se pide en la bienvenida o al prender el recordatorio (B-01)
+    if (isTauri()) requestAppNotificationPermission();
   }, []);
 
   useEffect(() => {
