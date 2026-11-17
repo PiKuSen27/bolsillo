@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TEXT_LIMITS } from "../lib/constants";
 import { Trash2, Edit2, Filter, ChevronDown, PieChart, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Category, Movement, MovementKind } from "../types";
@@ -381,7 +382,7 @@ export function MovementsPanel({
                                   <input
                                     type="text"
                                     value={editNote}
-                                    onChange={(e) => setEditNote(e.target.value)}
+                                    maxLength={TEXT_LIMITS.note} onChange={(e) => setEditNote(e.target.value)}
                                     className={`flex-1 text-xs font-bold px-2.5 py-1 rounded-xl border focus:outline-none ${
                                       isLight
                                         ? "bg-white border-zinc-300 text-black"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TEXT_LIMITS } from "../lib/constants";
 import { Plus, Trash2, CheckCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Category, Installment, Recurring } from "../types";
@@ -201,7 +202,7 @@ export function FixedAndInstallmentsPanel({
                 type="text"
                 placeholder="Nombre (ej. Netflix, Luz)"
                 value={recName}
-                onChange={(e) => setRecName(e.target.value)}
+                maxLength={TEXT_LIMITS.name} onChange={(e) => setRecName(e.target.value)}
                 className={`text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none ${
                   isLight
                     ? "bg-zinc-100 border-zinc-300 text-black"
@@ -268,7 +269,7 @@ export function FixedAndInstallmentsPanel({
                 type="text"
                 placeholder="Nombre (ej. Zapatillas, Heladera)"
                 value={instName}
-                onChange={(e) => setInstName(e.target.value)}
+                maxLength={TEXT_LIMITS.name} onChange={(e) => setInstName(e.target.value)}
                 className={`text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none ${
                   isLight
                     ? "bg-zinc-100 border-zinc-300 text-black"

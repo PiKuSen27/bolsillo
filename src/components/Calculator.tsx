@@ -6,7 +6,7 @@ import { HScroll } from "./HScroll";
 import { Category } from "../types";
 import { evaluateCalcExpression } from "../lib/calc";
 import { shouldCalculatorHandleKey } from "../lib/keyboard";
-import { MAX_AMOUNT } from "../lib/constants";
+import { MAX_AMOUNT, TEXT_LIMITS } from "../lib/constants";
 import { formatCurrencyVisible as formatCurrency, formatExpressionWithDots } from "../lib/format";
 
 interface CalculatorProps {
@@ -256,7 +256,7 @@ export function Calculator({
                 type="text"
                 placeholder="Ej. Almuerzo, nafta, súper..."
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                maxLength={TEXT_LIMITS.note} onChange={(e) => setNote(e.target.value)}
                 className={`w-full text-xs font-semibold px-2 py-1 rounded border focus:outline-none ${
                   isLight
                     ? "bg-zinc-100 border-zinc-300 text-black placeholder:text-zinc-400"

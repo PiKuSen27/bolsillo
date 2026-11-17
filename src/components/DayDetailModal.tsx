@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TEXT_LIMITS } from "../lib/constants";
 import { motion, AnimatePresence } from "motion/react";
 import { X, CheckCircle2, Plus, Calendar, ChevronDown, Trash2, Edit2 } from "lucide-react";
 import { Category, DayLog, Movement } from "../types";
@@ -273,7 +274,7 @@ export function DayDetailModal({
                                   <input
                                     type="text"
                                     value={editNote}
-                                    onChange={(e) => setEditNote(e.target.value)}
+                                    maxLength={TEXT_LIMITS.note} onChange={(e) => setEditNote(e.target.value)}
                                     className={`flex-1 min-w-0 ${inputCls}`}
                                     placeholder="Nota opcional"
                                     aria-label="Nota"

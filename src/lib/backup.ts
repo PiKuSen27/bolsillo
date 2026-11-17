@@ -11,7 +11,7 @@ import {
   WorkDay,
   DollarMove,
 } from "../types";
-import { DEFAULT_SETTINGS, MAX_AMOUNT } from "./constants";
+import { DEFAULT_SETTINGS, MAX_AMOUNT, TEXT_LIMITS } from "./constants";
 
 export interface ValidBackup {
   version: number;
@@ -107,7 +107,7 @@ function movement(o: Obj, i: number): Movement {
     amount: amount(o.amount, "amount", where),
     kind: oneOf(o.kind, MOVEMENT_KINDS, "kind", where),
     categoryId: str(o.categoryId, "categoryId", where, { max: 100 })!,
-    note: str(o.note, "note", where, { optional: true, max: 500 }),
+    note: str(o.note, "note", where, { optional: true, max: TEXT_LIMITS.note }),
     source: oneOf(o.source, MOVEMENT_SOURCES, "source", where),
     recurringId: str(o.recurringId, "recurringId", where, { optional: true, max: 200 }),
     installmentId: str(o.installmentId, "installmentId", where, { optional: true, max: 200 }),
@@ -121,7 +121,7 @@ function recurring(o: Obj, i: number): Recurring {
   const where = `fijo #${i + 1}${typeof o.name === "string" ? ` (${o.name})` : ""}`;
   return {
     id: str(o.id, "id", where, { max: 200 })!,
-    name: str(o.name, "name", where, { max: 100 })!,
+    name: str(o.name, "name", where, { max: TEXT_LIMITS.name })!,
     amount: amount(o.amount, "amount", where),
     categoryId: str(o.categoryId, "categoryId", where, { max: 100 })!,
     dueDay: amount(o.dueDay, "dueDay", where, { min: 1, max: 31 }),
@@ -137,7 +137,7 @@ function installment(o: Obj, i: number): Installment {
   const count = amount(o.installmentsCount, "installmentsCount", where, { min: 1, max: 600 });
   return {
     id: str(o.id, "id", where, { max: 200 })!,
-    name: str(o.name, "name", where, { max: 100 })!,
+    name: str(o.name, "name", where, { max: TEXT_LIMITS.name })!,
     totalAmount: amount(o.totalAmount, "totalAmount", where),
     installmentsCount: count,
     installmentAmount: amount(o.installmentAmount, "installmentAmount", where),
@@ -173,7 +173,7 @@ function debt(o: Obj, i: number): Debt {
   return {
     id: str(o.id, "id", where, { max: 200 })!,
     kind: oneOf(o.kind, DEBT_KINDS, "kind", where),
-    person: str(o.person, "person", where, { max: 100 })!,
+    person: str(o.person, "person", where, { max: TEXT_LIMITS.name })!,
     amount: amount(o.amount, "amount", where),
     currency: o.currency === undefined ? undefined : oneOf(o.currency, ["ARS", "USD"] as const, "currency", where),
     rate: o.rate === undefined || o.rate === null ? undefined : amount(o.rate, "rate", where, { min: 1, max: 10_000_000 }),
@@ -187,7 +187,7 @@ function debt(o: Obj, i: number): Debt {
             return { id: str(p.id, "id", w, { max: 200 })!, amount: amount(p.amount, "amount", w, { min: 1 }), date: dateStr(p.date, "date", w)! };
           }),
     dueDate: dateStr(o.dueDate, "dueDate", where, true),
-    note: str(o.note, "note", where, { optional: true, max: 500 }),
+    note: str(o.note, "note", where, { optional: true, max: TEXT_LIMITS.note }),
     settled: bool(o.settled, "settled", where, false),
     settledAt: str(o.settledAt, "settledAt", where, { optional: true, max: 40 }),
     createdAt: str(o.createdAt, "createdAt", where, { optional: true, max: 40 }) ?? new Date().toISOString(),
@@ -201,7 +201,7 @@ function dollarMove(o: Obj, i: number): DollarMove {
     date: dateStr(o.date, "date", where)!,
     amount: amount(o.amount, "amount", where, { min: 1 }),
     kind: oneOf(o.kind, ["in", "out"] as const, "kind", where),
-    note: str(o.note, "note", where, { optional: true, max: 500 }),
+    note: str(o.note, "note", where, { optional: true, max: TEXT_LIMITS.note }),
     source: oneOf(o.source, ["manual", "buy", "sell"] as const, "source", where),
     rate: o.rate === undefined || o.rate === null ? undefined : amount(o.rate, "rate", where, { min: 1, max: 10_000_000 }),
     pesos: o.pesos === undefined || o.pesos === null ? undefined : amount(o.pesos, "pesos", where),
@@ -216,7 +216,7 @@ function category(o: Obj, i: number): Category {
   if (!/^#[0-9a-fA-F]{6}$/.test(color)) fail(`${where}: "color" tiene que ser #RRGGBB`);
   return {
     id: str(o.id, "id", where, { max: 100 })!,
-    name: str(o.name, "name", where, { max: 60 })!,
+    name: str(o.name, "name", where, { max: TEXT_LIMITS.category })!,
     icon: str(o.icon, "icon", where, { optional: true, max: 60 }) ?? "Tag",
     color,
     limit: o.limit === undefined || o.limit === null || o.limit === 0 ? undefined : amount(o.limit, "limit", where),

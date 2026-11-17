@@ -4,6 +4,9 @@ import { Category, Settings } from "../types";
 export const APP_VERSION: string = __APP_VERSION__;
 
 // Largest amount accepted anywhere (calculator, backup import): $ 1.000.000.000.000
+/** Largos máximos de texto: los usan los campos de la pantalla Y la validación del backup (tienen que coincidir). */
+export const TEXT_LIMITS = { note: 500, name: 100, category: 60 } as const;
+
 export const MAX_AMOUNT = 1e12;
 
 export const DEFAULT_CATEGORIES: Category[] = [

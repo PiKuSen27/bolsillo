@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TEXT_LIMITS } from "../lib/constants";
 import { ArrowDownLeft, ArrowUpRight, Edit2, Trash2 } from "lucide-react";
 import { DollarMove, DollarType } from "../types";
 import { QuoteField } from "../components/QuoteField";
@@ -51,7 +52,7 @@ export function DollarsPanel({
             <div key={m.id} className={`p-3 rounded-2xl border flex flex-col gap-2 ${card}`}>
               <div className="grid grid-cols-2 gap-2">
                 <input aria-label="Dólares" inputMode="numeric" value={editing.amount} onChange={(e) => setEditing({ ...editing, amount: formatAmountInput(e.target.value) })} className={field(isLight)} />
-                <input aria-label="Nota" placeholder="Nota" value={editing.note} onChange={(e) => setEditing({ ...editing, note: e.target.value })} className={field(isLight)} />
+                <input aria-label="Nota" placeholder="Nota" value={editing.note} maxLength={TEXT_LIMITS.note} onChange={(e) => setEditing({ ...editing, note: e.target.value })} className={field(isLight)} />
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setEditing(null)} className="px-3 py-1 text-xs font-bold opacity-75 cursor-pointer">Cancelar</button>
@@ -156,7 +157,7 @@ export function DollarTradeForm({
         </label>
         <label className="flex flex-col gap-1 text-[10px] font-bold opacity-90">
           Nota (opcional)
-          <input aria-label="Nota" value={note} onChange={(e) => setNote(e.target.value)} className={field(isLight)} />
+          <input aria-label="Nota" value={note} maxLength={TEXT_LIMITS.note} onChange={(e) => setNote(e.target.value)} className={field(isLight)} />
         </label>
       </div>
       {usdN > 0 && pesosN > 0 && (

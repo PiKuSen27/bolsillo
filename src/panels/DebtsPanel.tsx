@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { TEXT_LIMITS } from "../lib/constants";
 import { Plus, Trash2, CheckCircle2, ArrowDownLeft, ArrowUpRight, ChevronDown, Users, Edit2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Debt, DebtKind, DollarType } from "../types";
@@ -124,7 +125,7 @@ function DebtForm({
           placeholder="Persona o motivo"
           aria-label="Persona o motivo"
           value={person}
-          onChange={(e) => setPerson(e.target.value)}
+          maxLength={TEXT_LIMITS.name} onChange={(e) => setPerson(e.target.value)}
           className={input}
           required
         />
@@ -198,7 +199,7 @@ function DebtForm({
             type="text"
             placeholder="Ej. Cena, prestado..."
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            maxLength={TEXT_LIMITS.note} onChange={(e) => setNote(e.target.value)}
             className={`w-full ${input}`}
           />
         </div>

@@ -117,3 +117,16 @@ describe("backup.ts - Validación real del archivo de respaldo", () => {
     expect(summarizeBackup(r.data)).toContain("1 deuda");
   });
 });
+
+import { TEXT_LIMITS } from "./constants";
+
+describe("backup.ts - Mismos largos que la pantalla (M-04)", () => {
+  it("Una nota del largo máximo que permite el campo se restaura; una más larga se rechaza", () => {
+    const ok = base();
+    ok.movements[0].note = "x".repeat(TEXT_LIMITS.note);
+    expect(validateBackup(JSON.stringify(ok)).ok).toBe(true);
+    const bad = base();
+    bad.movements[0].note = "x".repeat(TEXT_LIMITS.note + 1);
+    expect(validateBackup(JSON.stringify(bad)).ok).toBe(false);
+  });
+});

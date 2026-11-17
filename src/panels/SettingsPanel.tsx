@@ -33,7 +33,7 @@ import { isVaultEnabled, lockMode, verifyPassword } from "../db/store";
 import { decryptBackup, encryptBackup, isEncryptedBackup, WrongSecretError } from "../lib/vault";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { summarizeBackup, validateBackup, ValidBackup } from "../lib/backup";
-import { APP_VERSION } from "../lib/constants";
+import { APP_VERSION, TEXT_LIMITS } from "../lib/constants";
 import { NOVEDADES } from "../novedades";
 import { calculateVariableIncome } from "../lib/workdays";
 import { shouldStorePreviousRange } from "../lib/carryover";
@@ -860,7 +860,7 @@ export function SettingsPanel({
             type="text"
             placeholder="Nueva categoría..."
             value={newCatName}
-            onChange={(e) => setNewCatName(e.target.value)}
+            maxLength={TEXT_LIMITS.category} onChange={(e) => setNewCatName(e.target.value)}
             className={`flex-1 text-xs font-black px-2.5 py-1.5 rounded-xl border focus:outline-none ${
               isLight
                 ? "bg-zinc-100 border-zinc-300 text-black"
